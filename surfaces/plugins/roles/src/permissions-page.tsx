@@ -47,7 +47,7 @@ export function PermissionsPage() {
                               <RouteLink
                                 target={route('roles.detail', {}, { query: { id: role.id } })}
                               >
-                                {role.protected
+                                {['administrator', 'operator', 'viewer'].includes(role.id)
                                   ? t(`identityProduct.roleNames.${role.id}`)
                                   : role.name}
                               </RouteLink>

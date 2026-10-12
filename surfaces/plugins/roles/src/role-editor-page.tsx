@@ -18,6 +18,7 @@ import {
   IdentityError,
   identifierSchema,
   permissionCodes,
+  defaultUserQuery,
   useIdentityPort,
   type DirectoryRole,
   type IdentityAccess,
@@ -29,7 +30,11 @@ import {
   IdentityQueryState,
   IdentityMutationError,
 } from '../../../src/identity/query-state';
-function RoleForm({ role, access }: Readonly<{ role?: DirectoryRole; access: IdentityAccess }>) {
+function RoleForm({
+  role,
+  access,
+  members,
+}: Readonly<{ role?: DirectoryRole; access: IdentityAccess; members: number | null }>) {
   const port = useIdentityPort();
   const { t, locale } = useFrontendTranslation();
   const { navigate } = usePluginNavigation();
@@ -39,6 +44,12 @@ function RoleForm({ role, access }: Readonly<{ role?: DirectoryRole; access: Ide
   const [failure, setFailure] = useState<IdentityError | null>(null);
   const [confirmation, setConfirmation] = useState<RoleInput | null>(null);
   const [pending, setPending] = useState(false);
+  const added =
+    confirmation?.permissions.filter((permission) => !baseline?.permissions.includes(permission)) ??
+    [];
+  const removed =
+    baseline?.permissions.filter((permission) => !confirmation?.permissions.includes(permission)) ??
+    [];
   const allowed =
     access.permissions.includes(role ? 'roles.update' : 'roles.create') &&
     !role?.protected &&
@@ -149,7 +160,12 @@ function RoleForm({ role, access }: Readonly<{ role?: DirectoryRole; access: Ide
                           key={permission}
                           label={t(`management.permissions.${permission}`)}
                           checked={field.value.includes(permission)}
-                          disabled={!allowed || pending || !access.permissions.includes(permission)}
+                          disabled={
+                            !allowed ||
+                            pending ||
+                            (!access.permissions.includes(permission) &&
+                              !field.value.includes(permission))
+                          }
                           onCheckedChange={(checked) =>
                             field.onChange(
                               checked
@@ -190,13 +206,35 @@ function RoleForm({ role, access }: Readonly<{ role?: DirectoryRole; access: Ide
         title={t('roles.confirm')}
         description={t('roles.impact')}
         impact={
-          <p>
-            {confirmation?.name} ·{' '}
-            {t('roles.permissionCount', {
-              count: confirmation?.permissions.length ?? 0,
-              value: formatNumber(locale, confirmation?.permissions.length ?? 0),
-            })}
-          </p>
+          <div className="grid gap-3">
+            <p>
+              {confirmation?.name} ·{' '}
+              {t('roles.permissionCount', {
+                count: confirmation?.permissions.length ?? 0,
+                value: formatNumber(locale, confirmation?.permissions.length ?? 0),
+              })}
+            </p>
+            <p>
+              {members === null
+                ? t('roles.membersDenied')
+                : t('roles.affectedMembers', {
+                    count: members,
+                    value: formatNumber(locale, members),
+                  })}
+            </p>
+            <p>
+              {t('roles.addedPermissions')}:{' '}
+              {added.length
+                ? added.map((permission) => t(`management.permissions.${permission}`)).join(' / ')
+                : t('roles.noChanges')}
+            </p>
+            <p>
+              {t('roles.removedPermissions')}:{' '}
+              {removed.length
+                ? removed.map((permission) => t(`management.permissions.${permission}`)).join(' / ')
+                : t('roles.noChanges')}
+            </p>
+          </div>
         }
         cancelLabel={t('identityProduct.cancel')}
         confirmLabel={t('identityProduct.save')}
@@ -223,7 +261,13 @@ export function RoleEditorPage({ id }: Readonly<{ id?: string }>) {
     if (id !== undefined && !identifierSchema.safeParse(id).success)
       throw new IdentityError('not-found');
     const role = id === undefined ? undefined : await service.readRole(id);
-    return { access, role };
+    const members =
+      role && access.permissions.includes('users.read')
+        ? (await service.list({ ...defaultUserQuery, roleId: role.id, pageSize: 10 })).total
+        : role
+          ? null
+          : 0;
+    return { access, role, members };
   });
   return (
     <Page>
@@ -238,6 +282,7 @@ export function RoleEditorPage({ id }: Readonly<{ id?: string }>) {
         <RoleForm
           key={id ?? 'create'}
           access={result.data.access}
+          members={result.data.members}
           {...(result.data.role ? { role: result.data.role } : {})}
         />
       )}

@@ -52,7 +52,9 @@ export function RolesPage() {
                   <li key={role.id} className="grid gap-3 rounded-panel border border-border p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <RouteLink target={route('roles.detail', {}, { query: { id: role.id } })}>
-                        {role.protected ? t(`identityProduct.roleNames.${role.id}`) : role.name}
+                        {['administrator', 'operator', 'viewer'].includes(role.id)
+                          ? t(`identityProduct.roleNames.${role.id}`)
+                          : role.name}
                       </RouteLink>
                       <StatusPill tone="neutral">
                         {t(role.protected ? 'roles.system' : 'roles.custom')}

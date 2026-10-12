@@ -106,6 +106,14 @@ Mock 数据库仍使用 `community-go.auth-mock`，升级到 v3。v1、v2 分别
 
 ### 当前交付状态
 
+后续实施继续保留“暂不检查”的指令：通知搜索、分类、全部/已读/未读及页码现在进入 URL；从列表进入详情再用返回入口，可恢复原筛选位置。详情增加实际阅读状态、未读总数和手动刷新，管理关联入口先通过同一 Identity Port 读取记录，记录不存在、权限拒绝或读取失败时保留通知内容并提供相应恢复反馈。
+
+通知展示 ID 对服务端来源增加 `product:` 命名空间，防止与应用事件 ID 碰撞；已读请求仍发送原始服务端 ID。初始实现的原始管理通知详情 ID 继续可解析。单次已读操作用同步 in-flight guard 防止快速重复提交，批量操作去重并跳过已经读取的项；错误可通过刷新清除并重新读取。
+
+角色分配的版本冲突恢复入口已改为实际重新读取用户，读取期间暂停写动作。角色详情补无成员/无成员读取权限状态，自己的角色不显示编辑入口。角色授权确认显示新增/移除的具体权限及读取时成员数；不能新增超出自身范围的授权，但允许移除已有的超范围授权。
+
+Host 为每次 Mock 请求绑定开始时的操作人，异步密码摘要或数据库等待期间切换账号不会把待处理写请求重新归属到新账号；旧账号请求返回 unauthenticated 时，只在当前身份仍为原操作人时过期认证，避免旧请求使新登录失效。这些仍是实现说明，尚未通过延后的验收验证。
+
 路由由现役生成器装配，当前为 14 Plugins / 52 Routes，保留既有 URL。代码生成第一次与开发监听并发发生 `ENOTEMPTY`，后续生成已成功恢复；未修改生成器或手写生成物。
 
 本轮功能代码及下列 REST 契约已落地；未新增“全绿”证据，未更新视觉基线，未部署。桌面/移动/键盘/Axe、Mock 完整任务、Backend fixture 与真实联调、类型/构建/性能预算仍待后续验收。既有 M1 的通过记录只证明 M1，不覆盖本轮改动。
@@ -156,6 +164,7 @@ Mock 数据库仍使用 `community-go.auth-mock`，升级到 v3。v1、v2 分别
 - Audit Query：`q` ≤100（匹配 actorId/actorName/objectId/objectName），`operation=all|受控操作`，`result=all|success|failure`，page/pageSize 同 Users；缺省空/all/all/1/20。
 - AuditRecord：`id,actorId,actorName,objectId,objectName,operation,createdAt,result,errorCode?`。operation 为用户 create/update/status/roles、account.update、roles.create/update；errorCode 仅失败记录。操作主体由服务端会话确定，客户端不能提交 audit record。
 - ProductNotification：`id,ownerId,operation,objectId,objectName,category,createdAt,read`；category=`success|failure|system`；operation 同 Audit；接收人必须是当前账户。通知标题由语义 operation 和对象名在当前语言生成，Backend 响应不落入本地事件 Store。
+- 通知页面 URL Query（当前是前端集合筛选，不改变 GET `/notifications`）：`q` ≤100，`category=all|system|success|failure|warning|task`，`read=all|read|unread`，`page=1..100000`，每页 20 条。category 的 warning/task 来自已有应用事件；详情同时带 `id` 与列表 Query，返回时恢复筛选。页面 ID 的 `product:` 来源前缀不进入 REST body。
 - Page 响应：total 非负整数，page/pageSize 与请求一致；items 不超过 pageSize、ID 不重复且 total 不小于 items 长度。单实体响应 ID 必须匹配请求；写响应 version 必须增加。
 
 ### 冲突、受保护操作与错误

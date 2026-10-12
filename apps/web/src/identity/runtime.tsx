@@ -25,17 +25,18 @@ export function IdentityRuntime({ children }: Readonly<{ children: ReactNode }>)
       }
     })();
     let initialized: Promise<IdentityOperations> | null = null;
+    let mockModule: Promise<typeof import('./mock-service')> | null = null;
     const currentUserId = () => authController.getState().session?.user.id ?? null;
-    const service = async () => {
+    const service = async (owner: string) => {
       if (!config) throw new IdentityError('configuration');
-      return (initialized ??=
-        config.mode === 'mock'
-          ? import('./mock-service').then((module) =>
-              module.createMockIdentityService(currentUserId),
-            )
-          : import('./backend-service').then((module) =>
-              module.createBackendIdentityService(config.apiBaseUrl),
-            ));
+      if (config.mode === 'mock') {
+        const module = await (mockModule ??= import('./mock-service'));
+        // Pending operations keep their original actor; switching accounts cannot rebind a write.
+        return module.createMockIdentityService(() => owner);
+      }
+      return (initialized ??= import('./backend-service').then((module) =>
+        module.createBackendIdentityService(config.apiBaseUrl),
+      ));
     };
     async function call<T>(
       operation: (service: IdentityOperations) => Promise<T>,
@@ -45,7 +46,9 @@ export function IdentityRuntime({ children }: Readonly<{ children: ReactNode }>)
       const owner = currentUserId();
       if (!owner) throw new IdentityError('unauthenticated');
       try {
-        const value = await operation(await service());
+        const operations = await service(owner);
+        if (owner !== currentUserId()) throw new IdentityError('unauthenticated');
+        const value = await operation(operations);
         if (owner !== currentUserId()) throw new IdentityError('unauthenticated');
         if (mutate) {
           invalidate();
@@ -54,7 +57,11 @@ export function IdentityRuntime({ children }: Readonly<{ children: ReactNode }>)
         }
         return value;
       } catch (error) {
-        if (error instanceof IdentityError && error.code === 'unauthenticated')
+        if (
+          error instanceof IdentityError &&
+          error.code === 'unauthenticated' &&
+          owner === currentUserId()
+        )
           authController.getState().expire();
         if (error instanceof AuthError)
           throw new IdentityError(error.code === 'protocol' ? 'protocol' : 'persistence');

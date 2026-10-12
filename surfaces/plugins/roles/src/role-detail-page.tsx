@@ -29,7 +29,7 @@ export function RoleDetailPage({ id }: Readonly<{ id: string | null }>) {
       <PageHeader
         title={
           data
-            ? data.role.protected
+            ? ['administrator', 'operator', 'viewer'].includes(data.role.id)
               ? t(`identityProduct.roleNames.${data.role.id}`)
               : data.role.name
             : t('roles.detail')
@@ -47,7 +47,9 @@ export function RoleDetailPage({ id }: Readonly<{ id: string | null }>) {
             description={t(data.role.protected ? 'roles.protected' : 'roles.impact')}
           >
             <div className="grid gap-4 p-5">
-              {!data.role.protected && data.access.permissions.includes('roles.update') ? (
+              {!data.role.protected &&
+              !data.access.user.roleIds.includes(data.role.id) &&
+              data.access.permissions.includes('roles.update') ? (
                 <RouteLink target={route('roles.edit', {}, { query: { id: data.role.id } })}>
                   {t('roles.edit')}
                 </RouteLink>
@@ -71,7 +73,7 @@ export function RoleDetailPage({ id }: Readonly<{ id: string | null }>) {
           <Section title={t('roles.members')} description={t('roles.membersHint')}>
             <div className="grid gap-3 p-5">
               {!data.members ? (
-                <p>{t('identityProduct.readonly')}</p>
+                <p className="text-sm text-ink-muted">{t('roles.membersDenied')}</p>
               ) : (
                 <>
                   <p className="text-sm text-ink-muted">
@@ -87,6 +89,9 @@ export function RoleDetailPage({ id }: Readonly<{ id: string | null }>) {
                       </li>
                     ))}
                   </ul>
+                  {data.members.total === 0 ? (
+                    <p className="text-sm text-ink-muted">{t('roles.noMembers')}</p>
+                  ) : null}
                   <RouteLink target={route('users', {}, { query: { roleId: data.role.id } })}>
                     {t('roles.allMembers')}
                   </RouteLink>

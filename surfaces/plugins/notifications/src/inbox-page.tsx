@@ -17,12 +17,14 @@ import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
 import { IdentityError, useIdentityPort } from '@community-go/surface/identity';
 import { useProductInbox } from '../../../src/identity/use-inbox';
+import { useIdentityQuery } from '../../../src/identity/use-query';
+import { defaultInboxQuery, inboxQuerySchema, type InboxQuery } from './query';
 import {
   IdentityModeNotice,
   IdentityMutationError,
   IdentityQueryState,
 } from '../../../src/identity/query-state';
-export function InboxPage({ id }: Readonly<{ id?: string }>) {
+export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQuery | null }>) {
   const { t, locale } = useFrontendTranslation();
   const port = useIdentityPort();
   const region = usePreferencesPort<Preferences>().getSnapshot().localeRegion;
@@ -32,19 +34,28 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
     formatTimeOfDay(locale, region, value);
   const inbox = useProductInbox();
   const navigation = usePluginNavigation();
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
-  const [unreadOnly, setUnreadOnly] = useState(false);
-  const [requestedPage, setPage] = useState(1);
-  const selected = id === undefined ? null : inbox.items.find((item) => item.id === id);
+  const filters = query ?? defaultInboxQuery;
+  const listLocation = {
+    q: filters.q,
+    category: filters.category,
+    read: filters.read,
+    page: String(filters.page),
+  };
+  const [search, setSearch] = useState(filters.q);
+  const [filterFailure, setFilterFailure] = useState(false);
+  const selected =
+    id === undefined
+      ? null
+      : (inbox.items.find((item) => item.id === id) ??
+        inbox.items.find((item) => item.id === `product:${id}`));
   const filtered = inbox.items.filter(
     (item) =>
-      (category === 'all' || category === item.category) &&
-      (!unreadOnly || !item.read) &&
-      `${item.title} ${item.description ?? ''}`.toLowerCase().includes(search.trim().toLowerCase()),
+      (filters.category === 'all' || filters.category === item.category) &&
+      (filters.read === 'all' || (filters.read === 'read' ? item.read : !item.read)) &&
+      `${item.title} ${item.description ?? ''}`.toLowerCase().includes(filters.q.toLowerCase()),
   );
   const pages = Math.max(1, Math.ceil(filtered.length / 20));
-  const page = Math.min(requestedPage, pages);
+  const page = Math.min(filters.page, pages);
   const items = filtered.slice((page - 1) * 20, page * 20);
   let association = selected?.target
     ? route(selected.target.routeId, selected.target.params ?? {}, {
@@ -59,12 +70,40 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
       association = null;
     }
   }
+  const associatedRoute = association?.routeId ?? '';
+  const associatedId = association?.query?.id ?? '';
+  const linkedRecord = useIdentityQuery(
+    `notification.link:${id ?? ''}:${associatedRoute}:${associatedId}`,
+    async (service) => {
+      if (associatedRoute === 'users.detail') await service.read(associatedId);
+      else if (associatedRoute === 'roles.detail') await service.readRole(associatedId);
+      else if (associatedRoute === 'account') await service.me();
+      return true;
+    },
+  );
+  function apply(patch: Partial<InboxQuery>) {
+    const parsed = inboxQuerySchema.safeParse({ ...filters, ...patch });
+    if (!parsed.success) {
+      setFilterFailure(true);
+      return;
+    }
+    const next = parsed.data;
+    navigation.navigate(
+      route(
+        'notifications',
+        {},
+        { query: { q: next.q, category: next.category, read: next.read, page: String(next.page) } },
+      ),
+    );
+  }
   const unavailable =
     id !== undefined && !selected && !inbox.loading ? new IdentityError('not-found') : null;
   return (
     <Page>
       <PageHeader
-        title={t(id === undefined ? 'notifications.nav' : 'management.detail')}
+        title={
+          id === undefined ? t('notifications.nav') : (selected?.title ?? t('management.detail'))
+        }
         description={t('notifications.description')}
         actions={
           id === undefined ? (
@@ -79,14 +118,35 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
               {t('management.markAll')}
             </Action>
           ) : (
-            <RouteLink target={route('notifications')}>{t('notifications.back')}</RouteLink>
+            <RouteLink target={route('notifications', {}, { query: listLocation })}>
+              {t('notifications.back')}
+            </RouteLink>
           )
         }
       />
       <IdentityModeNotice mode={port.mode} />
       <IdentityMutationError error={inbox.failure} />
-      {inbox.error || unavailable || (inbox.loading && !inbox.items.length) ? (
-        <IdentityQueryState error={inbox.error ?? unavailable} retry={inbox.reload} />
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-ink-muted">{t('shell.unreadCount', { count: inbox.unread })}</p>
+        <Action variant="quiet" disabled={inbox.loading || inbox.pending} onPress={inbox.reload}>
+          {t('identityProduct.refresh')}
+        </Action>
+        {inbox.loading ? (
+          <span role="status" className="text-sm text-ink-muted">
+            {t('identityProduct.loading')}
+          </span>
+        ) : null}
+      </div>
+      {inbox.error ||
+      unavailable ||
+      query === null ||
+      (inbox.loading && (!inbox.items.length || (id !== undefined && !selected))) ? (
+        <IdentityQueryState
+          error={
+            inbox.error ?? unavailable ?? (query === null ? new IdentityError('validation') : null)
+          }
+          retry={inbox.reload}
+        />
       ) : selected ? (
         <Section title={selected.title}>
           <div className="grid gap-4 p-5">
@@ -95,6 +155,9 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
             <StatusPill tone={selected.category === 'failure' ? 'danger' : 'neutral'}>
               {t(`shell.notificationCategory.${selected.category}`)}
             </StatusPill>
+            <p className="text-sm text-ink-muted">
+              {t(selected.read ? 'management.isRead' : 'management.unread')}
+            </p>
             {!selected.read ? (
               <Action
                 disabled={inbox.pending}
@@ -105,32 +168,56 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
                 {t('management.read')}
               </Action>
             ) : null}
-            {association ? (
+            {association && !linkedRecord.loading && !linkedRecord.error ? (
               <RouteLink target={association}>{t('management.association')}</RouteLink>
-            ) : (
+            ) : !association || linkedRecord.error ? (
               <p className="text-sm text-ink-muted">{t('management.associationUnavailable')}</p>
-            )}
+            ) : null}
+            {association && linkedRecord.loading ? (
+              <p role="status" className="text-sm text-ink-muted">
+                {t('identityProduct.loading')}
+              </p>
+            ) : null}
+            {association && linkedRecord.error ? (
+              <>
+                <IdentityMutationError error={linkedRecord.error} />
+                <Action variant="secondary" onPress={linkedRecord.reload}>
+                  {t('identityProduct.retry')}
+                </Action>
+              </>
+            ) : null}
           </div>
         </Section>
       ) : (
         <Section title={t('notifications.nav')}>
           <div className="grid gap-4 p-5">
             <div className="grid gap-4 md:grid-cols-3">
-              <SearchBox
-                label={t('notifications.search')}
-                placeholder={t('notifications.search')}
-                value={search}
-                onChange={(value) => {
-                  setSearch(value);
-                  setPage(1);
+              <form
+                className="grid gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  apply({ q: search, page: 1 });
                 }}
-              />
+              >
+                <SearchBox
+                  label={t('notifications.search')}
+                  placeholder={t('notifications.search')}
+                  value={search}
+                  onChange={(value) => {
+                    setSearch(value);
+                    setFilterFailure(false);
+                  }}
+                />
+                <Action type="submit" variant="secondary">
+                  {t('identityProduct.search')}
+                </Action>
+              </form>
               <SelectField
                 label={t('notifications.category')}
-                value={category}
+                value={filters.category}
                 onValueChange={(value) => {
-                  setCategory(value);
-                  setPage(1);
+                  const parsed = inboxQuerySchema.shape.category.safeParse(value);
+                  if (parsed.success) apply({ category: parsed.data, page: 1 });
                 }}
                 options={[
                   { value: 'all', label: t('management.all') },
@@ -142,17 +229,26 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
               />
               <SelectField
                 label={t('notifications.state')}
-                value={unreadOnly ? 'unread' : 'all'}
+                value={filters.read}
                 onValueChange={(value) => {
-                  setUnreadOnly(value === 'unread');
-                  setPage(1);
+                  const parsed = inboxQuerySchema.shape.read.safeParse(value);
+                  if (parsed.success) apply({ read: parsed.data, page: 1 });
                 }}
                 options={[
                   { value: 'all', label: t('management.all') },
                   { value: 'unread', label: t('management.unread') },
+                  { value: 'read', label: t('management.isRead') },
                 ]}
               />
             </div>
+            {filterFailure ? (
+              <p role="alert" className="text-sm text-danger">
+                {t('notifications.invalidSearch')}
+              </p>
+            ) : null}
+            <Action variant="quiet" onPress={() => navigation.navigate(route('notifications'))}>
+              {t('identityProduct.clear')}
+            </Action>
             <Action
               variant="secondary"
               disabled={inbox.pending || !items.some((item) => !item.read)}
@@ -170,7 +266,11 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
                   <li key={item.id} className="grid gap-2 rounded-panel border border-border p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <RouteLink
-                        target={route('notifications.detail', {}, { query: { id: item.id } })}
+                        target={route(
+                          'notifications.detail',
+                          {},
+                          { query: { ...listLocation, id: item.id } },
+                        )}
                       >
                         {item.title}
                       </RouteLink>
@@ -199,7 +299,11 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
               </ul>
             )}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Action variant="secondary" disabled={page <= 1} onPress={() => setPage(page - 1)}>
+              <Action
+                variant="secondary"
+                disabled={page <= 1}
+                onPress={() => apply({ page: page - 1 })}
+              >
                 {t('management.previous')}
               </Action>
               <p className="text-sm text-ink-muted">
@@ -212,7 +316,7 @@ export function InboxPage({ id }: Readonly<{ id?: string }>) {
               <Action
                 variant="secondary"
                 disabled={page >= pages}
-                onPress={() => setPage(page + 1)}
+                onPress={() => apply({ page: page + 1 })}
               >
                 {t('management.next')}
               </Action>

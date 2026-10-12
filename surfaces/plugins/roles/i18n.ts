@@ -19,6 +19,12 @@ export const pluginI18nResources = {
         members: '角色成员',
         memberCount: '{{value}} 位成员',
         membersHint: '成员身份与角色分配使用用户管理中的同一份记录。',
+        membersDenied: '查看成员需要用户查看权限；当前角色的权限配置仍可阅读。',
+        noMembers: '此角色尚未分配给任何用户。',
+        affectedMembers: '读取时共有 {{value}} 位成员；保存授权会影响该角色的全部现有成员。',
+        addedPermissions: '新增授权',
+        removedPermissions: '移除授权',
+        noChanges: '无',
         allMembers: '查看全部成员并管理分配',
         protected: '系统角色不可编辑；请创建自定义角色表达新的授权。',
         impact:
@@ -51,6 +57,14 @@ export const pluginI18nResources = {
         members: 'Role members',
         memberCount: '{{value}} members',
         membersHint: 'Member identities and assignments use the same user directory.',
+        membersDenied:
+          'Viewing members requires user read permission. The role grants remain readable.',
+        noMembers: 'No users have been assigned to this role.',
+        affectedMembers:
+          '{{value}} members at the last read. Saving changes grants for all current members.',
+        addedPermissions: 'Grants added',
+        removedPermissions: 'Grants removed',
+        noChanges: 'None',
         allMembers: 'View all members and manage assignments',
         protected: 'System roles cannot be edited. Create a custom role for new grants.',
         impact:

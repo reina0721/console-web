@@ -33,7 +33,15 @@ function UserAccessActions({
   user,
   roles,
   access,
-}: Readonly<{ user: DirectoryUser; roles: readonly DirectoryRole[]; access: IdentityAccess }>) {
+  refresh,
+  refreshing,
+}: Readonly<{
+  user: DirectoryUser;
+  roles: readonly DirectoryRole[];
+  access: IdentityAccess;
+  refresh: () => void;
+  refreshing: boolean;
+}>) {
   const { t } = useFrontendTranslation();
   const port = useIdentityPort();
   const { notify } = useFeedback();
@@ -43,6 +51,7 @@ function UserAccessActions({
   }> | null>(null);
   const [failure, setFailure] = useState<IdentityError | null>(null);
   const [pending, setPending] = useState(false);
+  const busy = pending || refreshing;
   const roleLabel = (id: string) =>
     ['administrator', 'operator', 'viewer'].includes(id)
       ? t(`identityProduct.roleNames.${id}`)
@@ -61,7 +70,7 @@ function UserAccessActions({
     isSubmitting: () => pending,
   });
   async function mutate(kind: 'roles' | 'status') {
-    if (pending) return;
+    if (busy) return;
     setPending(true);
     setFailure(null);
     try {
@@ -97,6 +106,7 @@ function UserAccessActions({
             reload={() => {
               setDraft(null);
               setFailure(null);
+              refresh();
             }}
           />
           {self ? (
@@ -104,7 +114,7 @@ function UserAccessActions({
           ) : !canRoles ? (
             <p className="text-sm text-ink-muted">{t('identityProduct.readonly')}</p>
           ) : null}
-          <fieldset className="grid gap-3" disabled={!canRoles || pending}>
+          <fieldset className="grid gap-3" disabled={!canRoles || busy}>
             <legend className="sr-only">{t('identityProduct.roles')}</legend>
             <div data-reveal-items className="grid gap-3 sm:grid-cols-3">
               {roles.map((role) => (
@@ -112,7 +122,14 @@ function UserAccessActions({
                   key={role.id}
                   label={roleLabel(role.id)}
                   checked={selected.includes(role.id)}
-                  disabled={!canRoles || pending}
+                  disabled={
+                    !canRoles ||
+                    busy ||
+                    (!selected.includes(role.id) &&
+                      role.permissions.some(
+                        (permission) => !access.permissions.includes(permission),
+                      ))
+                  }
                   onCheckedChange={(checked) => {
                     const roleIds = checked
                       ? [...selected, role.id]
@@ -140,12 +157,12 @@ function UserAccessActions({
                 cancelLabel={t('identityProduct.cancel')}
                 confirmLabel={t('identityProduct.save')}
                 failureMessage={failureText}
-                confirmDisabled={!dirty || selected.length === 0 || pending}
+                confirmDisabled={!dirty || selected.length === 0 || busy}
                 onConfirm={() => mutate('roles')}
               />
               <Action
                 variant="quiet"
-                disabled={pending || !draft}
+                disabled={busy || !draft}
                 onPress={() => {
                   setDraft(null);
                   setFailure(null);
@@ -183,7 +200,7 @@ function UserAccessActions({
               cancelLabel={t('identityProduct.cancel')}
               confirmLabel={t('identityProduct.save')}
               failureMessage={failureText}
-              confirmDisabled={pending || dirty}
+              confirmDisabled={busy || dirty}
               onConfirm={() => mutate('status')}
             />
           ) : (
@@ -308,6 +325,8 @@ export function UserDetailPage({ id }: Readonly<{ id: string | null }>) {
             user={data.user}
             roles={data.roles}
             access={data.access}
+            refresh={query.reload}
+            refreshing={query.loading}
           />
         </>
       )}
