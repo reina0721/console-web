@@ -13,6 +13,7 @@ import { useShellStore } from '../state/use-shell-store';
 import { proceedAfterLeaveConfirm } from '../host/leave-confirm';
 import { markForwardRouteIntent, pageTransitionTypes } from '../host/route-transition-constants';
 import { resolveScrollOption } from '../host/scroll-preference';
+import { useNavigationTitle } from './use-navigation-title';
 
 /**
  * Shell 顶部页面标签条（SET-005-002）。
@@ -27,6 +28,10 @@ import { resolveScrollOption } from '../host/scroll-preference';
  */
 export function PageTabs() {
   const { t } = useFrontendTranslation();
+  const entranceTitle = useNavigationTitle();
+  // Tabs describe the actual category/entity heading; only the renamed home entrance is canonical.
+  const pageTitle = (href: string, recorded: string) =>
+    href === '/' ? entranceTitle(href, recorded) : recorded;
   const pathname = usePathname();
   const router = useRouter();
   const pageTabsEnabled = useShellStore((state) => state.preferences.navigation.pageTabsEnabled);
@@ -136,7 +141,7 @@ export function PageTabs() {
               >
                 <button
                   aria-current={active ? 'page' : undefined}
-                  title={tab.title}
+                  title={pageTitle(tab.href ?? tab.pathname, tab.title)}
                   className="min-h-control min-w-0 max-w-40 truncate rounded-control px-1 outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   onClick={() => {
                     if (tab.pathname === pathname) return;
@@ -154,7 +159,7 @@ export function PageTabs() {
                   }}
                   type="button"
                 >
-                  {tab.title}
+                  {pageTitle(tab.href ?? tab.pathname, tab.title)}
                 </button>
                 <span
                   className={
@@ -170,7 +175,11 @@ export function PageTabs() {
                       void closeTabAt(tab.pathname);
                     }}
                   >
-                    <span className="sr-only">{t('shell.closeTab', { title: tab.title })}</span>
+                    <span className="sr-only">
+                      {t('shell.closeTab', {
+                        title: pageTitle(tab.href ?? tab.pathname, tab.title),
+                      })}
+                    </span>
                     <X aria-hidden="true" className="size-4" />
                   </Action>
                 </span>
@@ -187,7 +196,7 @@ export function PageTabs() {
             items={[
               ...tabs.map((tab) => ({
                 id: tab.pathname,
-                label: tab.title,
+                label: pageTitle(tab.href ?? tab.pathname, tab.title),
                 ...(tab.pathname === pathname ? { description: t('shell.currentPage') } : {}),
               })),
               { id: 'close-others', label: t('shell.closeOtherTabs'), disabled: tabs.length < 2 },

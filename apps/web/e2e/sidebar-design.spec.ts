@@ -1,7 +1,7 @@
+import { saveEvidenceScreenshot } from './evidence-screenshot';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-const evidence = 'docs/changes/109-ui-ux-optimization/evidence/sidebar';
 const navigation = (page: Page) => page.getByRole('navigation', { name: '主导航' });
 async function collapse(page: Page) {
   await page.goto('/ui-elements/navigation');
@@ -11,7 +11,8 @@ async function collapse(page: Page) {
 
 test('Compact rail uses coherent geometry, current route, named groups and focus/hover hints', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await collapse(page);
   const nav = navigation(page);
   const targets = nav.locator('a,button');
@@ -23,17 +24,20 @@ test('Compact rail uses coherent geometry, current route, named groups and focus
     await expect(item.locator('svg').first()).toHaveCSS('width', '24px');
     await expect(item.locator('svg').first()).toHaveAttribute('aria-hidden', 'true');
   }
-  await expect(nav.getByRole('list', { name: '系统', exact: true })).toBeVisible();
+  await expect(nav.getByRole('list', { name: '个人', exact: true })).toBeVisible();
   const branch = nav.getByRole('button', { name: 'UI Elements', exact: true });
   await expect(branch).toHaveAttribute('data-active', 'true');
-  const settings = nav.getByRole('link', { name: '设置', exact: true });
+  const settings = nav.getByRole('link', { name: '个人偏好', exact: true });
   await settings.hover();
-  await expect(page.getByRole('tooltip', { name: '设置', exact: true })).toBeVisible();
-  await page.screenshot({ path: `${evidence}/compact-tooltip.png`, animations: 'disabled' });
+  await expect(page.getByRole('tooltip', { name: '个人偏好', exact: true })).toBeVisible();
+  await saveEvidenceScreenshot(page, {
+    path: `${evidence}/compact-tooltip.png`,
+    animations: 'disabled',
+  });
   await page.mouse.move(700, 200);
   await page.keyboard.press('Tab');
   await settings.focus();
-  await expect(page.getByRole('tooltip', { name: '设置', exact: true })).toBeVisible();
+  await expect(page.getByRole('tooltip', { name: '个人偏好', exact: true })).toBeVisible();
   await expect(settings).toBeFocused();
   await expect(settings).toHaveCSS('outline-style', 'solid');
   await expect(settings).toHaveCSS('outline-width', '2px');
@@ -41,7 +45,10 @@ test('Compact rail uses coherent geometry, current route, named groups and focus
     document.documentElement.dataset.enhanceFocus = 'on';
   });
   await expect(settings).toHaveCSS('outline-width', '4px');
-  await page.screenshot({ path: `${evidence}/compact-focus-enhanced.png`, animations: 'disabled' });
+  await saveEvidenceScreenshot(page, {
+    path: `${evidence}/compact-focus-enhanced.png`,
+    animations: 'disabled',
+  });
   await settings.press('Escape');
   await expect(page.getByRole('tooltip')).toBeHidden();
   await settings.press('Enter');
@@ -53,7 +60,8 @@ test('Compact rail uses coherent geometry, current route, named groups and focus
 
 test('Hover bridge, click pin, second click close and keyboard focus survive pointer departure', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await collapse(page);
   const trigger = navigation(page).getByRole('button', { name: 'UI Elements', exact: true });
   const flyout = page.getByRole('dialog', { name: 'UI Elements', exact: true });
@@ -88,7 +96,10 @@ test('Hover bridge, click pin, second click close and keyboard focus survive poi
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
     .analyze();
   expect(scan.violations).toEqual([]);
-  await page.screenshot({ path: `${evidence}/compact-flyout.png`, animations: 'disabled' });
+  await saveEvidenceScreenshot(page, {
+    path: `${evidence}/compact-flyout.png`,
+    animations: 'disabled',
+  });
   await page.keyboard.press('Escape');
   await expect(flyout).toBeHidden();
   await expect(trigger).toBeFocused();
@@ -96,7 +107,8 @@ test('Hover bridge, click pin, second click close and keyboard focus survive poi
 
 test('Mode round trip retains exploration and closes old portal; expanded layout remains intact', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await page.goto('/');
   const nav = navigation(page);
   await nav.getByRole('button', { name: '展开或收起Page Patterns' }).click();
@@ -110,16 +122,17 @@ test('Mode round trip retains exploration and closes old portal; expanded layout
     'true',
   );
   await expect(page.locator('aside').first()).toHaveCSS('width', '264px');
-  await expect(nav.getByRole('link', { name: '总览', exact: true }).locator('svg')).toHaveCSS(
+  await expect(nav.getByRole('link', { name: '工作台', exact: true }).locator('svg')).toHaveCSS(
     'width',
     '16px',
   );
-  await page.screenshot({ path: `${evidence}/expanded.png`, animations: 'disabled' });
+  await saveEvidenceScreenshot(page, { path: `${evidence}/expanded.png`, animations: 'disabled' });
 });
 
 test('Compact rail stays usable at 1024/1440/2560, dark English, short height and text zoom', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await collapse(page);
   await page.getByRole('button', { name: '切换语言', exact: true }).click();
   await page.getByRole('button', { name: 'Switch theme', exact: true }).click();
@@ -129,7 +142,10 @@ test('Compact rail stays usable at 1024/1440/2560, dark English, short height an
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
-    await page.screenshot({ path: `${evidence}/dark-en-${width}.png`, animations: 'disabled' });
+    await saveEvidenceScreenshot(page, {
+      path: `${evidence}/dark-en-${width}.png`,
+      animations: 'disabled',
+    });
   }
   await page.setViewportSize({ width: 1440, height: 480 });
   const nav = page.getByRole('navigation', { name: 'Primary navigation' });
@@ -142,7 +158,10 @@ test('Compact rail stays usable at 1024/1440/2560, dark English, short height an
   const bounds = await popup.boundingBox();
   expect(bounds!.y).toBeGreaterThanOrEqual(0);
   expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(480);
-  await page.screenshot({ path: `${evidence}/short-dark-flyout.png`, animations: 'disabled' });
+  await saveEvidenceScreenshot(page, {
+    path: `${evidence}/short-dark-flyout.png`,
+    animations: 'disabled',
+  });
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 1440, height: 900 });
   // The shell's rem geometry follows the user's typography scale proportionally.
@@ -152,7 +171,10 @@ test('Compact rail stays usable at 1024/1440/2560, dark English, short height an
   await expect(page.locator('aside').first()).toHaveCSS('width', '100px');
   await expect(bottom).toHaveCSS('width', '60px');
   await expect(bottom.locator('svg').first()).toHaveCSS('width', '30px');
-  await page.screenshot({ path: `${evidence}/text-scale-125.png`, animations: 'disabled' });
+  await saveEvidenceScreenshot(page, {
+    path: `${evidence}/text-scale-125.png`,
+    animations: 'disabled',
+  });
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '';
   });
@@ -176,7 +198,7 @@ test('Compact rail stays usable at 1024/1440/2560, dark English, short height an
     await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
     await expect(page.locator('aside').first()).toHaveCSS('width', '264px');
     const expandedIcon = await nav
-      .getByRole('link', { name: 'Overview', exact: true })
+      .getByRole('link', { name: 'Workbench', exact: true })
       .locator('svg')
       .boundingBox();
     expect(expandedIcon!.x + expandedIcon!.width / 2).toBe((targetSize + 32) / 2);
@@ -186,7 +208,7 @@ test('Compact rail stays usable at 1024/1440/2560, dark English, short height an
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
     if (density === 'comfortable')
-      await page.screenshot({
+      await saveEvidenceScreenshot(page, {
         path: `${evidence}/comfortable-density.png`,
         animations: 'disabled',
       });
@@ -195,7 +217,8 @@ test('Compact rail stays usable at 1024/1440/2560, dark English, short height an
 
 test('Mobile Drawer remains expanded, traps focus and restores desktop collapse preference', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await collapse(page);
   for (const width of [320, 390, 768, 1023]) {
     await page.setViewportSize({ width, height: 844 });
@@ -210,11 +233,13 @@ test('Mobile Drawer remains expanded, traps focus and restores desktop collapse 
       'aria-current',
       'page',
     );
-    await expect(dialog.getByRole('link', { name: '总览', exact: true }).locator('svg')).toHaveCSS(
-      'width',
-      '16px',
-    );
-    await page.screenshot({ path: `${evidence}/mobile-${width}.png`, animations: 'disabled' });
+    await expect(
+      dialog.getByRole('link', { name: '工作台', exact: true }).locator('svg'),
+    ).toHaveCSS('width', '16px');
+    await saveEvidenceScreenshot(page, {
+      path: `${evidence}/mobile-${width}.png`,
+      animations: 'disabled',
+    });
     for (let i = 0; i < 12; i++) {
       await page.keyboard.press('Tab');
       expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
@@ -272,7 +297,8 @@ test('Reduced motion and repeated mode changes keep header and content in their 
 
 test('Icon navigation hint and flyout use the same primitives in the Overlay authority', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await page.goto('/ui-elements/overlays');
   const hint = page.getByRole('link', { name: '组合提示', exact: true });
   await page.keyboard.press('Tab');
@@ -289,7 +315,10 @@ test('Icon navigation hint and flyout use the same primitives in the Overlay aut
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
     .analyze();
   expect(scan.violations).toEqual([]);
-  await page.screenshot({ path: `${evidence}/overlay-authority.png`, animations: 'disabled' });
+  await saveEvidenceScreenshot(page, {
+    path: `${evidence}/overlay-authority.png`,
+    animations: 'disabled',
+  });
   await page.keyboard.press('Escape');
   await expect(trigger).toBeFocused();
 });
@@ -300,9 +329,9 @@ test('Compact tooltip link preserves the Host leave confirmation before navigati
   await page.goto('/reference-resources/edit?id=resource-alpha');
   await page.getByLabel('名称').fill('Sidebar dirty navigation check');
   await page.getByRole('button', { name: '收起侧栏', exact: true }).click();
-  const settings = navigation(page).getByRole('link', { name: '设置', exact: true });
+  const settings = navigation(page).getByRole('link', { name: '个人偏好', exact: true });
   await settings.hover();
-  await expect(page.getByRole('tooltip', { name: '设置', exact: true })).toBeVisible();
+  await expect(page.getByRole('tooltip', { name: '个人偏好', exact: true })).toBeVisible();
   await settings.click();
   const confirmation = page.getByRole('alertdialog');
   await expect(confirmation).toBeVisible();
@@ -318,7 +347,7 @@ test('Standard motion changes width monotonically and keeps header/content natur
 }) => {
   await page.goto('/');
   await expect(page.getByRole('button', { name: '收起侧栏', exact: true })).toBeVisible();
-  await expect(navigation(page).getByRole('link', { name: '总览', exact: true })).toBeVisible();
+  await expect(navigation(page).getByRole('link', { name: '工作台', exact: true })).toBeVisible();
   const sampleFrames = () =>
     page.evaluate(async () => {
       const shell = document.querySelector('.surface-shell-grid');

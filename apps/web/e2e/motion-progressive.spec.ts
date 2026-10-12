@@ -1,3 +1,4 @@
+import { saveEvidenceScreenshot } from './evidence-screenshot';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
@@ -12,12 +13,12 @@ test('settings keeps its shell stable and enters semantic regions inside the nes
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '总览', exact: true })
+    .getByRole('link', { name: '工作台', exact: true })
     .click();
   await expect(page).toHaveURL('/');
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '设置', exact: true })
+    .getByRole('link', { name: '个人偏好', exact: true })
     .click();
   await expect(page).toHaveURL('/settings');
   const stack = page.locator('[data-route-content] > .surface-page-stack');
@@ -102,7 +103,7 @@ for (const width of [1440, 390, 320]) {
     ).toEqual([]);
     await mkdir(evidence, { recursive: true });
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-    await page.screenshot({
+    await saveEvidenceScreenshot(page, {
       animations: 'disabled',
       path: `${evidence}/settings-actions-${width}.png`,
       fullPage: true,
@@ -159,7 +160,7 @@ test('anchor refresh and browser return never leave reading content hidden', asy
   await expect(region).toHaveCSS('opacity', '1');
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '总览', exact: true })
+    .getByRole('link', { name: '工作台', exact: true })
     .click();
   await expect(page).toHaveURL('/');
   await page.goBack();
@@ -229,7 +230,7 @@ for (const width of [320, 2048]) {
     );
     await mkdir(evidence, { recursive: true });
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-    await page.screenshot({
+    await saveEvidenceScreenshot(page, {
       animations: 'disabled',
       path: `${evidence}/settings-actions-dark-en-${width}.png`,
       fullPage: true,

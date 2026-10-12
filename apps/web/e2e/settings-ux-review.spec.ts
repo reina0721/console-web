@@ -1,3 +1,4 @@
+import { saveEvidenceScreenshot } from './evidence-screenshot';
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { defaultPreferences, PREFERENCES_VERSION } from '@community-go/surface/preferences-model';
@@ -109,7 +110,7 @@ for (const width of [1440, 390, 320]) {
         (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
           .violations,
       ).toEqual([]);
-      await page.screenshot({
+      await saveEvidenceScreenshot(page, {
         animations: 'disabled',
         path: `docs/changes/109-ui-ux-optimization/evidence/semantic-final/theme-tiles-${width}-${language}-dark.png`,
       });
@@ -135,7 +136,7 @@ for (const width of [1440, 390, 320]) {
         width,
       );
       await page.getByRole('heading', { level: 1 }).click();
-      await page.screenshot({
+      await saveEvidenceScreenshot(page, {
         animations: 'disabled',
         path: `docs/changes/109-ui-ux-optimization/evidence/semantic-final/theme-tiles-${width}-${language}-system.png`,
       });
@@ -224,7 +225,7 @@ test('Switch thumb endpoint inset matches vertical inset in row, card and disabl
         }
       }
       await page.getByRole('heading', { level: 1 }).click();
-      await page.screenshot({
+      await saveEvidenceScreenshot(page, {
         animations: 'disabled',
         path: `docs/changes/109-ui-ux-optimization/evidence/semantic-final/switch-geometry-${width}-${colorScheme}.png`,
       });
@@ -265,7 +266,7 @@ for (const width of [1440, 390, 320]) {
       await expect(input).toBeChecked({ checked: before });
       await page.getByRole('heading', { level: 1, name: '导航', exact: true }).click();
       await row.hover();
-      await page.screenshot({
+      await saveEvidenceScreenshot(page, {
         animations: 'disabled',
         path: `docs/changes/109-ui-ux-optimization/evidence/semantic-final/switch-row-hover-${width}-${density}.png`,
       });
@@ -319,7 +320,7 @@ test('Sticky consumers resolve actual chrome height across live tabs and viewpor
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
         width,
       );
-      await page.screenshot({
+      await saveEvidenceScreenshot(page, {
         path: `docs/changes/109-ui-ux-optimization/evidence/semantic-final/layout-${width}-${state}.png`,
       });
       await page.evaluate(() => window.scrollTo(0, 0));
@@ -368,7 +369,7 @@ test('Short desktop window retains access to the last settings category', async 
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/settings/shortcuts');
   await expect(page.getByRole('heading', { name: '快捷键', level: 2, exact: true })).toBeVisible();
-  await page.screenshot({
+  await saveEvidenceScreenshot(page, {
     animations: 'disabled',
     path: 'docs/changes/109-ui-ux-optimization/evidence/semantic-final/layout-short-desktop.png',
   });
@@ -461,7 +462,7 @@ for (const width of [320, 390, 430, 768, 1024, 1279]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       width,
     );
-    await page.screenshot({
+    await saveEvidenceScreenshot(page, {
       path: `docs/changes/109-ui-ux-optimization/evidence/semantic-final/settings-${width}.png`,
     });
   });
@@ -540,7 +541,7 @@ test('Settings drawer and form authority retain WCAG AA semantics in dark Englis
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
       .violations,
   ).toEqual([]);
-  await page.screenshot({
+  await saveEvidenceScreenshot(page, {
     path: 'docs/changes/109-ui-ux-optimization/evidence/semantic-final/settings-dark-en.png',
   });
 });

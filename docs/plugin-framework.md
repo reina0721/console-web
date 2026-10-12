@@ -36,6 +36,7 @@ apps/web                Runtime Host：Next Router、Shell 装配、Host Navigat
 ### Surface 对 Host 只开放
 
 - `@community-go/surface/shell`
+- `@community-go/surface/preferences-model`、`/identity`（当前产品共享偏好、身份目录、角色授权、通知及只读审计模型与语义 Port/hook，Web 注入实现；不含 HTTP、Storage、Session 或后端授权实现）
 - `@community-go/surface/icon-presentation`、`/icon-components`
 - `@community-go/surface/generated/composition`
 - `@community-go/surface/generated/catalog`
@@ -128,7 +129,7 @@ Group → Parent → Child
 ```
 
 **Group Alias（plugins 范围公共 IA）**：`surfaces/plugins/navigation-groups.ts`
-集中声明 `system` / `reference` / `development` 等（每项 `{groupId, labelKey, order?}`）。
+集中声明 `management`（身份与访问）/ `system`（个人入口）/ `development`（开发中心）（每项 `{groupId, labelKey, order?}`）。参考资源与图标工具归开发中心；其 URL 与 navigationId 不变。
 普通 Plugin **不定义 Group**，只在自身 Contribution 的 `groupId` **选择**既有 Alias；
 新增 Group Alias 属 plugins 范围公共 IA Contract 变更，不是单个 Plugin 私有声明。
 Shell 不写死 Group。多个 Plugin 可选同一 Group，各自维护自己的 Parent→Child 树。

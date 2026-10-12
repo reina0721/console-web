@@ -1,9 +1,9 @@
 export const pluginI18nResources = {
   'zh-CN': {
     translation: {
-      settingsNav: { root: '设置' },
+      settingsNav: { root: '个人偏好' },
       settings: {
-        eyebrow: '系统',
+        eyebrow: '个人偏好',
         navLabel: '设置分类',
         switchCategory: '切换分类与搜索',
         closeCategories: '关闭设置分类',
@@ -260,9 +260,9 @@ export const pluginI18nResources = {
   },
   en: {
     translation: {
-      settingsNav: { root: 'Settings' },
+      settingsNav: { root: 'Personal preferences' },
       settings: {
-        eyebrow: 'System',
+        eyebrow: 'Personal preferences',
         navLabel: 'Settings categories',
         switchCategory: 'Categories and search',
         closeCategories: 'Close settings categories',

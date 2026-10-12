@@ -17,15 +17,13 @@ test('浏览器返回：SPA 导航后返回上一页且内容正确', async ({ p
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   // SPA 前进到设置。
   const nav = page.getByRole('navigation', { name: '主导航' });
-  await nav.getByRole('link', { name: '设置', exact: true }).click();
+  await nav.getByRole('link', { name: '个人偏好', exact: true }).click();
   await page.waitForURL(/\/settings/);
   await expect(page.getByRole('heading', { level: 1, name: '外观' })).toBeVisible();
   // 浏览器返回 → 回到首页。
   await page.goBack();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(
-    '构建稳定、可治理的产品前端基座',
-  );
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('工作台');
 });
 
 // 注：浏览器历史返回的脏表单离开确认不在应用内 leave-confirm 覆盖范围（已确认

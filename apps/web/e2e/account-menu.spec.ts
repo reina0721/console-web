@@ -1,3 +1,4 @@
+import { saveEvidenceScreenshot } from './evidence-screenshot';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { defaultPreferences, PREFERENCES_VERSION } from '@community-go/surface/preferences-model';
@@ -69,7 +70,7 @@ for (const width of [320, 390, 1440, 2048]) {
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
       .analyze();
     expect(axe.violations).toEqual([]);
-    await page.screenshot({ path: `${evidence}/language-${width}.png` });
+    await saveEvidenceScreenshot(page, { path: `${evidence}/language-${width}.png` });
     await page.getByRole('menuitemradio', { name: 'English', exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(page.getByRole('menu')).toHaveCount(0);
@@ -133,7 +134,7 @@ test('Account submenu keyboard returns focus; theme supports system and persiste
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await openAccount(page);
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+  await page.getByRole('menuitem', { name: '个人偏好', exact: true }).click();
   await expect(page).toHaveURL(/\/settings$/);
 });
 
@@ -174,7 +175,7 @@ test('Dark English expanded text and Reduced Motion keep preference overlays acc
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
     .analyze();
   expect(result.violations).toEqual([]);
-  await page.screenshot({ path: `${evidence}/dark-en-expanded-reduced.png` });
+  await saveEvidenceScreenshot(page, { path: `${evidence}/dark-en-expanded-reduced.png` });
   await page.keyboard.press('Escape');
   await openAccount(page);
   const region = page.getByRole('region', { name: 'Current user', exact: true });
@@ -200,7 +201,7 @@ test('Hover crosses into submenu safely; a sticky header remains anchored after 
   await expect(english).toBeVisible();
   await english.hover();
   await expectWithinViewport(page);
-  await page.screenshot({ path: `${evidence}/scrolled-hover-desktop.png` });
+  await saveEvidenceScreenshot(page, { path: `${evidence}/scrolled-hover-desktop.png` });
   await english.click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('menu')).toHaveCount(0);
@@ -253,5 +254,5 @@ test('Overlay authority uses the same grouped menu with selection and disabled s
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
     .analyze();
   expect(result.violations).toEqual([]);
-  await page.screenshot({ path: `${evidence}/authority-grouped.png` });
+  await saveEvidenceScreenshot(page, { path: `${evidence}/authority-grouped.png` });
 });

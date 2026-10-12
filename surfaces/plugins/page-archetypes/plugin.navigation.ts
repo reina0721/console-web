@@ -14,6 +14,7 @@ export const navigationContribution = {
       navigationId: 'page-archetypes.root',
       labelKey: 'pageArchetypes.nav.root',
       groupId: 'development',
+      order: 20,
       iconId: 'resource',
       children: [
         {

@@ -10,15 +10,20 @@ import {
   type SurfaceComposition,
 } from '../../src/composition';
 import { surfaceShellI18nResources } from '../../src/i18n';
+import { pluginI18nResources as pluginI18nResources_account } from '../../plugins/account/i18n';
+import { pluginI18nResources as pluginI18nResources_audit } from '../../plugins/audit/i18n';
 import { pluginI18nResources as pluginI18nResources_foundations } from '../../plugins/foundations/i18n';
 import { pluginI18nResources as pluginI18nResources_motion } from '../../plugins/motion/i18n';
+import { pluginI18nResources as pluginI18nResources_notifications } from '../../plugins/notifications/i18n';
 import { pluginI18nResources as pluginI18nResources_page_archetypes } from '../../plugins/page-archetypes/i18n';
 import { pluginI18nResources as pluginI18nResources_page_patterns } from '../../plugins/page-patterns/i18n';
 import { pluginI18nResources as pluginI18nResources_reference_resources } from '../../plugins/reference-resources/i18n';
+import { pluginI18nResources as pluginI18nResources_roles } from '../../plugins/roles/i18n';
 import { pluginI18nResources as pluginI18nResources_settings } from '../../plugins/settings/i18n';
 import { pluginI18nResources as pluginI18nResources_states } from '../../plugins/states/i18n';
 import { pluginI18nResources as pluginI18nResources_system_tools } from '../../plugins/system-tools/i18n';
 import { pluginI18nResources as pluginI18nResources_ui_elements } from '../../plugins/ui-elements/i18n';
+import { pluginI18nResources as pluginI18nResources_users } from '../../plugins/users/i18n';
 
 export const generatedSurfaceRegistry: RegistryModel = createRegistry(generatedRouteCatalog);
 
@@ -27,15 +32,20 @@ assertValidSurfaceRegistry(generatedSurfaceRegistry);
 
 export const generatedSurfaceI18nResources: TranslationResources = mergeTranslationResources(
   surfaceShellI18nResources,
+  pluginI18nResources_account,
+  pluginI18nResources_audit,
   pluginI18nResources_foundations,
   pluginI18nResources_motion,
+  pluginI18nResources_notifications,
   pluginI18nResources_page_archetypes,
   pluginI18nResources_page_patterns,
   pluginI18nResources_reference_resources,
+  pluginI18nResources_roles,
   pluginI18nResources_settings,
   pluginI18nResources_states,
   pluginI18nResources_system_tools,
   pluginI18nResources_ui_elements,
+  pluginI18nResources_users,
 );
 
 export const generatedSurfaceComposition: SurfaceComposition = {

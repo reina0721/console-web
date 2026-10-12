@@ -28,7 +28,17 @@ export function useRecentVisitRecorder(
         const id = new URLSearchParams(location.search).get('id');
         const href =
           pathname +
-          (id && ['/reference-resources/detail', '/reference-resources/edit'].includes(pathname)
+          (id &&
+          [
+            '/reference-resources/detail',
+            '/reference-resources/edit',
+            '/users/detail',
+            '/users/edit',
+            '/roles/detail',
+            '/roles/edit',
+            '/notifications/detail',
+            '/audit-logs/detail',
+          ].includes(pathname)
             ? '?id=' + encodeURIComponent(id)
             : '');
         const signature = href + ':' + title;

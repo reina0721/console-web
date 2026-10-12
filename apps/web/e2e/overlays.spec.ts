@@ -685,6 +685,8 @@ test('Dropdown、Popover 与 Tooltip 展开面进入视觉回归', async ({ page
 });
 
 test('DatePicker 与 Command 展开面支持键盘及无障碍扫描', async ({ page }) => {
+  // Keep the calendar's today marker stable while timers and interactions keep running.
+  await page.clock.setFixedTime(new Date('2026-10-09T04:00:00Z'));
   await page.goto('/ui-elements/forms');
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   const datePickerTrigger = page.getByRole('button', { name: '日历 DatePicker' });

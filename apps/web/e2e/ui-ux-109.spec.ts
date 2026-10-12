@@ -411,7 +411,7 @@ test('Leaving during validation prevents a stale save and redirect', async ({ pa
     await expect(page.locator('form')).toHaveAttribute('aria-busy', 'true');
     await page
       .getByRole('navigation', { name: '主导航' })
-      .getByRole('link', { name: '总览', exact: true })
+      .getByRole('link', { name: '工作台', exact: true })
       .click();
     await expect(page).toHaveURL('/');
     release();
@@ -438,7 +438,7 @@ test('Leaving the local form simulation cancels its pending feedback', async ({ 
   await expect(page.locator('form')).toHaveAttribute('aria-busy', 'true');
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '总览', exact: true })
+    .getByRole('link', { name: '工作台', exact: true })
     .click();
   await expect(page).toHaveURL('/');
   await page.waitForTimeout(700);

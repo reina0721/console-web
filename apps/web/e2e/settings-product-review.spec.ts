@@ -1,3 +1,4 @@
+import { saveEvidenceScreenshot } from './evidence-screenshot';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {
@@ -128,7 +129,7 @@ for (const category of [
         expect(fields.length).toBe(fieldCounts[category]);
         expect(new Set(fields.map((field) => field.id)).size).toBe(fields.length);
         for (const field of fields) expect(field.width, field.id).toBeGreaterThanOrEqual(44);
-        await page.screenshot({
+        await saveEvidenceScreenshot(page, {
           path: `${evidence}/${category || 'appearance'}-${expanded ? '320-dark-en-large' : '1440-light'}.png`,
           fullPage: true,
           animations: 'disabled',
@@ -164,7 +165,7 @@ for (const family of ['forms', 'actions-selection', 'data', 'overlays']) {
           await expect(dialog).toBeVisible();
           await page.keyboard.press('Tab');
           await expectAccessible(page);
-          await page.screenshot({
+          await saveEvidenceScreenshot(page, {
             path: `${evidence}/high-contrast-dialog-${expanded ? 'dark' : 'light'}.png`,
             animations: 'disabled',
           });
@@ -209,7 +210,10 @@ test('Collapsed desktop sidebar releases its grid column on mobile and restores 
       await expect(shell).toHaveAttribute('data-sidebar', 'collapsed');
     }
   }
-  await page.screenshot({ path: `${evidence}/collapsed-sidebar-320.png`, animations: 'disabled' });
+  await saveEvidenceScreenshot(page, {
+    path: `${evidence}/collapsed-sidebar-320.png`,
+    animations: 'disabled',
+  });
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect
     .poll(() =>
@@ -231,7 +235,7 @@ for (const accent of ['blue', 'green', 'orange'] as const) {
       await page.getByRole('button', { name: 'Dialog', exact: true }).press('Enter');
       await expect(page.getByRole('dialog')).toBeVisible();
       await expectAccessible(page);
-      await page.screenshot({
+      await saveEvidenceScreenshot(page, {
         path: `${evidence}/dialog-${accent}-${expanded ? 'dark' : 'light'}.png`,
         animations: 'disabled',
       });

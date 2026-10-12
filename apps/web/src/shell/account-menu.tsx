@@ -3,14 +3,23 @@
 import { useFrontendTranslation } from '@community-go/i18n';
 import { Avatar, UserIdentity } from '@community-go/ui-adapter/identity';
 import { MenuButton } from '@community-go/ui-adapter/menu-button';
-import { ChevronDown, Languages, LogOut, Monitor, Moon, Settings, Sun } from 'lucide-react';
+import {
+  ChevronDown,
+  Languages,
+  LogOut,
+  Monitor,
+  Moon,
+  Settings,
+  Sun,
+  UserRound,
+} from 'lucide-react';
 import { useAuth } from '../auth/context';
 import { useShellStore } from '../state/use-shell-store';
 
 export function AccountMenu({
   compact,
   onNavigate,
-}: Readonly<{ compact: boolean; onNavigate: () => void }>) {
+}: Readonly<{ compact: boolean; onNavigate: (destination: 'settings' | 'account') => void }>) {
   const { t } = useFrontendTranslation();
   const auth = useAuth();
   const user = auth.session?.user;
@@ -98,6 +107,11 @@ export function AccountMenu({
           id: 'application',
           label: t('shell.accountMenu.application'),
           items: [
+            {
+              id: 'account',
+              label: t('shell.accountMenu.profile'),
+              icon: <UserRound className="size-4" />,
+            },
             { id: 'settings', label: t('nav.settings'), icon: <Settings className="size-4" /> },
             { id: 'logout', label: t('auth.logout'), icon: <LogOut className="size-4" /> },
           ],
@@ -110,7 +124,7 @@ export function AccountMenu({
           updateCategory('appearance', {
             themeMode: id === 'theme:system' ? 'system' : id === 'theme:dark' ? 'dark' : 'light',
           });
-        else if (id === 'settings') onNavigate();
+        else if (id === 'settings' || id === 'account') onNavigate(id);
         else if (id === 'logout')
           void auth.logout().then((success) => {
             if (success) window.location.replace('/login');

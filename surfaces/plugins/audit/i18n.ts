@@ -1,0 +1,48 @@
+export const pluginI18nResources = {
+  'zh-CN': {
+    translation: {
+      audit: {
+        nav: '审计日志',
+        description: '只读记录管理操作的时间、主体、对象和结果。不会收集密码或表单内容。',
+        search: '搜索操作主体或对象',
+        operation: '操作类型',
+        result: '操作结果',
+        success: '成功',
+        failure: '失败',
+        actor: '操作主体',
+        object: '操作对象',
+        time: '操作时间',
+        detail: '审计详情',
+        back: '返回审计列表',
+        empty: '暂无符合条件的审计记录',
+        id: '记录 ID',
+        error: '失败原因',
+        readonly: '审计记录不可编辑。Mock 记录保存在当前浏览器；生产审计必须由后端可信写入并保留。',
+      },
+    },
+  },
+  en: {
+    translation: {
+      audit: {
+        nav: 'Audit logs',
+        description:
+          'Read-only management records include time, actor, object and result. Passwords and form contents are excluded.',
+        search: 'Search actors or objects',
+        operation: 'Operation',
+        result: 'Result',
+        success: 'Success',
+        failure: 'Failure',
+        actor: 'Actor',
+        object: 'Object',
+        time: 'Time',
+        detail: 'Audit details',
+        back: 'Back to audit logs',
+        empty: 'No matching audit records',
+        id: 'Record ID',
+        error: 'Failure reason',
+        readonly:
+          'Audit records cannot be edited. Mock records are local; production audit must be written and retained by a trusted backend.',
+      },
+    },
+  },
+};

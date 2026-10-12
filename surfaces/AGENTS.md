@@ -5,9 +5,12 @@ Plugin 业务、shell 模型、Group Alias / icon vocabulary 与 generated 产�
 dependency ownership、module resolution、typecheck 与 test 服务。
 
 - 具体 Plugin 不是 Package，也不是 Surface 公共 API。对 Host 只开放
-  `./shell`、`./icon-presentation`、`./icon-components`、`./generated/composition`、
+  `./shell`、`./preferences-model`、`./identity`、`./icon-presentation`、`./icon-components`、`./generated/composition`、
   `./generated/catalog`、`./plugin-routes/*`；
   禁止把 `plugins/*` 加入 exports，禁止通过相对路径绕开 generated shim 导入 Plugin internals。
+  `./identity` 只开放当前产品的身份、用户、角色授权、通知及只读审计模型、Schema 与具体语义 Port/Provider/hook；
+  Web 注入实现，Plugin 与 Shell 消费同一契约。不公开 Plugin 私有组件或 Store，
+  不在 Surface 契约实现 HTTP、Storage、Session 或后端授权。
 - Route Catalog、业务 Route IDs 与 module shims 全部位于 `generated/`；
   产物带 `// @generated` 头，**禁止手改**——修改后运行 `pnpm codegen:plugins` 重新生成，
   并用 `pnpm codegen:plugins:check` 复核 freshness。
@@ -32,7 +35,7 @@ dependency ownership、module resolution、typecheck 与 test 服务。
   [Plugin Framework 与 Surface File Routes](../../docs/plugin-framework.md)。
 - Sidebar Navigation Contribution（`plugin.navigation.ts`）：
   - 模型固定 Group → Parent → Child；`groupId` **选择** plugins 公共 Group Alias
-    （`plugins/navigation-groups.ts` 的 `system` / `reference` / `development` 等），
+    （`plugins/navigation-groups.ts` 的 `management` 身份与访问 / `system` 个人入口 / `development` 开发中心），
     **不定义** Group；新增 Group Alias 属 plugins 范围公共 IA Contract 变更
     （改 navigation-groups.ts + surface i18n labelKey），不是单个 Plugin 私有声明。
   - `navigationId` 必须 `${pluginId}.` namespace；层级用内嵌 `children`（无

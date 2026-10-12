@@ -8,35 +8,21 @@
 import type { NotificationsPort } from '@community-go/plugin-framework/notifications';
 import { useNotificationsStore } from '../state/use-notifications-store';
 
-const listeners = new Set<() => void>();
-
-function emit(): void {
-  for (const listener of listeners) listener();
-}
-
 /** 创建 Notifications Port（Host composition root 单次调用）。 */
 export function createHostNotificationsPort(): NotificationsPort {
   return {
     publish: (input) => {
       const id = useNotificationsStore.getState().publish(input);
-      emit();
       return id;
     },
     list: () => useNotificationsStore.getState().items,
     unreadCount: () => useNotificationsStore.getState().items.filter((item) => !item.read).length,
-    subscribe: (listener) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    subscribe: (listener) => useNotificationsStore.subscribe(listener),
     markRead: (id) => {
       useNotificationsStore.getState().markRead(id);
-      emit();
     },
     markAllRead: () => {
       useNotificationsStore.getState().markAllRead();
-      emit();
     },
   };
 }

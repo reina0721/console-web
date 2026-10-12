@@ -21,3 +21,5 @@
 - [108 UI UX 审查](108-ui-ux-audit/README.md)：完成本地网站38个路由的浏览、关键交互、响应式复核（190个基础组合）与移动专项（114个组合、设置八分类、全部内容Tabs/ToggleGroup/PageTabs），记录优点、P0/P1/P2问题、原因、模式比较、统一适配策略与证据；未修改产品实现。
 
 - [109 UI/UX 优化](109-ui-ux-optimization/README.md)：承接108与107，实施及回归进行中。
+
+- [Community Console 产品补齐 M0](108-ui-ux-audit/product-readiness-m0.md)：2026-10-12 续审现役源码与授权演示站，盘点路由/实际能力/组件复用、业务缺口、信息架构兼容与 M1–M7 实施计划。用户已要求继续 M1，进度见 [产品实施账本](108-ui-ux-audit/product-implementation.md)。

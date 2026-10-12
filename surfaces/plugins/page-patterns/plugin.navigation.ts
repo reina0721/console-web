@@ -12,6 +12,7 @@ export const navigationContribution = {
       navigationId: 'page-patterns.root',
       labelKey: 'pagePatterns.nav.root',
       groupId: 'development',
+      order: 10,
       iconId: 'catalog',
       children: [
         {

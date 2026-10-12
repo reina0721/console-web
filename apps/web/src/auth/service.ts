@@ -10,5 +10,6 @@ export async function createConfiguredAuthService(): Promise<AuthService> {
     import('./mock-adapter'),
     import('./mock-repository'),
   ]);
-  return createMockAuthService(createBrowserMockRepository());
+  const { withMockDirectory } = await import('../identity/mock-auth');
+  return withMockDirectory(createMockAuthService(createBrowserMockRepository()));
 }

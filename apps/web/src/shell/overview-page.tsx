@@ -1,249 +1,264 @@
 'use client';
 
-import { Card, CardContent } from '@community-go/ui-adapter/card';
-import { generatedSurfaceRegistry } from '@community-go/surface/generated/composition';
-import { StatusPill } from '@community-go/ui-adapter/status-pill';
-import {
-  ArrowRight,
-  Boxes,
-  CheckCircle2,
-  Layers3,
-  MonitorSmartphone,
-  ShieldCheck,
-  Workflow,
-} from 'lucide-react';
-import { formatNumber, useFrontendTranslation } from '@community-go/i18n';
-import { Page, PageHeader, Section } from '@community-go/surface-foundation/layout';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
+import { formatDate, formatTimeOfDay, useFrontendTranslation } from '@community-go/i18n';
+import { Page, PageHeader, Section } from '@community-go/surface-foundation/layout';
+import { Action } from '@community-go/ui-adapter/action';
+import { useAuth } from '../auth/context';
 import { RouterTextLink } from '../host/router-text-link';
+import { routeTargetResolver } from '../host/route-target-resolver';
 import { useShellStore } from '../state/use-shell-store';
 import { useWorkbenchStore } from '../state/use-workbench-store';
 import { useWorkspaceStore } from '../state/use-workspace-store';
-
-const capabilityDefinitions = [
-  { id: 'design', icon: Layers3, status: 'ready' },
-  { id: 'adapter', icon: Boxes, status: 'inProgress' },
-  { id: 'hosts', icon: MonitorSmartphone, status: 'inProgress' },
-  { id: 'gates', icon: ShieldCheck, status: 'ready' },
-] as const;
-
-const metrics = [
-  {
-    value: Object.keys(generatedSurfaceRegistry.routes).length + 1,
-    label: 'routes',
-    detail: 'shared',
-    icon: Workflow,
-  },
-  {
-    value: generatedSurfaceRegistry.catalog.plugins.length,
-    label: 'plugins',
-    detail: 'shared',
-    icon: Boxes,
-  },
-  { value: 1, label: 'hosts', detail: 'shared', icon: MonitorSmartphone },
-] as const;
+import { useProductInbox } from '@community-go/surface/identity';
+import { useNavigationTitle } from './use-navigation-title';
+import { NotificationCenter } from './notification-center';
 
 export default function OverviewPage() {
   const { t, locale } = useFrontendTranslation();
-  // 首页工作区段（SET-005-005）：收藏 + 最近访问（Host store 直接消费；显示开关
-  // 由导航偏好 showRecents 控制；最近记录由 recent-visit-recorder 驱动）。
+  const auth = useAuth();
+  const router = useRouter();
   const recents = useWorkbenchStore((state) => state.recents);
   const favorites = useWorkbenchStore((state) => state.favorites);
+  const records = useWorkspaceStore((state) => state.records);
+  const inbox = useProductInbox();
+  const { items } = inbox;
   const showRecents = useShellStore((state) => state.preferences.navigation.showRecents);
-  const showWorkbench = showRecents && recents.length > 0;
-  const showFavorites = favorites.length > 0;
-
-  // 自动恢复未完成工作（导航偏好 autoRestoreWorkspace，默认关）：进入首页根入口时，
-  // 若存在含未提交草稿的页面记录 → 重定向回该草稿页（工作恢复目标优先于首页）。
-  const autoRestoreWorkspace = useShellStore(
-    (state) => state.preferences.navigation.autoRestoreWorkspace,
+  const showNotifications = useShellStore(
+    (state) => state.preferences.notifications.inAppNotifications,
   );
-  const router = useRouter();
+  const autoRestore = useShellStore((state) => state.preferences.navigation.autoRestoreWorkspace);
+  const localeRegion = useShellStore((state) => state.preferences.localeRegion);
+  // Only create owns a restorable draft; edit has no durable entity identity.
+  const draftName = records['reference-resources.create']?.draft?.name;
+  const hasDraft = typeof draftName === 'string' && draftName.trim().length > 0;
   useEffect(() => {
-    if (!autoRestoreWorkspace) return;
-    const records = useWorkspaceStore.getState().records;
-    const pagePathByRecordId: Readonly<Record<string, string>> = {
-      'reference-resources.create': '/reference-resources/create',
-      'reference-resources.edit': '/reference-resources/edit',
-    };
-    const restoreTarget = Object.keys(records)
-      .map((pageId) => ({ pageId, record: records[pageId] }))
-      .find(({ pageId, record }) => {
-        const path = pagePathByRecordId[pageId];
-        if (!path) return false;
-        // 草稿有实际内容才视为未完成工作。
-        const draft = record?.draft;
-        return (
-          draft !== undefined &&
-          Object.values(draft).some((value) => typeof value === 'string' && value !== '')
-        );
-      });
-    if (restoreTarget) {
-      const href = pagePathByRecordId[restoreTarget.pageId];
-      if (href) void router.replace(href);
-    }
-    // 只在首页根入口挂载时评估一次。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRestoreWorkspace]);
+    if (autoRestore && hasDraft) router.replace('/reference-resources/create');
+  }, [autoRestore, hasDraft, router]);
+  const entryTitle = useNavigationTitle();
+  const recentPages = recents.filter((entry) => entry.pathname !== '/').slice(0, 6);
+  const unread = items.filter((item) => !item.read).length;
+  const timestamp = (value: number) =>
+    formatDate(
+      locale,
+      value,
+      localeRegion.timeZone === 'auto' ? {} : { timeZone: localeRegion.timeZone },
+    ) +
+    ' · ' +
+    formatTimeOfDay(locale, localeRegion, value);
 
   return (
     <Page>
       <PageHeader
         eyebrow={t('overview.eyebrow')}
         title={t('overview.title')}
-        description={t('overview.description')}
-        actions={
-          <>
-            <RouterTextLink href="/ui-elements">{t('overview.componentsEntry')}</RouterTextLink>
-            <RouterTextLink href="/page-patterns/layout-navigation" tone="neutral">
-              {t('overview.patternsEntry')}
-            </RouterTextLink>
-            <RouterTextLink href="/reference-resources" tone="neutral">
-              {t('overview.referenceEntry')}
-            </RouterTextLink>
-          </>
-        }
+        description={t('overview.description', { name: auth.session?.user.name ?? '' })}
+        actions={<RouterTextLink href="/settings">{t('overview.preferencesEntry')}</RouterTextLink>}
       />
-
-      <div className="text-sm">
-        <RouterTextLink href="/foundations" tone="neutral">
-          {t('overview.action')}
-        </RouterTextLink>
-      </div>
-
-      <div
-        data-reveal-items
-        aria-label={t('overview.metricsLabel')}
-        className="grid gap-4 sm:grid-cols-3"
-      >
-        {metrics.map(({ value, label, detail, icon: Icon }) => (
-          <Card key={label} appearance="outlined">
-            <CardContent>
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-ink-muted">
-                    {t(`overview.metrics.${label}`)}
-                  </p>
-                  <p className="mt-3 text-3xl font-extrabold tracking-tight text-ink">
-                    {formatNumber(locale, value)}
-                  </p>
-                  <p className="mt-1 text-xs text-ink-muted">{t(`overview.metrics.${detail}`)}</p>
-                </div>
-                <span className="grid size-11 shrink-0 place-items-center rounded-control bg-brand-soft text-brand">
-                  <Icon className="size-5" />
-                </span>
+      {hasDraft ? (
+        <Section
+          appearance="outlined"
+          id="workbench-drafts"
+          title={t('overview.draftsTitle')}
+          description={t('overview.draftsDescription')}
+        >
+          <div data-reveal-items className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold text-ink">{draftName}</p>
+                <p className="mt-1 text-xs text-ink-muted">{t('overview.draftScope')}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {(showWorkbench || showFavorites) && (
-        <div className={`grid gap-4 ${showWorkbench && showFavorites ? 'sm:grid-cols-2' : ''}`}>
-          {showFavorites ? (
-            <Section appearance="outlined" title={t('overview.favoritesTitle')}>
-              <ul data-reveal-items className="flex flex-col gap-1 p-5">
-                {favorites.map((favorite) => (
-                  <li key={favorite.pathname}>
-                    <RouterTextLink href={favorite.pathname}>{favorite.title}</RouterTextLink>
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          ) : null}
-          {showWorkbench ? (
-            <Section appearance="outlined" title={t('overview.recentsTitle')}>
-              <ul data-reveal-items className="flex flex-col gap-1 p-5">
-                {recents.slice(0, 6).map((recent) => (
-                  <li key={recent.pathname}>
-                    <RouterTextLink href={recent.pathname}>{recent.title}</RouterTextLink>
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          ) : null}
-        </div>
-      )}
-
-      <Section
-        appearance="outlined"
-        id="overview-progress"
-        title={t('overview.progressTitle')}
-        description={t('overview.progressDescription')}
-        action={<StatusPill tone="success">4 / 4 tracked</StatusPill>}
-      >
-        <div data-reveal-items className="grid gap-4 p-5 sm:grid-cols-2">
-          {capabilityDefinitions.map(({ id, icon: Icon, status }) => (
-            <Card key={id} appearance="flat">
-              <CardContent>
-                <div className="flex items-start gap-3">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-control bg-surface text-brand">
-                    <Icon className="size-4.5" />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-ink">{t(`capability.${id}`)}</h3>
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-muted">
-                      {t(`capability.${id}Description`)}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <StatusPill tone="info">{t(`capability.${status}`)}</StatusPill>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </Section>
-
+              <RouterTextLink href="/reference-resources/create">
+                {t('overview.resumeDraft')}
+              </RouterTextLink>
+            </div>
+          </div>
+        </Section>
+      ) : null}
       <div className="grid gap-6 xl:grid-cols-2">
         <Section
           appearance="outlined"
-          id="overview-quality"
-          title={t('overview.qualityTitle')}
-          description={t('overview.qualityDescription')}
+          id="workbench-favorites"
+          title={t('overview.favoritesTitle')}
+          description={t('overview.favoritesDescription')}
         >
-          <ul data-reveal-items className="space-y-3 p-5">
-            {['imports', 'vendor', 'tokens', 'host'].map((gate) => (
-              <li
-                key={gate}
-                className="flex items-center gap-3 rounded-control bg-surface-muted px-3 py-2.5"
-              >
-                <CheckCircle2 className="size-4 shrink-0 text-success" />
-                <span className="min-w-0 flex-1 text-sm font-medium text-ink">
-                  {t(`overview.gates.${gate}`)}
-                </span>
-                <span className="text-xs font-semibold text-success">
-                  {t('overview.gates.active')}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {favorites.length ? (
+            <ul data-reveal-items className="flex flex-col gap-3 p-5">
+              {favorites.map((entry) => (
+                <li key={entry.pathname} className="min-w-0 break-words">
+                  <RouterTextLink href={entry.pathname}>
+                    {entryTitle(entry.pathname, entry.title)}
+                  </RouterTextLink>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="p-5 text-sm text-ink-muted">{t('overview.favoritesEmpty')}</p>
+          )}
         </Section>
-
+        {showRecents ? (
+          <Section
+            appearance="outlined"
+            id="workbench-recents"
+            title={t('overview.recentsTitle')}
+            description={t('overview.recentsDescription')}
+          >
+            {recentPages.length ? (
+              <ol data-reveal-items className="flex flex-col gap-3 p-5">
+                {recentPages.map((entry) => (
+                  <li
+                    key={entry.pathname}
+                    className="flex min-w-0 flex-wrap items-center justify-between gap-2"
+                  >
+                    <RouterTextLink href={entry.pathname}>
+                      {entryTitle(entry.pathname, entry.title)}
+                    </RouterTextLink>
+                    <time
+                      className="text-xs text-ink-muted"
+                      dateTime={new Date(entry.visitedAt).toISOString()}
+                    >
+                      {timestamp(entry.visitedAt)}
+                    </time>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="p-5 text-sm text-ink-muted">{t('overview.recentsEmpty')}</p>
+            )}
+          </Section>
+        ) : null}
+      </div>
+      {showNotifications ? (
         <Section
           appearance="outlined"
-          id="overview-activity"
+          id="workbench-activity"
           title={t('overview.activityTitle')}
           description={t('overview.activityDescription')}
+          action={<NotificationCenter triggerLabel={t('overview.notificationsEntry')} />}
         >
-          <ol data-reveal-items className="space-y-4 p-5">
-            {['tokens', 'host', 'adapter'].map((item, index) => (
-              <li key={item} className="flex gap-3">
-                <span className="mt-1 grid size-5 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-bold text-brand">
-                  {index + 1}
-                </span>
-                <div className="flex min-w-0 flex-1 items-center justify-between gap-3 border-b border-border pb-4 text-sm font-medium text-ink last:border-0 last:pb-0">
-                  <span>{t(`overview.activity.${item}`)}</span>
-                  <ArrowRight className="size-4 shrink-0 text-ink-muted" />
-                </div>
-              </li>
-            ))}
-          </ol>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+            <p className="text-sm text-ink-muted">{t('shell.unreadCount', { count: unread })}</p>
+            {unread ? (
+              <Action
+                variant="secondary"
+                size="sm"
+                disabled={inbox.pending || Boolean(inbox.error)}
+                onPress={() => {
+                  void inbox.markRead(items.filter((item) => !item.read).map((item) => item.id));
+                }}
+              >
+                {t('shell.markAllRead')}
+              </Action>
+            ) : null}
+          </div>
+          {inbox.error || inbox.failure ? (
+            <p role="alert" className="px-5 pt-3 text-sm text-danger">
+              {t(`identityProduct.errors.${(inbox.error ?? inbox.failure)?.code}`)}
+            </p>
+          ) : null}
+          {items.length ? (
+            <ul data-reveal-items className="flex flex-col gap-4 p-5">
+              {items.slice(0, 5).map((item) => {
+                let href: string | undefined;
+                if (item.target) {
+                  try {
+                    href = routeTargetResolver.resolveHref({
+                      ...item.target,
+                      params: item.target.params ?? {},
+                    });
+                  } catch {
+                    /* Removed Plugin events remain readable without an invalid link. */
+                  }
+                }
+                return (
+                  <li
+                    key={item.id}
+                    className="flex min-w-0 flex-wrap items-start justify-between gap-3 border-b border-border pb-4 last:border-0 last:pb-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words text-sm font-semibold text-ink">{item.title}</p>
+                      {item.description ? (
+                        <p className="mt-1 break-words text-xs text-ink-muted">
+                          {item.description}
+                        </p>
+                      ) : null}
+                      <time
+                        className="mt-1 block text-xs text-ink-muted"
+                        dateTime={new Date(item.createdAt).toISOString()}
+                      >
+                        {timestamp(item.createdAt)}
+                      </time>
+                      {href ? (
+                        <RouterTextLink href={href} tone="neutral">
+                          {t('overview.relatedPage')}
+                        </RouterTextLink>
+                      ) : null}
+                    </div>
+                    {item.read ? (
+                      <span className="text-xs text-ink-muted">{t('overview.read')}</span>
+                    ) : (
+                      <Action
+                        variant="secondary"
+                        size="sm"
+                        disabled={inbox.pending}
+                        onPress={() => {
+                          void inbox.markRead([item.id]);
+                        }}
+                      >
+                        {t('overview.markRead')}
+                      </Action>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="p-5 text-sm text-ink-muted">{t('overview.activityEmpty')}</p>
+          )}
         </Section>
-      </div>
+      ) : null}
+      <Section
+        appearance="outlined"
+        id="workbench-shortcuts"
+        title={t('overview.shortcutsTitle')}
+        description={t('overview.shortcutsDescription')}
+      >
+        <ul data-reveal-items className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
+          {(
+            [
+              ['appearance', '/settings'],
+              ['navigation', '/settings/navigation'],
+              ['locale', '/settings/locale'],
+              ['actions', '/settings/actions'],
+            ] as const
+          ).map(([id, href]) => (
+            <li key={id} className="min-w-0">
+              <RouterTextLink href={href}>{t('overview.shortcuts.' + id)}</RouterTextLink>
+              <p className="mt-2 text-xs leading-5 text-ink-muted">
+                {t('overview.shortcuts.' + id + 'Description')}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </Section>
+      <Section
+        appearance="embedded"
+        title={t('overview.developmentTitle')}
+        description={t('overview.developmentDescription')}
+      >
+        <div data-reveal-items className="flex flex-wrap gap-4 p-5">
+          <RouterTextLink href="/ui-elements" tone="neutral">
+            {t('overview.componentsEntry')}
+          </RouterTextLink>
+          <RouterTextLink href="/reference-resources" tone="neutral">
+            {t('overview.referenceEntry')}
+          </RouterTextLink>
+          <RouterTextLink href="/system-tools/icons" tone="neutral">
+            {t('overview.iconsEntry')}
+          </RouterTextLink>
+        </div>
+      </Section>
     </Page>
   );
 }

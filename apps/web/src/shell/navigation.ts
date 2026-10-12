@@ -5,7 +5,7 @@ import { createPluginNavigationGroups } from './plugin-navigation';
 export const shellNavigationGroups = [
   {
     id: 'universal',
-    labelKey: 'nav.universalFoundation',
+    labelKey: 'nav.workspace',
     items: [
       { kind: 'leaf', id: 'overview', labelKey: 'nav.overview', href: '/', iconId: 'dashboard' },
     ],

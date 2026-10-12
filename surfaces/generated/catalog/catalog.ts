@@ -4,17 +4,46 @@ import type { RouteCatalog } from '@community-go/plugin-framework';
 
 export const generatedRouteCatalog: RouteCatalog = {
   plugins: [
+    { pluginId: 'account', mount: '/account' },
+    { pluginId: 'audit', mount: '/audit-logs' },
     { pluginId: 'foundations', mount: '/foundations' },
     { pluginId: 'motion', mount: '/motion' },
+    { pluginId: 'notifications', mount: '/notifications' },
     { pluginId: 'page-archetypes', mount: '/page-archetypes' },
     { pluginId: 'page-patterns', mount: '/page-patterns' },
     { pluginId: 'reference-resources', mount: '/reference-resources' },
+    { pluginId: 'roles', mount: '/roles' },
     { pluginId: 'settings', mount: '/settings' },
     { pluginId: 'states', mount: '/states' },
     { pluginId: 'system-tools', mount: '/system-tools' },
     { pluginId: 'ui-elements', mount: '/ui-elements' },
+    { pluginId: 'users', mount: '/users' },
   ],
   routes: [
+    {
+      routeId: 'account',
+      pluginId: 'account',
+      path: '',
+      segments: [],
+      pattern: '/account',
+      paramNames: [],
+    },
+    {
+      routeId: 'audit',
+      pluginId: 'audit',
+      path: '',
+      segments: [],
+      pattern: '/audit-logs',
+      paramNames: [],
+    },
+    {
+      routeId: 'audit.detail',
+      pluginId: 'audit',
+      path: 'detail',
+      segments: ['detail'],
+      pattern: '/audit-logs/detail',
+      paramNames: [],
+    },
     {
       routeId: 'foundations',
       pluginId: 'foundations',
@@ -29,6 +58,22 @@ export const generatedRouteCatalog: RouteCatalog = {
       path: '',
       segments: [],
       pattern: '/motion',
+      paramNames: [],
+    },
+    {
+      routeId: 'notifications',
+      pluginId: 'notifications',
+      path: '',
+      segments: [],
+      pattern: '/notifications',
+      paramNames: [],
+    },
+    {
+      routeId: 'notifications.detail',
+      pluginId: 'notifications',
+      path: 'detail',
+      segments: ['detail'],
+      pattern: '/notifications/detail',
       paramNames: [],
     },
     {
@@ -157,6 +202,46 @@ export const generatedRouteCatalog: RouteCatalog = {
       path: 'edit',
       segments: ['edit'],
       pattern: '/reference-resources/edit',
+      paramNames: [],
+    },
+    {
+      routeId: 'roles',
+      pluginId: 'roles',
+      path: '',
+      segments: [],
+      pattern: '/roles',
+      paramNames: [],
+    },
+    {
+      routeId: 'roles.create',
+      pluginId: 'roles',
+      path: 'create',
+      segments: ['create'],
+      pattern: '/roles/create',
+      paramNames: [],
+    },
+    {
+      routeId: 'roles.detail',
+      pluginId: 'roles',
+      path: 'detail',
+      segments: ['detail'],
+      pattern: '/roles/detail',
+      paramNames: [],
+    },
+    {
+      routeId: 'roles.edit',
+      pluginId: 'roles',
+      path: 'edit',
+      segments: ['edit'],
+      pattern: '/roles/edit',
+      paramNames: [],
+    },
+    {
+      routeId: 'roles.permissions',
+      pluginId: 'roles',
+      path: 'permissions',
+      segments: ['permissions'],
+      pattern: '/roles/permissions',
       paramNames: [],
     },
     {
@@ -319,13 +404,75 @@ export const generatedRouteCatalog: RouteCatalog = {
       pattern: '/ui-elements/surfaces',
       paramNames: [],
     },
+    {
+      routeId: 'users',
+      pluginId: 'users',
+      path: '',
+      segments: [],
+      pattern: '/users',
+      paramNames: [],
+    },
+    {
+      routeId: 'users.create',
+      pluginId: 'users',
+      path: 'create',
+      segments: ['create'],
+      pattern: '/users/create',
+      paramNames: [],
+    },
+    {
+      routeId: 'users.detail',
+      pluginId: 'users',
+      path: 'detail',
+      segments: ['detail'],
+      pattern: '/users/detail',
+      paramNames: [],
+    },
+    {
+      routeId: 'users.edit',
+      pluginId: 'users',
+      path: 'edit',
+      segments: ['edit'],
+      pattern: '/users/edit',
+      paramNames: [],
+    },
   ],
   aliases: [
-    { groupId: 'system', labelKey: 'shellNavigationGroups.system', order: 0 },
-    { groupId: 'reference', labelKey: 'shellNavigationGroups.reference', order: 1 },
+    { groupId: 'management', labelKey: 'shellNavigationGroups.management', order: 0 },
+    { groupId: 'system', labelKey: 'shellNavigationGroups.system', order: 1 },
     { groupId: 'development', labelKey: 'shellNavigationGroups.development', order: 2 },
   ],
   contributions: [
+    {
+      pluginId: 'account',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'account.root',
+            labelKey: 'account.nav',
+            groupId: 'system',
+            order: -10,
+            iconId: 'identity',
+            routeId: 'account',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'audit',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'audit.root',
+            labelKey: 'audit.nav',
+            groupId: 'management',
+            order: 20,
+            iconId: 'list',
+            routeId: 'audit',
+          },
+        ],
+      },
+    },
     {
       pluginId: 'foundations',
       contribution: {
@@ -334,6 +481,7 @@ export const generatedRouteCatalog: RouteCatalog = {
             navigationId: 'foundations.root',
             labelKey: 'foundationsNav.root',
             groupId: 'development',
+            order: 50,
             iconId: 'foundations',
             routeId: 'foundations',
           },
@@ -348,8 +496,24 @@ export const generatedRouteCatalog: RouteCatalog = {
             navigationId: 'motion.root',
             labelKey: 'motionNav.root',
             groupId: 'development',
+            order: 60,
             iconId: 'motion',
             routeId: 'motion',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'notifications',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'notifications.root',
+            labelKey: 'notifications.nav',
+            groupId: 'system',
+            order: -5,
+            iconId: 'feedback',
+            routeId: 'notifications',
           },
         ],
       },
@@ -362,6 +526,7 @@ export const generatedRouteCatalog: RouteCatalog = {
             navigationId: 'page-archetypes.root',
             labelKey: 'pageArchetypes.nav.root',
             groupId: 'development',
+            order: 20,
             iconId: 'resource',
             children: [
               {
@@ -419,6 +584,7 @@ export const generatedRouteCatalog: RouteCatalog = {
             navigationId: 'page-patterns.root',
             labelKey: 'pagePatterns.nav.root',
             groupId: 'development',
+            order: 10,
             iconId: 'catalog',
             children: [
               {
@@ -463,9 +629,25 @@ export const generatedRouteCatalog: RouteCatalog = {
           {
             navigationId: 'reference-resources.root',
             labelKey: 'referenceResources.nav.root',
-            groupId: 'reference',
+            groupId: 'development',
+            order: 30,
             iconId: 'resource',
             routeId: 'reference-resources',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'roles',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'roles.root',
+            labelKey: 'roles.nav',
+            groupId: 'management',
+            order: 10,
+            iconId: 'identity',
+            routeId: 'roles',
           },
         ],
       },
@@ -492,6 +674,7 @@ export const generatedRouteCatalog: RouteCatalog = {
             navigationId: 'states.root',
             labelKey: 'statesNav.root',
             groupId: 'development',
+            order: 70,
             iconId: 'states',
             routeId: 'states',
           },
@@ -505,7 +688,8 @@ export const generatedRouteCatalog: RouteCatalog = {
           {
             navigationId: 'system-tools.root',
             labelKey: 'systemTools.nav.icons',
-            groupId: 'system',
+            groupId: 'development',
+            order: 40,
             iconId: 'icons',
             routeId: 'system-tools.icons',
           },
@@ -520,6 +704,7 @@ export const generatedRouteCatalog: RouteCatalog = {
             navigationId: 'ui-elements.root',
             labelKey: 'uiElements.nav.root',
             groupId: 'development',
+            order: 0,
             iconId: 'catalog',
             children: [
               {
@@ -586,6 +771,21 @@ export const generatedRouteCatalog: RouteCatalog = {
                 iconId: 'overlay',
               },
             ],
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'users',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'users.root',
+            labelKey: 'users.nav',
+            groupId: 'management',
+            order: 0,
+            iconId: 'identity',
+            routeId: 'users',
           },
         ],
       },

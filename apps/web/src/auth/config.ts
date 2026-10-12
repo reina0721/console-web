@@ -10,7 +10,7 @@ export function parseAuthConfig(
 ): AuthConfig {
   if (mode === 'mock' || (!mode && !production)) return { mode: 'mock' };
   if (mode !== 'backend' || !apiBaseUrl) throw new AuthError('configuration');
-  if (apiBaseUrl.startsWith('/') && !apiBaseUrl.startsWith('//') && !/[\\?#]/.test(apiBaseUrl)) {
+  if (apiBaseUrl.startsWith('/') && !apiBaseUrl.startsWith('//') && !/[\s\\?#]/.test(apiBaseUrl)) {
     return { mode: 'backend', apiBaseUrl: apiBaseUrl.replace(/\/$/, '') };
   }
   try {

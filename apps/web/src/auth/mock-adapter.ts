@@ -12,7 +12,7 @@ export const MOCK_SESSION_LIFETIME_MS = 30 * 60 * 1000;
 export const MOCK_DEMO_EMAIL = 'demo@community.test';
 export const MOCK_DEMO_PASSWORD = 'CommunityDemo2026!';
 
-async function passwordDigest(password: string, salt: string): Promise<string> {
+export async function passwordDigest(password: string, salt: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(password),
@@ -46,12 +46,12 @@ export function createMockAuthService(repository: MockAuthRepository): AuthServi
     },
     login: async ({ email, password }) => {
       const normalized = email.trim().toLowerCase();
-      if (normalized === MOCK_DEMO_EMAIL && password === MOCK_DEMO_PASSWORD) {
-        return establish({ id: 'mock-demo', name: 'Rin', email: MOCK_DEMO_EMAIL });
-      }
       const account = (await repository.readAccounts()).find(
         (candidate) => candidate.user.email === normalized,
       );
+      if (!account && normalized === MOCK_DEMO_EMAIL && password === MOCK_DEMO_PASSWORD) {
+        return establish({ id: 'mock-demo', name: 'Rin', email: MOCK_DEMO_EMAIL });
+      }
       if (!account || (await passwordDigest(password, account.salt)) !== account.digest)
         throw new AuthError('credentials');
       return establish(account.user);

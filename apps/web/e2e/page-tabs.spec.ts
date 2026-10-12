@@ -44,7 +44,7 @@ test('开启 顶部页面标签：访问页面显示标签、可切换与关闭'
 
   // SPA 访问设置 → 设置标签也打开。
   const nav = page.getByRole('navigation', { name: '主导航' });
-  await nav.getByRole('link', { name: '设置', exact: true }).click();
+  await nav.getByRole('link', { name: '个人偏好', exact: true }).click();
   await page.waitForURL(/\/settings/);
   const strip2 = page.getByRole('navigation', { name: '页面标签' });
   await expect(strip2.getByRole('button', { name: '外观', exact: true })).toBeVisible();
@@ -73,7 +73,7 @@ test('关闭当前激活标签按策略导航到最近其他标签（默认 rece
   // 访问设置根（导航叶子入口 → 记 tab）与参考资源并激活后者。
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '设置', exact: true })
+    .getByRole('link', { name: '个人偏好', exact: true })
     .click();
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   await page.waitForTimeout(400);
@@ -138,7 +138,7 @@ test('恢复上次打开的标签：重载后标签保持（默认关时清除�
   ).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   const nav = page.getByRole('navigation', { name: '主导航' });
-  await nav.getByRole('link', { name: '设置', exact: true }).click();
+  await nav.getByRole('link', { name: '个人偏好', exact: true }).click();
   await page.waitForURL(/\/settings/);
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   await page.waitForTimeout(600);

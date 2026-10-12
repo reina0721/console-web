@@ -1,0 +1,196 @@
+import {
+  accessSchema,
+  roleInputSchema,
+  updateRoleSchema,
+  roleResponseSchema,
+  inboxSchema,
+  readNotificationsSchema,
+  auditQuerySchema,
+  auditPageSchema,
+  auditResponseSchema,
+  rolePageSchema,
+  userPageSchema,
+  userResponseSchema,
+  userQuerySchema,
+  createUserSchema,
+  updateUserSchema,
+  errorEnvelopeSchema,
+  identifierSchema,
+  roleIdsSchema,
+  userStatusSchema,
+  IdentityError,
+  parseIdentity,
+  type IdentityErrorCode,
+} from '@community-go/surface/identity';
+import { createJsonClient, ApiError } from '../api/json-client';
+import type { IdentityOperations } from './mock-service';
+
+const statusCodes: Readonly<Partial<Record<number, IdentityErrorCode>>> = {
+  401: 'unauthenticated',
+  403: 'forbidden',
+  404: 'not-found',
+  409: 'conflict',
+  422: 'validation',
+};
+export function createBackendIdentityService(
+  apiBaseUrl: string,
+  request: typeof fetch = fetch,
+): IdentityOperations {
+  const json = createJsonClient(apiBaseUrl, request);
+  async function call(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown) {
+    try {
+      return await json(path, { method, ...(body === undefined ? {} : { body }) });
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw new IdentityError('unavailable');
+      if (error.code !== 'http') throw new IdentityError(error.code);
+      const expected = statusCodes[error.status] ?? 'unavailable';
+      if (expected === 'unauthenticated') throw new IdentityError('unauthenticated');
+      const parsed = errorEnvelopeSchema.safeParse(error.payload);
+      if (parsed.success) {
+        const failure = parsed.data.error;
+        if (failure.code !== expected) throw new IdentityError('protocol');
+        throw new IdentityError(failure.code, failure.reason, failure.fields, failure.requestId);
+      }
+      throw new IdentityError(expected);
+    }
+  }
+  function idPath(id: string) {
+    if (!identifierSchema.safeParse(id).success) throw new IdentityError('validation');
+    return `/users/${encodeURIComponent(id)}`;
+  }
+  async function userCall(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown) {
+    return parseIdentity(userResponseSchema, await call(path, method, body)).user;
+  }
+  return {
+    access: async () => parseIdentity(accessSchema, await call('/auth/access')),
+    roles: async () => parseIdentity(rolePageSchema, await call('/roles')).items,
+    readRole: async (id) => {
+      if (!identifierSchema.safeParse(id).success) throw new IdentityError('validation');
+      const role = parseIdentity(
+        roleResponseSchema,
+        await call(`/roles/${encodeURIComponent(id)}`),
+      ).role;
+      if (role.id !== id) throw new IdentityError('protocol');
+      return role;
+    },
+    createRole: async (input) => {
+      const parsed = roleInputSchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      return parseIdentity(roleResponseSchema, await call('/roles', 'POST', parsed.data)).role;
+    },
+    updateRole: async (id, input) => {
+      const parsed = updateRoleSchema.safeParse(input);
+      if (!parsed.success || !identifierSchema.safeParse(id).success)
+        throw new IdentityError('validation');
+      const role = parseIdentity(
+        roleResponseSchema,
+        await call(`/roles/${encodeURIComponent(id)}`, 'PATCH', parsed.data),
+      ).role;
+      if (role.id !== id || role.version <= input.version) throw new IdentityError('protocol');
+      return role;
+    },
+    inbox: async () => parseIdentity(inboxSchema, await call('/notifications')).items,
+    readNotifications: async (ids) => {
+      const parsed = readNotificationsSchema.safeParse({ ids });
+      if (!parsed.success) throw new IdentityError('validation');
+      const result = await call('/notifications/read', 'PATCH', parsed.data);
+      if (result !== null) throw new IdentityError('protocol');
+    },
+    audit: async (query) => {
+      if (!auditQuerySchema.safeParse(query).success) throw new IdentityError('validation');
+      const params = new URLSearchParams({
+        q: query.q,
+        operation: query.operation,
+        result: query.result,
+        page: String(query.page),
+        pageSize: String(query.pageSize),
+      });
+      const page = parseIdentity(auditPageSchema, await call(`/audit-logs?${params}`));
+      if (
+        page.page !== query.page ||
+        page.pageSize !== query.pageSize ||
+        page.items.length > query.pageSize ||
+        page.total < page.items.length ||
+        new Set(page.items.map((item) => item.id)).size !== page.items.length
+      )
+        throw new IdentityError('protocol');
+      return page;
+    },
+    readAudit: async (id) => {
+      if (!identifierSchema.safeParse(id).success) throw new IdentityError('validation');
+      const record = parseIdentity(
+        auditResponseSchema,
+        await call(`/audit-logs/${encodeURIComponent(id)}`),
+      ).record;
+      if (record.id !== id) throw new IdentityError('protocol');
+      return record;
+    },
+    me: () => userCall('/me'),
+    read: async (id) => {
+      const user = await userCall(idPath(id));
+      if (user.id !== id) throw new IdentityError('protocol');
+      return user;
+    },
+    list: async (query) => {
+      if (!userQuerySchema.safeParse(query).success) throw new IdentityError('validation');
+      const params = new URLSearchParams({
+        q: query.q,
+        status: query.status,
+        roleId: query.roleId,
+        sort: query.sort,
+        direction: query.direction,
+        page: String(query.page),
+        pageSize: String(query.pageSize),
+      });
+      const page = parseIdentity(userPageSchema, await call(`/users?${params}`));
+      if (
+        page.page !== query.page ||
+        page.pageSize !== query.pageSize ||
+        page.items.length > query.pageSize ||
+        page.total < page.items.length ||
+        new Set(page.items.map((user) => user.id)).size !== page.items.length
+      )
+        throw new IdentityError('protocol');
+      return page;
+    },
+    create: async (input) => {
+      const parsed = createUserSchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      return userCall('/users', 'POST', parsed.data);
+    },
+    update: async (id, input) => {
+      const parsed = updateUserSchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      const user = await userCall(idPath(id), 'PATCH', parsed.data);
+      if (user.id !== id || user.version <= input.version) throw new IdentityError('protocol');
+      return user;
+    },
+    updateMe: async (input) => {
+      const parsed = updateUserSchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      const user = await userCall('/me', 'PATCH', parsed.data);
+      if (user.version <= input.version) throw new IdentityError('protocol');
+      return user;
+    },
+    setStatus: async (id, version, status) => {
+      if (!Number.isInteger(version) || version < 1 || !userStatusSchema.safeParse(status).success)
+        throw new IdentityError('validation');
+      const user = await userCall(`${idPath(id)}/status`, 'PATCH', { version, status });
+      if (user.id !== id || user.version <= version || user.status !== status)
+        throw new IdentityError('protocol');
+      return user;
+    },
+    setRoles: async (id, version, roleIds) => {
+      if (!Number.isInteger(version) || version < 1 || !roleIdsSchema.safeParse(roleIds).success)
+        throw new IdentityError('validation');
+      const user = await userCall(`${idPath(id)}/roles`, 'PATCH', { version, roleIds });
+      if (
+        user.id !== id ||
+        user.version <= version ||
+        JSON.stringify([...user.roleIds].sort()) !== JSON.stringify([...roleIds].sort())
+      )
+        throw new IdentityError('protocol');
+      return user;
+    },
+  };
+}

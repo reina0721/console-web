@@ -12,8 +12,8 @@ test('新页面打开方式默认当前页：点击链接同页导航', async ({
   await resetPreferences(page);
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
-  await page.getByRole('link', { name: '查看基座地图' }).click();
-  await expect(page).toHaveURL(/\/foundations/);
+  await page.getByRole('link', { name: '图标工具' }).click();
+  await expect(page).toHaveURL(/\/system-tools\/icons/);
 });
 
 test('新页面打开方式=浏览器新标签页：声明允许入口在新标签打开', async ({ page }) => {
@@ -30,10 +30,10 @@ test('新页面打开方式=浏览器新标签页：声明允许入口在新标�
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   const popupPromise = page.waitForEvent('popup');
-  await page.getByRole('link', { name: '查看基座地图' }).click();
+  await page.getByRole('link', { name: '图标工具' }).click();
   const popup = await popupPromise;
   await popup.waitForLoadState();
-  expect(popup.url()).toContain('/foundations');
+  expect(popup.url()).toContain('/system-tools/icons');
   // 当前页仍在首页（未被导航离开）。
   await expect(page).toHaveURL(/\/$/);
 });

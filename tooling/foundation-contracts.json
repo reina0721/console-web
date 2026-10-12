@@ -162,7 +162,8 @@
         "apps/web/src/test/motion-reveal.test.tsx",
         "apps/web/e2e/motion-progressive.spec.ts",
         "apps/web/e2e/scroll-reveal-items.spec.ts",
-        "apps/web/e2e/sidebar-design.spec.ts"
+        "apps/web/e2e/sidebar-design.spec.ts",
+        "apps/web/e2e/sidebar-browser-zoom.spec.ts"
       ]
     },
     "@community-go/plugin-framework": {
@@ -202,14 +203,29 @@
       "exports": [
         "./shell",
         "./preferences-model",
+        "./identity",
         "./icon-presentation",
         "./icon-components",
         "./generated/catalog",
         "./generated/composition",
         "./plugin-routes/*"
       ],
-      "authorityRoutes": ["/reference-resources"],
-      "evidence": ["surfaces/src/shell.test.ts", "surfaces/src/preferences-model.test.ts"]
+      "authorityRoutes": [
+        "/reference-resources",
+        "/users",
+        "/account",
+        "/roles",
+        "/roles/permissions",
+        "/notifications",
+        "/audit-logs"
+      ],
+      "evidence": [
+        "surfaces/src/shell.test.ts",
+        "surfaces/src/preferences-model.test.ts",
+        "surfaces/src/identity/model.test.ts",
+        "apps/web/src/test/identity-contract.test.ts",
+        "docs/changes/108-ui-ux-audit/product-implementation.md"
+      ]
     }
   }
 }

@@ -1,3 +1,4 @@
+import { saveEvidenceScreenshot } from './evidence-screenshot';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -66,7 +67,7 @@ for (const width of [1440, 390]) {
     await mkdir(evidence, { recursive: true });
     await page.getByRole('heading', { level: 1 }).click();
     await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
-    await page.screenshot({
+    await saveEvidenceScreenshot(page, {
       path: `${evidence}/settings-${width}.png`,
       fullPage: true,
       animations: 'disabled',

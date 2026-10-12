@@ -11,7 +11,7 @@ import { Action } from '@community-go/ui-adapter/action';
 import { Badge } from '@community-go/ui-adapter/feedback';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { DrawerSurface } from '@community-go/ui-adapter/overlays';
-import { useNotificationsStore } from '../state/use-notifications-store';
+import { useProductInbox } from '@community-go/surface/identity';
 import { useShellStore } from '../state/use-shell-store';
 
 /** 相对时间 caption（语言与地区 relativeTime=relative）：按分钟/小时差输出。 */
@@ -31,12 +31,14 @@ function relativeCaption(locale: string, createdAt: number): string {
  * 偏好门控：通知偏好 inAppNotifications 关时不显示铃铛入口（产品强制的高风险/错误
  * 通知仍由发布方收纳进 store，本入口隐藏不代表丢失）；showBadge 关时不显示未读角标。
  */
-export function NotificationCenter() {
+export function NotificationCenter({
+  triggerLabel: customTriggerLabel,
+}: Readonly<{ triggerLabel?: string }> = {}) {
   const router = useRouter();
   const { t, locale } = useFrontendTranslation();
   const [open, setOpen] = useState(false);
-  const items = useNotificationsStore((state) => state.items);
-  const unread = items.filter((item) => !item.read).length;
+  const inbox = useProductInbox();
+  const { items, unread } = inbox;
   const inAppNotifications = useShellStore(
     (state) => state.preferences.notifications.inAppNotifications,
   );
@@ -50,7 +52,9 @@ export function NotificationCenter() {
   if (!inAppNotifications) return null;
 
   const openCenter = () => setOpen(true);
-  const markAllRead = () => useNotificationsStore.getState().markAllRead();
+  const markAllRead = () => {
+    void inbox.markRead(items.filter((item) => !item.read).map((item) => item.id));
+  };
 
   const triggerLabel =
     showBadge && unread > 0
@@ -59,23 +63,29 @@ export function NotificationCenter() {
 
   return (
     <>
-      <button
-        aria-controls="notification-center"
-        aria-expanded={open}
-        aria-label={triggerLabel}
-        className="relative shrink-0 rounded-control border border-border bg-surface text-ink-muted outline-none transition-colors hover:bg-surface-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-brand grid size-control min-w-control place-items-center"
-        onClick={openCenter}
-        type="button"
-      >
-        <Bell className="size-4.5" aria-hidden="true" />
-        {showBadge && unread > 0 ? (
-          <span className="pointer-events-none absolute -right-1 -top-1">
-            <Badge appearance="solid" size="sm" tone="info">
-              {unread > 9 ? '9+' : unread}
-            </Badge>
-          </span>
-        ) : null}
-      </button>
+      {customTriggerLabel ? (
+        <Action variant="secondary" size="sm" onPress={openCenter}>
+          {customTriggerLabel}
+        </Action>
+      ) : (
+        <button
+          aria-controls="notification-center"
+          aria-expanded={open}
+          aria-label={triggerLabel}
+          className="relative shrink-0 rounded-control border border-border bg-surface text-ink-muted outline-none transition-colors hover:bg-surface-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-brand grid size-control min-w-control place-items-center"
+          onClick={openCenter}
+          type="button"
+        >
+          <Bell className="size-4.5" aria-hidden="true" />
+          {showBadge && unread > 0 ? (
+            <span className="pointer-events-none absolute -right-1 -top-1">
+              <Badge appearance="solid" size="sm" tone="info">
+                {unread > 9 ? '9+' : unread}
+              </Badge>
+            </span>
+          ) : null}
+        </button>
+      )}
       <DrawerSurface
         closeLabel={t('shell.closeNotifications')}
         description={t('shell.notificationCenterDescription')}
@@ -92,6 +102,7 @@ export function NotificationCenter() {
             {unread > 0 ? (
               <Action
                 leadingIcon={<CheckCheck className="size-4" aria-hidden="true" />}
+                disabled={inbox.pending || Boolean(inbox.error)}
                 onPress={markAllRead}
                 size="sm"
                 variant="secondary"
@@ -100,20 +111,52 @@ export function NotificationCenter() {
               </Action>
             ) : null}
           </div>
+          {inbox.error || inbox.failure ? (
+            <p role="alert" className="text-sm text-danger">
+              {t(`identityProduct.errors.${(inbox.error ?? inbox.failure)?.code}`)}
+            </p>
+          ) : null}
+          {inbox.loading ? (
+            <p role="status" className="text-sm text-ink-muted">
+              {t('identityProduct.loading')}
+            </p>
+          ) : null}
+          <Action
+            variant="secondary"
+            onPress={() => {
+              const href = routeTargetResolver.resolveHref({
+                routeId: 'notifications',
+                params: {},
+              });
+              void proceedAfterLeaveConfirm(href).then((proceed) => {
+                if (proceed) {
+                  setOpen(false);
+                  router.push(href);
+                }
+              });
+            }}
+          >
+            {t('management.viewAll')}
+          </Action>
+          {inbox.error ? (
+            <Action variant="quiet" onPress={inbox.reload}>
+              {t('identityProduct.retry')}
+            </Action>
+          ) : null}
           {items.length === 0 ? (
             <p className="py-8 text-center text-sm text-ink-muted">{t('shell.noNotifications')}</p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {items.map((item) => (
+              {items.slice(0, 10).map((item) => (
                 <li key={item.id}>
                   <button
                     className={`w-full rounded-panel border border-border bg-surface px-3 py-2.5 text-left transition-colors hover:bg-surface-muted ${item.read || !unreadReminder ? '' : 'border-brand/40 bg-brand-soft/60'}`}
                     onClick={() => {
-                      useNotificationsStore.getState().markRead(item.id);
-                      if (!item.target) return;
+                      if (!item.read) void inbox.markRead([item.id]);
                       const href = routeTargetResolver.resolveHref({
-                        ...item.target,
-                        params: item.target.params ?? {},
+                        routeId: 'notifications.detail',
+                        params: {},
+                        query: { id: item.id },
                       });
                       void proceedAfterLeaveConfirm(href).then((proceed) => {
                         if (proceed) {

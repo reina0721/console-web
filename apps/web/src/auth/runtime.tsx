@@ -4,6 +4,7 @@ import { createAuthController } from './controller';
 import { applyAccountBoundary } from './account-boundary';
 import { AuthContext } from './context';
 import type { AuthService } from './contract';
+import { IdentityRuntime } from '../identity/runtime';
 
 export function AuthRuntime({ children }: Readonly<{ children: ReactNode }>) {
   const [controller] = useState(() => {
@@ -32,8 +33,8 @@ export function AuthRuntime({ children }: Readonly<{ children: ReactNode }>) {
   useEffect(() => {
     void controller.getState().restore();
     const synchronize = (event: StorageEvent) => {
-      // A fresh document also discards account-private Plugin module state.
-      if (event.key === 'community-go.auth-mock') window.location.reload();
+      // Restore checks identity/status; only an actual owner switch reloads private modules.
+      if (event.key === 'community-go.auth-mock') void controller.getState().restore();
     };
     window.addEventListener('storage', synchronize);
     return () => window.removeEventListener('storage', synchronize);
@@ -87,5 +88,9 @@ export function AuthRuntime({ children }: Readonly<{ children: ReactNode }>) {
       document.removeEventListener('visibilitychange', verify);
     };
   }, [controller, session]);
-  return <AuthContext value={controller}>{children}</AuthContext>;
+  return (
+    <AuthContext value={controller}>
+      <IdentityRuntime>{children}</IdentityRuntime>
+    </AuthContext>
+  );
 }

@@ -11,13 +11,17 @@
  * 由 Composition pipeline 与 Plugin i18n 一起聚合进 Host 运行时。
  */
 
+import { managementI18n } from './identity/management-i18n';
+import { identityI18n } from './identity/i18n';
 export const surfaceShellI18nResources = {
   'zh-CN': {
     translation: {
+      ...identityI18n['zh-CN'],
+      ...managementI18n['zh-CN'],
       shellNavigationGroups: {
-        system: '系统',
-        reference: '参考资源',
-        development: '开发',
+        management: '身份与访问',
+        system: '个人',
+        development: '开发中心',
       },
       productStates: {
         eyebrow: 'Product semantics',
@@ -63,10 +67,12 @@ export const surfaceShellI18nResources = {
   },
   en: {
     translation: {
+      ...identityI18n.en,
+      ...managementI18n.en,
       shellNavigationGroups: {
-        system: 'System',
-        reference: 'Reference',
-        development: 'Development',
+        management: 'Identity and access',
+        system: 'Personal',
+        development: 'Developer center',
       },
       productStates: {
         eyebrow: 'Product semantics',

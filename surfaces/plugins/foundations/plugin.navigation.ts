@@ -12,6 +12,7 @@ export const navigationContribution = {
       navigationId: 'foundations.root',
       labelKey: 'foundationsNav.root',
       groupId: 'development',
+      order: 50,
       iconId: 'foundations',
       routeId: 'foundations',
     },

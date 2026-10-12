@@ -1,3 +1,4 @@
+import { saveEvidenceScreenshot } from './evidence-screenshot';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { defaultPreferences, PREFERENCES_VERSION } from '@community-go/surface/preferences-model';
@@ -77,7 +78,7 @@ for (const width of [320, 390, 768, 1440, 2048]) {
         .analyze();
       expect(axe.violations).toEqual([]);
       if (path === '/login' || path === '/register')
-        await page.screenshot({
+        await saveEvidenceScreenshot(page, {
           path: `docs/changes/109-ui-ux-optimization/evidence/authentication/${path.slice(1)}-${width}.png`,
           fullPage: true,
         });
@@ -209,7 +210,7 @@ for (const width of [320, 1440]) {
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
       .analyze();
     expect(axe.violations).toEqual([]);
-    await page.screenshot({
+    await saveEvidenceScreenshot(page, {
       path: `docs/changes/109-ui-ux-optimization/evidence/authentication/register-en-dark-${width}.png`,
       fullPage: true,
     });
@@ -245,7 +246,7 @@ test('Large English dark mobile registration keeps password entry usable', async
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(axe.violations).toEqual([]);
-  await page.screenshot({
+  await saveEvidenceScreenshot(page, {
     path: 'docs/changes/109-ui-ux-optimization/evidence/authentication/register-320-en-dark-large.png',
     fullPage: true,
   });

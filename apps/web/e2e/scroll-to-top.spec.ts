@@ -10,7 +10,7 @@ async function resetPreferences(page: Page) {
 
 async function spaToSettings(page: Page) {
   const nav = page.getByRole('navigation', { name: '主导航' });
-  await nav.getByRole('link', { name: /^设置$/ }).click();
+  await nav.getByRole('link', { name: '个人偏好', exact: true }).click();
   await page.waitForURL(/\/settings$/);
 }
 

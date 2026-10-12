@@ -12,6 +12,7 @@ export const navigationContribution = {
       navigationId: 'ui-elements.root',
       labelKey: 'uiElements.nav.root',
       groupId: 'development',
+      order: 0,
       iconId: 'catalog',
       children: [
         {

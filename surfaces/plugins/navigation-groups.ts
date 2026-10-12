@@ -20,7 +20,7 @@ export type NavigationGroupAlias = Readonly<{
 
 /** plugins 范围公共 Group Alias 表（单一 authority，Shell 与 codegen 均消费）。 */
 export const navigationGroupAliases: readonly NavigationGroupAlias[] = [
-  { groupId: 'system', labelKey: 'shellNavigationGroups.system', order: 0 },
-  { groupId: 'reference', labelKey: 'shellNavigationGroups.reference', order: 1 },
+  { groupId: 'management', labelKey: 'shellNavigationGroups.management', order: 0 },
+  { groupId: 'system', labelKey: 'shellNavigationGroups.system', order: 1 },
   { groupId: 'development', labelKey: 'shellNavigationGroups.development', order: 2 },
 ] as const;

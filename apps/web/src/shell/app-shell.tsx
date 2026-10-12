@@ -3,21 +3,12 @@
 import { flattenNavigationLeaves } from '@community-go/core';
 import { ShellRoot } from '@community-go/surface-foundation/shell-navigation';
 import { PluginLocaleProvider } from '@community-go/plugin-framework/plugin';
-import type { NavigationNode } from '@community-go/types';
+import type { NavigationNode, NavigationGroup } from '@community-go/types';
 import { IconAction } from '@community-go/ui-adapter/icon-action';
 import { Skeleton } from '@community-go/ui-adapter/skeleton';
 import { NotificationAlerts } from '../host/notification-alerts';
 import { useDesktopNotificationGate } from '../host/use-desktop-notification';
-import {
-  Languages,
-  Menu,
-  Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Sparkles,
-  Sun,
-  Search,
-} from 'lucide-react';
+import { Languages, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, Search } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -36,7 +27,7 @@ import { TopProgress } from '../host/top-progress';
 import { useShellStore } from '../state/use-shell-store';
 import { useCommandsPort } from '@community-go/plugin-framework/commands';
 import { BrandMark } from './brand-mark';
-import { combinedShellNavigationGroups } from './navigation';
+import { useProductNavigation } from './use-product-navigation';
 import { NotificationCenter } from './notification-center';
 import { PageTabs } from './page-tabs';
 import { usePageTabsRecorder } from './use-page-tabs-recorder';
@@ -62,9 +53,11 @@ const CommandMenu = dynamic(
 );
 
 function NavigationContent({
+  groups: navigationGroups,
   onNavigate,
   compact = false,
 }: {
+  groups: readonly NavigationGroup[];
   onNavigate?: () => void;
   compact?: boolean;
 }) {
@@ -90,7 +83,7 @@ function NavigationContent({
         aria-label={t('shell.primaryNav')}
       >
         <Suspense
-          fallback={combinedShellNavigationGroups.map((group) => (
+          fallback={navigationGroups.map((group) => (
             <div
               key={group.id}
               className={
@@ -108,24 +101,9 @@ function NavigationContent({
             </div>
           ))}
         >
-          <NavigationTree
-            compact={compact}
-            groups={combinedShellNavigationGroups}
-            onNavigate={onNavigate}
-          />
+          <NavigationTree compact={compact} groups={navigationGroups} onNavigate={onNavigate} />
         </Suspense>
       </nav>
-      {compact ? null : (
-        <div className="m-3 rounded-panel border border-brand/15 bg-brand-soft p-4">
-          <div className="flex items-center gap-2 text-brand">
-            <Sparkles className="size-4" />
-            <span className="text-xs font-bold">{t('shell.preview')}</span>
-          </div>
-          <p className="mt-2 text-xs leading-5 text-ink-muted">
-            React 19 · HeroUI · Tailwind CSS v4
-          </p>
-        </div>
-      )}
     </>
   );
 }
@@ -149,6 +127,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     observer.observe(chrome);
     return () => observer.disconnect();
   }, []);
+  const navigationGroups = useProductNavigation();
   const { t } = useFrontendTranslation();
   const router = useRouter();
   const desktopTools = useSyncExternalStore(subscribeDesktop, desktopSnapshot, () => false);
@@ -210,16 +189,18 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   );
 
   const commandItems = useMemo(() => {
-    const navItems = flattenNavigationLeaves(
-      combinedShellNavigationGroups.flatMap((group) => group.items as readonly NavigationNode[]),
-    ).map(({ leaf, ancestors }) => ({
-      id: leaf.href,
-      label: t(leaf.labelKey),
-      description:
-        ancestors.length > 0
-          ? ancestors.map((ancestor) => t(ancestor.labelKey)).join(' / ')
-          : t('shell.commandDescription'),
-    }));
+    const navItems = navigationGroups.flatMap((group) =>
+      flattenNavigationLeaves(group.items as readonly NavigationNode[]).map(
+        ({ leaf, ancestors }) => ({
+          id: leaf.href,
+          label: t(leaf.labelKey),
+          description: [
+            t(group.labelKey),
+            ...ancestors.map((ancestor) => t(ancestor.labelKey)),
+          ].join(' / '),
+        }),
+      ),
+    );
     // 注册命令（global/page）并入命令菜单：id 前缀 `command:` 与导航 href 区分。
     const commandItemsFromRegistry = registeredCommands.map((command) => ({
       id: `command:${command.id}`,
@@ -227,15 +208,15 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       description: command.description,
     }));
     return [...navItems, ...commandItemsFromRegistry];
-  }, [t, registeredCommands]);
+  }, [t, registeredCommands, navigationGroups]);
 
   // 页面入口 href → 标题（供 recents 记录消费；i18n 解析后 memo，保持引用稳定）。
   const navEntries = useMemo(
     () =>
       flattenNavigationLeaves(
-        combinedShellNavigationGroups.flatMap((group) => group.items as readonly NavigationNode[]),
+        navigationGroups.flatMap((group) => group.items as readonly NavigationNode[]),
       ).map(({ leaf }) => ({ href: leaf.href, label: t(leaf.labelKey) })),
-    [t],
+    [t, navigationGroups],
   );
   // 最近访问记录：pathname 页面入口提交时写入 Workbench recents（SET-005-004 消费）。
   useRecentVisitRecorder(navEntries);
@@ -247,7 +228,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       <NotificationAlerts />
       <TopProgress />
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-border bg-surface lg:flex">
-        <NavigationContent compact={sidebarCollapsed} />
+        <NavigationContent groups={navigationGroups} compact={sidebarCollapsed} />
       </aside>
 
       <DrawerSurface
@@ -260,7 +241,10 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         placement="left"
         composition="navigation"
       >
-        <NavigationContent onNavigate={() => setMobileNavigationOpen(false)} />
+        <NavigationContent
+          groups={navigationGroups}
+          onNavigate={() => setMobileNavigationOpen(false)}
+        />
       </DrawerSurface>
 
       <div className="min-w-0" ref={shellRef}>
@@ -336,8 +320,11 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               <NotificationCenter />
               <AccountMenu
                 compact={!desktopTools}
-                onNavigate={() => {
-                  const href = routeTargetResolver.resolveHref({ routeId: 'settings', params: {} });
+                onNavigate={(destination) => {
+                  const href = routeTargetResolver.resolveHref({
+                    routeId: destination,
+                    params: {},
+                  });
                   void proceedAfterLeaveConfirm(href, t('shell.account')).then((proceed) => {
                     if (!proceed) return;
                     markForwardRouteIntent();

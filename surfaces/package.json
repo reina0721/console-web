@@ -6,6 +6,7 @@
   "exports": {
     "./shell": "./src/shell.ts",
     "./preferences-model": "./src/preferences-model.ts",
+    "./identity": "./src/identity/index.ts",
     "./icon-presentation": "./src/navigation-icon-presentation.tsx",
     "./icon-components": "./src/navigation-icon-components.ts",
     "./generated/composition": "./generated/composition/composition.ts",

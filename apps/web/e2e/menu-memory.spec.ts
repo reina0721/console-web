@@ -23,7 +23,7 @@ test('导航默认不记忆展开菜单（menuMemory 关）：SPA 换路由后�
   // SPA 返回根入口 → Page Archetypes 不应保持展开（menuMemory 默认关）。
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '总览' })
+    .getByRole('link', { name: '工作台' })
     .first()
     .click();
   await expect(page).toHaveURL(/\/$/);
@@ -44,7 +44,7 @@ test('导航记忆展开菜单（menuMemory 开）：SPA 导航后手动展开�
   // 从设置页经侧栏 SPA 导航到根入口（总览）。
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '总览' })
+    .getByRole('link', { name: '工作台' })
     .first()
     .click();
   await expect(page).toHaveURL(/\/$/);
@@ -58,7 +58,7 @@ test('导航记忆展开菜单（menuMemory 开）：SPA 导航后手动展开�
   // SPA 返回根入口 → Page Archetypes 应保持展开。
   await page
     .getByRole('navigation', { name: '主导航' })
-    .getByRole('link', { name: '总览' })
+    .getByRole('link', { name: '工作台' })
     .first()
     .click();
   await expect(page).toHaveURL(/\/$/);

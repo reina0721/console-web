@@ -186,15 +186,15 @@ test('Shell NavigationViewport 隐藏原生 scrollbar 且保留滚动能力', as
     .evaluate((element) => element.getBoundingClientRect().top);
   expect(Math.abs(brandAfter - brandBefore)).toBeLessThanOrEqual(1);
 
-  // 6. 底部 Preview 辅助区独立：滚动后位置不变（不随 NavigationContent 滚动）
-  const previewBefore = await page
-    .getByText('React 19 · HeroUI · Tailwind CSS v4')
+  // 6. 产品 Header 独立于导航滚动；工程 Preview 已从正式 Shell 移除。
+  const headerBefore = await page
+    .getByRole('banner')
     .evaluate((element) => element.getBoundingClientRect().top);
   await navigation.evaluate((element) => element.scrollTo({ top: 300, behavior: 'instant' }));
-  const previewAfter = await page
-    .getByText('React 19 · HeroUI · Tailwind CSS v4')
+  const headerAfter = await page
+    .getByRole('banner')
     .evaluate((element) => element.getBoundingClientRect().top);
-  expect(Math.abs(previewAfter - previewBefore)).toBeLessThanOrEqual(1);
+  expect(Math.abs(headerAfter - headerBefore)).toBeLessThanOrEqual(1);
 
   // 7. 展开一个顶层菜单后可滚动访问最后一个菜单项
   //    （root scope Accordion：展开 Page Archetypes 后即为当前唯一 exploration/active 顶层）

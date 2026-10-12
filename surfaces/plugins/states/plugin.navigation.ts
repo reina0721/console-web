@@ -14,6 +14,7 @@ export const navigationContribution = {
       navigationId: 'states.root',
       labelKey: 'statesNav.root',
       groupId: 'development',
+      order: 70,
       iconId: 'states',
       routeId: 'states',
     },
