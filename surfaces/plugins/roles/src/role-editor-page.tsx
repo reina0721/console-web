@@ -16,14 +16,13 @@ import { route, RouteLink, usePluginNavigation } from '@community-go/plugin-fram
 import { useRegisterDirtySource } from '@community-go/plugin-framework/leave-confirm';
 import {
   IdentityError,
-  identifierSchema,
   permissionCodes,
   defaultUserQuery,
   useIdentityPort,
   type DirectoryRole,
   type IdentityAccess,
   type RoleInput,
-} from '@community-go/surface/identity';
+} from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import {
   IdentityModeNotice,
@@ -147,7 +146,7 @@ function RoleForm({
           {(field) => (
             <fieldset className="grid gap-4">
               <legend className="mb-3 text-sm font-semibold">{t('roles.permissions')}</legend>
-              {['users', 'roles', 'account', 'audit'].map((resource) => (
+              {['users', 'roles', 'account', 'audit', 'settings'].map((resource) => (
                 <div key={resource} className="grid gap-3">
                   <p className="text-sm font-semibold text-ink-muted">
                     {t(`management.resources.${resource}`)}
@@ -255,6 +254,7 @@ export function RoleEditorPage({ id }: Readonly<{ id?: string }>) {
   const { t } = useFrontendTranslation();
   const port = useIdentityPort();
   const result = useIdentityQuery(`roles.editor:${id ?? 'create'}`, async (service) => {
+    const { identifierSchema } = await import('../../../src/identity/model');
     const access = await service.access();
     if (!access.permissions.includes(id === undefined ? 'roles.create' : 'roles.update'))
       throw new IdentityError('forbidden');
@@ -273,6 +273,7 @@ export function RoleEditorPage({ id }: Readonly<{ id?: string }>) {
     <Page>
       <PageHeader
         title={t(id === undefined ? 'roles.create' : 'roles.edit')}
+        description={t('roles.impact')}
         actions={<RouteLink target={route('roles')}>{t('roles.back')}</RouteLink>}
       />
       <IdentityModeNotice mode={port.mode} />

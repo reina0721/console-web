@@ -1,5 +1,23 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
+
+async function hoverCompactTrigger(trigger: Locator) {
+  // Scroll the navigation viewport first, as a user would. Playwright's automatic
+  // ancestor scrolling can otherwise move the document for a clipped sticky item.
+  await trigger.evaluate((element) => {
+    const viewport = element.closest('nav');
+    if (!viewport) throw new Error('Missing navigation viewport');
+    const item = element.getBoundingClientRect();
+    const bounds = viewport.getBoundingClientRect();
+    if (item.bottom > bounds.bottom || item.top < bounds.top) {
+      viewport.scrollTo({
+        top: viewport.scrollTop + item.top - bounds.top - (bounds.height - item.height) / 2,
+        behavior: 'instant',
+      });
+    }
+  });
+  await trigger.hover();
+}
 
 test('展开侧栏用同一递归能力呈现 Page Archetypes 与 UI Elements（Active Path Anchored Accordion）', async ({
   page,
@@ -58,6 +76,7 @@ test('收缩侧栏的 Hover Flyout 保持稳定并支持键盘进入', async ({ 
   await expect(flyout).toHaveCount(1);
   await expect(flyout).toBeVisible();
   await expect(expandSidebar).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await expect.soft(page).toHaveScreenshot('surface-shell-compact-flyout.png');
 
   await flyout.hover();
@@ -90,30 +109,31 @@ test('收缩侧栏切换兄弟菜单时同一时刻只有一个 Flyout 且旧菜
   await expect(dialogs).toHaveCount(0);
 
   // 依次 Hover 三个兄弟父级：每一步都只能有一个可见 Dialog
-  await uiElementsTrigger.hover();
+  await hoverCompactTrigger(uiElementsTrigger);
   await expect(dialogs).toHaveCount(1);
   await expect(dialogs.first()).toHaveAttribute('aria-label', 'UI Elements');
 
-  await pagePatternsTrigger.hover();
+  await hoverCompactTrigger(pagePatternsTrigger);
   await expect(dialogs).toHaveCount(1);
   await expect(dialogs.first()).toHaveAttribute('aria-label', 'Page Patterns');
   await page.waitForTimeout(400);
   await expect(dialogs).toHaveCount(1);
   await expect(dialogs.first()).toHaveAttribute('aria-label', 'Page Patterns');
 
-  await pageArchetypesTrigger.hover();
+  await hoverCompactTrigger(pageArchetypesTrigger);
   await expect(dialogs).toHaveCount(1);
   await expect(dialogs.first()).toHaveAttribute('aria-label', 'Page Archetypes');
   await page.waitForTimeout(400);
   await expect(dialogs).toHaveCount(1);
   await expect(dialogs.first()).toHaveAttribute('aria-label', 'Page Archetypes');
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await expect.soft(page).toHaveScreenshot('surface-shell-compact-sibling-swap.png');
 
   // 快速来回切换：旧 Flyout 的延迟关闭计时器不能误关新菜单
-  await uiElementsTrigger.hover();
+  await hoverCompactTrigger(uiElementsTrigger);
   await expect(dialogs).toHaveCount(1);
   await expect(dialogs.first()).toHaveAttribute('aria-label', 'UI Elements');
-  await pageArchetypesTrigger.hover();
+  await hoverCompactTrigger(pageArchetypesTrigger);
   await page.waitForTimeout(400);
   await expect(dialogs).toHaveCount(1);
   await expect(dialogs.first()).toHaveAttribute('aria-label', 'Page Archetypes');

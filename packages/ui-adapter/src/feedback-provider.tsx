@@ -1,9 +1,12 @@
-import { Spinner as HeroSpinner } from '@heroui/react/spinner';
-import { Toast, type ToastContentValue } from '@heroui/react/toast';
-import { useMemo, useState, type ReactNode } from 'react';
+import { ToastQueue, type ToastContentValue } from '@heroui/react/toast';
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 
 import { FeedbackContext, type FeedbackController } from './feedback-context';
 import type { FeedbackTone } from './feedback';
+import { BusyIndicator } from './busy-indicator';
+const FeedbackToastRegion = lazy(() =>
+  import('./feedback-toast-region').then((module) => ({ default: module.FeedbackToastRegion })),
+);
 
 const toneVariant: Record<FeedbackTone, ToastContentValue['variant']> = {
   danger: 'danger',
@@ -16,6 +19,7 @@ const toneVariant: Record<FeedbackTone, ToastContentValue['variant']> = {
 export type FeedbackProviderProps = Readonly<{
   children: ReactNode;
   closeLabel: string;
+  loadingLabel: string;
   /**
    * 非关键成功提示时长（ms）。Host 经展示策略传入（settings 通知 → 提示时长
    * short/standard/long → 3/5/8s）；persistent/loading toast 不受影响。缺省 5000ms。
@@ -26,9 +30,11 @@ export type FeedbackProviderProps = Readonly<{
 export function FeedbackProvider({
   children,
   closeLabel,
+  loadingLabel,
   toastDurationMs = 5_000,
 }: FeedbackProviderProps) {
-  const [queue] = useState(() => new Toast.Queue<ToastContentValue>({ maxVisibleToasts: 3 }));
+  const [queue] = useState(() => new ToastQueue<ToastContentValue>({ maxVisibleToasts: 3 }));
+  const [requested, setRequested] = useState(false);
   const controller = useMemo<FeedbackController>(
     () => ({
       clear: () => queue.clear(),
@@ -40,8 +46,9 @@ export function FeedbackProvider({
         action,
         duration = 'transient',
         loading = false,
-      }) =>
-        queue.add(
+      }) => {
+        setRequested(true);
+        return queue.add(
           {
             title,
             variant: toneVariant[tone],
@@ -58,7 +65,8 @@ export function FeedbackProvider({
             ...(loading ? { isLoading: true } : {}),
           },
           { timeout: loading || duration === 'persistent' ? 0 : toastDurationMs },
-        ),
+        );
+      },
     }),
     [queue, toastDurationMs],
   );
@@ -66,36 +74,17 @@ export function FeedbackProvider({
   return (
     <FeedbackContext value={controller}>
       {children}
-      <Toast.Provider className="z-toast" maxVisibleToasts={3} placement="bottom end" queue={queue}>
-        {({ toast }) => {
-          const content = toast.content;
-          return (
-            <Toast
-              className="border-border bg-surface-raised text-ink shadow-overlay"
-              toast={toast}
-              variant={content.variant}
-            >
-              {content.isLoading ? (
-                <Toast.Indicator variant={content.variant}>
-                  <HeroSpinner aria-hidden="true" size="sm" />
-                </Toast.Indicator>
-              ) : (
-                <Toast.Indicator variant={content.variant} />
-              )}
-              <Toast.Content>
-                {content.title ? <Toast.Title>{content.title}</Toast.Title> : null}
-                {content.description ? (
-                  <Toast.Description>{content.description}</Toast.Description>
-                ) : null}
-              </Toast.Content>
-              {content.actionProps?.children ? (
-                <Toast.ActionButton {...content.actionProps} />
-              ) : null}
-              <Toast.CloseButton aria-label={closeLabel} />
-            </Toast>
-          );
-        }}
-      </Toast.Provider>
+      {requested ? (
+        <Suspense
+          fallback={
+            <div className="pointer-events-none fixed bottom-6 right-6 z-toast">
+              <BusyIndicator label={loadingLabel} />
+            </div>
+          }
+        >
+          <FeedbackToastRegion queue={queue} closeLabel={closeLabel} />
+        </Suspense>
+      ) : null}
     </FeedbackContext>
   );
 }

@@ -15,7 +15,7 @@ import { useFeedback } from '@community-go/ui-adapter/feedback-context';
 import { SelectField } from '@community-go/ui-adapter/form-field';
 import { UserIdentity } from '@community-go/ui-adapter/identity';
 import { PaginationControl } from '@community-go/ui-adapter/navigation';
-import { ConfirmDialog, DialogSurface, DrawerSurface } from '@community-go/ui-adapter/overlays';
+import { DialogSurface, DrawerSurface } from '@community-go/ui-adapter/overlays';
 import { Panel } from '@community-go/ui-adapter/panel';
 import { ProgressMeter } from '@community-go/ui-adapter/progress-meter';
 import { SearchBox } from '@community-go/ui-adapter/search-box';
@@ -71,6 +71,9 @@ type SceneMode =
 
 const ColumnSettingsDialog = lazy(() =>
   import('./column-settings-dialog').then((module) => ({ default: module.ColumnSettingsDialog })),
+);
+const ConfirmDialog = lazy(() =>
+  import('@community-go/ui-adapter/overlays').then((module) => ({ default: module.ConfirmDialog })),
 );
 const WorkbenchDetail = lazy(() =>
   import('./workbench-detail').then((module) => ({ default: module.WorkbenchDetail })),
@@ -254,6 +257,7 @@ export function ReferenceWorkspacePage() {
   const [exported, setExported] = useState(false);
   // 批量操作确认（操作偏好 confirmBulk，默认开）：导出所选 N 条前二次确认。
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
+  const [bulkExportRequested, setBulkExportRequested] = useState(false);
   const confirmBulk = preferencesPort.getSnapshot().actionPreferences.confirmBulk;
 
   const activeQuery = searchTrigger === 'auto' ? query : appliedQuery;
@@ -676,8 +680,10 @@ export function ReferenceWorkspacePage() {
               size="sm"
               variant="secondary"
               onPress={() => {
-                if (confirmBulk) setBulkExportOpen(true);
-                else void exportSelected();
+                if (confirmBulk) {
+                  setBulkExportRequested(true);
+                  setBulkExportOpen(true);
+                } else void exportSelected();
               }}
             >
               {t('reference.exportSelected')}
@@ -800,20 +806,30 @@ export function ReferenceWorkspacePage() {
             >
               <p className="text-sm leading-6 text-ink-muted">{t('reference.dialogBody')}</p>
             </DialogSurface>
-            <ConfirmDialog
-              cancelLabel={t('reference.cancel')}
-              confirmLabel={t('reference.confirm')}
-              description={t('reference.bulkExportDescription', {
-                count: selectedIds.length,
-              })}
-              failureMessage={t('reference.exportFailure')}
-              impact={t('reference.bulkExportImpact')}
-              isOpen={bulkExportOpen}
-              onOpenChange={setBulkExportOpen}
-              onConfirm={exportSelected}
-              title={t('reference.bulkExportTitle', { count: selectedIds.length })}
-              triggerLabel=""
-            />
+            {bulkExportRequested ? (
+              <Suspense
+                fallback={
+                  <div className="pointer-events-none fixed inset-0 z-overlay grid place-items-center">
+                    <BusyIndicator label={t('reference.sceneMode.loading')} />
+                  </div>
+                }
+              >
+                <ConfirmDialog
+                  cancelLabel={t('reference.cancel')}
+                  confirmLabel={t('reference.confirm')}
+                  description={t('reference.bulkExportDescription', {
+                    count: selectedIds.length,
+                  })}
+                  failureMessage={t('reference.exportFailure')}
+                  impact={t('reference.bulkExportImpact')}
+                  isOpen={bulkExportOpen}
+                  onOpenChange={setBulkExportOpen}
+                  onConfirm={exportSelected}
+                  title={t('reference.bulkExportTitle', { count: selectedIds.length })}
+                  triggerLabel=""
+                />
+              </Suspense>
+            ) : null}
             {columnSettingsRequested ? (
               <Suspense fallback={<BusyIndicator label={t('reference.sceneMode.loading')} />}>
                 <ColumnSettingsDialog

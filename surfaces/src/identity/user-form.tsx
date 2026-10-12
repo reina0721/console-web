@@ -20,13 +20,8 @@ import {
   PasswordField,
 } from '@community-go/ui-adapter/form-field';
 import { useFeedback } from '@community-go/ui-adapter/feedback-context';
-import {
-  IdentityError,
-  type CreateUserInput,
-  type DirectoryUser,
-  type DirectoryRole,
-  type IdentityAccess,
-} from './model';
+import type { CreateUserInput, DirectoryUser, DirectoryRole, IdentityAccess } from './model';
+import { IdentityError } from './errors';
 import { useIdentityPort } from './context';
 import { IdentityMutationError } from './query-state';
 

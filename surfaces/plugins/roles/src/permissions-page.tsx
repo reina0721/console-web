@@ -2,7 +2,11 @@
 import { useFrontendTranslation } from '@community-go/i18n';
 import { Page, PageHeader, Section } from '@community-go/surface-foundation/layout';
 import { route, RouteLink } from '@community-go/plugin-framework/plugin';
-import { IdentityError, permissionCodes, useIdentityPort } from '@community-go/surface/identity';
+import {
+  IdentityError,
+  permissionCodes,
+  useIdentityPort,
+} from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import { IdentityModeNotice, IdentityQueryState } from '../../../src/identity/query-state';
 export function PermissionsPage() {
@@ -25,7 +29,7 @@ export function PermissionsPage() {
         <IdentityQueryState error={result.error} retry={result.reload} />
       ) : (
         <>
-          {['users', 'roles', 'account', 'audit'].map((resource) => (
+          {['users', 'roles', 'account', 'audit', 'settings'].map((resource) => (
             <Section key={resource} title={t(`management.resources.${resource}`)}>
               <ul data-reveal-items className="grid gap-4 p-5 md:grid-cols-2">
                 {permissionCodes

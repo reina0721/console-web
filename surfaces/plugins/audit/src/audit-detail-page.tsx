@@ -5,7 +5,7 @@ import { DescriptionList } from '@community-go/ui-adapter/description-list';
 import { route, RouteLink } from '@community-go/plugin-framework/plugin';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
-import { IdentityError, identifierSchema, useIdentityPort } from '@community-go/surface/identity';
+import { IdentityError, useIdentityPort } from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import { IdentityModeNotice, IdentityQueryState } from '../../../src/identity/query-state';
 export function AuditDetailPage({ id }: Readonly<{ id: string | null }>) {
@@ -13,6 +13,7 @@ export function AuditDetailPage({ id }: Readonly<{ id: string | null }>) {
   const preferences = usePreferencesPort<Preferences>().getSnapshot();
   const port = useIdentityPort();
   const result = useIdentityQuery(`audit.detail:${id}`, async (service) => {
+    const { identifierSchema } = await import('../../../src/identity/model');
     if (!id || !identifierSchema.safeParse(id).success) throw new IdentityError('not-found');
     const access = await service.access();
     if (!access.permissions.includes('audit.read')) throw new IdentityError('forbidden');

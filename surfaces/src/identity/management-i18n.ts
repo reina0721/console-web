@@ -1,7 +1,13 @@
 export const managementI18n = {
   'zh-CN': {
     management: {
-      resources: { users: '用户', roles: '角色', account: '个人账户', audit: '审计日志' },
+      resources: {
+        users: '用户',
+        roles: '角色',
+        account: '个人账户',
+        audit: '审计日志',
+        settings: '系统配置',
+      },
       permissions: {
         users: {
           read: '查看用户',
@@ -13,6 +19,7 @@ export const managementI18n = {
         roles: { read: '查看角色与权限', create: '创建角色', update: '编辑角色授权' },
         account: { update: '编辑自己的资料' },
         audit: { read: '查询审计日志' },
+        settings: { read: '查看系统配置', update: '修改系统配置' },
       },
       operations: {
         users: {
@@ -22,6 +29,7 @@ export const managementI18n = {
           roles: '修改用户角色',
         },
         roles: { create: '创建角色', update: '修改角色授权' },
+        settings: { update: '修改注册策略' },
         account: { update: '更新个人资料' },
       },
       notificationTitle: '{{operation}}：{{name}}',
@@ -49,6 +57,7 @@ export const managementI18n = {
         roles: 'Roles',
         account: 'Personal account',
         audit: 'Audit logs',
+        settings: 'System configuration',
       },
       permissions: {
         users: {
@@ -65,6 +74,7 @@ export const managementI18n = {
         },
         account: { update: 'Edit own profile' },
         audit: { read: 'Query audit logs' },
+        settings: { read: 'View system configuration', update: 'Update system configuration' },
       },
       operations: {
         users: {
@@ -74,6 +84,7 @@ export const managementI18n = {
           roles: 'Changed user roles',
         },
         roles: { create: 'Created role', update: 'Changed role grants' },
+        settings: { update: 'Changed registration policy' },
         account: { update: 'Updated profile' },
       },
       notificationTitle: '{{operation}}: {{name}}',

@@ -160,6 +160,7 @@ test('all primary routes use independent semantic reveal units and retain layout
   for (const route of routes) {
     await page.goto(route);
     await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
+    await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible();
     await expect(page.locator('main h1')).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     if (route === '/ui-elements/forms')

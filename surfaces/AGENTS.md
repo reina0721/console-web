@@ -5,10 +5,10 @@ Plugin 业务、shell 模型、Group Alias / icon vocabulary 与 generated 产�
 dependency ownership、module resolution、typecheck 与 test 服务。
 
 - 具体 Plugin 不是 Package，也不是 Surface 公共 API。对 Host 只开放
-  `./shell`、`./preferences-model`、`./identity`、`./icon-presentation`、`./icon-components`、`./generated/composition`、
+  `./shell`、`./preferences-model`、`./identity`、`./identity/runtime`、`./icon-presentation`、`./icon-components`、`./generated/composition`、
   `./generated/catalog`、`./plugin-routes/*`；
   禁止把 `plugins/*` 加入 exports，禁止通过相对路径绕开 generated shim 导入 Plugin internals。
-  `./identity` 只开放当前产品的身份、用户、角色授权、通知及只读审计模型、Schema 与具体语义 Port/Provider/hook；
+  `./identity` 只开放当前产品的身份、用户、角色授权、注册策略、通知及只读审计模型、Schema 与具体语义 Port/Provider/hook；
   Web 注入实现，Plugin 与 Shell 消费同一契约。不公开 Plugin 私有组件或 Store，
   不在 Surface 契约实现 HTTP、Storage、Session 或后端授权。
 - Route Catalog、业务 Route IDs 与 module shims 全部位于 `generated/`；

@@ -1,11 +1,16 @@
 'use client';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { createAppStore } from '@community-go/state-foundation';
-import { IdentityProvider, IdentityError, type IdentityPort } from '@community-go/surface/identity';
+import {
+  IdentityProvider,
+  IdentityError,
+  type IdentityPort,
+} from '@community-go/surface/identity/runtime';
 import { useAuth, AuthContext } from '../auth/context';
 import { useContext } from 'react';
 import { readAuthConfig } from '../auth/config';
 import { AuthError } from '../auth/contract';
+import type { createMockIdentityService } from './mock-service';
 import type { IdentityOperations } from './mock-service';
 
 /** Concrete product composition; no service registry or cross-plugin private store access. */
@@ -25,7 +30,9 @@ export function IdentityRuntime({ children }: Readonly<{ children: ReactNode }>)
       }
     })();
     let initialized: Promise<IdentityOperations> | null = null;
-    let mockModule: Promise<typeof import('./mock-service')> | null = null;
+    let mockModule: Promise<
+      Readonly<{ createMockIdentityService: typeof createMockIdentityService }>
+    > | null = null;
     const currentUserId = () => authController.getState().session?.user.id ?? null;
     const service = async (owner: string) => {
       if (!config) throw new IdentityError('configuration');
@@ -80,6 +87,9 @@ export function IdentityRuntime({ children }: Readonly<{ children: ReactNode }>)
           return access;
         }),
       roles: () => call((service) => service.roles()),
+      registrationSettings: () => call((service) => service.registrationSettings()),
+      updateRegistrationSettings: (input) =>
+        call((service) => service.updateRegistrationSettings(input), true, false),
       readRole: (id) => call((service) => service.readRole(id)),
       createRole: (input) => call((service) => service.createRole(input), true),
       updateRole: (id, input) => call((service) => service.updateRole(id, input), true),

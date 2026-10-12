@@ -76,6 +76,8 @@ Feedback 解释刚发生的结果、风险或可恢复问题；Status 描述对�
 - `AlertBanner` 是页面流内的信息块，默认不加入 Live Region。只有内容在用户操作后动态出现且需要辅助技术及时播报时，才选择 `polite`；会阻断当前安全操作的紧急失败才选择 `urgent`。
 - `NotificationCard` 是可操作的静态通知组合，不等同于全局 Toast。它固定包含主要动作和关闭动作；可选次要动作必须同时提供文案与处理函数。
 - `FeedbackProvider` 显式拥有全局 Toast queue 与 Region；Feature 只通过 `useFeedback` 发送 tone、title、description 和可选 action，不直接访问 HeroUI queue。Toast 用于用户动作后的短暂反馈，不能代替流内 Alert、长期 Notification 或对象 Status。
+  Queue 在 Provider 生命周期内始终同步可用；Region 的显示模块首次反馈时加载，之后保留实例，继续由同一 HeroUI queue 管理时长、关闭和操作。加载边界不创建第二个队列，不改变 Feature Contract、Toast anatomy、Portal、Focus 或视觉 Token。
+  Provider 的 `loadingLabel` 与 `closeLabel` 均由装配方传入已本地化文案；首次显示模块加载期间使用正式 BusyIndicator，位于浮层且不改变页面 Layout。
 - 动态 Inline Alert/Notification 需要完整 Enter/Exit 时使用 `FeedbackPresence`；退出阶段立即设置 inert/aria-hidden，动画结束再卸载，并允许快速反转。Toast 继续由 HeroUI queue 主持，不嵌套该 Presence。
 - `Badge` 表达类别、属性或短元数据，可使用 Soft/Solid、Icon 与尺寸；`StatusPill` 专门表达对象生命周期状态，保持 Dot + Soft 的单一结构。
 - `StateSurface` 承担 Empty、Error、Offline、Permission 等大范围内容状态；恢复动作的文案与处理函数必须成对，禁止渲染无行为按钮。静态状态默认不进入 Live Region；只有用户操作后动态出现的结果才显式选择 `polite`，会阻断安全操作的紧急失败才选择 `urgent`。

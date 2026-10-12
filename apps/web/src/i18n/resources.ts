@@ -8,6 +8,8 @@ export const resources = {
         cancel: '取消',
         leave: '离开',
         appLoading: '正在加载应用',
+        confirmLoading: '正在加载确认…',
+        feedbackLoading: '正在加载反馈…',
         rootErrorEyebrow: '界面异常',
         rootErrorTitle: '界面暂时无法继续呈现',
         rootErrorDescription: '请重新加载页面。错误细节只保留在受控诊断边界中。',
@@ -145,6 +147,8 @@ export const resources = {
         cancel: 'Cancel',
         leave: 'Leave',
         appLoading: 'Loading application',
+        confirmLoading: 'Loading confirmation…',
+        feedbackLoading: 'Loading feedback…',
         rootErrorEyebrow: 'Interface error',
         rootErrorTitle: 'The interface cannot continue right now',
         rootErrorDescription:

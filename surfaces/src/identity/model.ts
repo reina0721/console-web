@@ -1,17 +1,16 @@
 import { z } from 'zod';
+import { permissionCodes, auditOperations } from './constants';
+export {
+  permissionCodes,
+  auditOperations,
+  defaultUserQuery,
+  defaultAuditQuery,
+  registrationRestrictedPermissions,
+} from './constants';
+import { IdentityError, identityErrorCodes } from './errors';
+export { IdentityError, identityErrorCodes } from './errors';
+export type { IdentityErrorCode, IdentityFieldIssue, IdentityErrorReason } from './errors';
 
-export const permissionCodes = [
-  'users.read',
-  'users.create',
-  'users.update',
-  'users.status',
-  'users.roles',
-  'account.update',
-  'roles.read',
-  'roles.create',
-  'roles.update',
-  'audit.read',
-] as const;
 export type IdentityPermission = (typeof permissionCodes)[number];
 export const identifierSchema = z
   .string()
@@ -76,15 +75,7 @@ export const userQuerySchema = z
   })
   .strict();
 export type UserQuery = z.infer<typeof userQuerySchema>;
-export const defaultUserQuery: UserQuery = {
-  q: '',
-  status: 'all',
-  roleId: 'all',
-  sort: 'name',
-  direction: 'asc',
-  page: 1,
-  pageSize: 20,
-};
+
 export const userPageSchema = z
   .object({
     items: z.array(userSchema),
@@ -120,20 +111,6 @@ export const rolePageSchema = z
       .refine((items) => new Set(items.map((role) => role.id)).size === items.length),
   })
   .strict();
-export const identityErrorCodes = [
-  'configuration',
-  'unauthenticated',
-  'forbidden',
-  'not-found',
-  'conflict',
-  'validation',
-  'network',
-  'timeout',
-  'protocol',
-  'unavailable',
-  'persistence',
-] as const;
-export type IdentityErrorCode = (typeof identityErrorCodes)[number];
 export const fieldIssueSchema = z
   .object({
     field: z.enum([
@@ -145,11 +122,12 @@ export const fieldIssueSchema = z
       'status',
       'version',
       'query',
+      'defaultRoleId',
+      'enabled',
     ]),
     reason: z.enum(['required', 'format', 'length', 'duplicate', 'protected', 'stale', 'unknown']),
   })
   .strict();
-export type IdentityFieldIssue = z.infer<typeof fieldIssueSchema>;
 export const errorEnvelopeSchema = z
   .object({
     error: z
@@ -171,17 +149,6 @@ export const errorEnvelopeSchema = z
       .strict(),
   })
   .strict();
-export class IdentityError extends Error {
-  constructor(
-    public readonly code: IdentityErrorCode,
-    public readonly reason?: z.infer<typeof errorEnvelopeSchema>['error']['reason'],
-    public readonly fields: readonly IdentityFieldIssue[] = [],
-    public readonly requestId?: string,
-  ) {
-    super(`Identity: ${code}`);
-    this.name = 'IdentityError';
-  }
-}
 export function parseIdentity<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
   if (!result.success) throw new IdentityError('protocol');
@@ -195,6 +162,8 @@ export interface IdentityPort {
   getRevision(): number;
   subscribe(listener: () => void): () => void;
   access(): Promise<IdentityAccess>;
+  registrationSettings(): Promise<RegistrationSettings>;
+  updateRegistrationSettings(input: RegistrationSettingsInput): Promise<RegistrationSettings>;
   roles(): Promise<readonly DirectoryRole[]>;
   readRole(id: string): Promise<DirectoryRole>;
   createRole(input: RoleInput): Promise<DirectoryRole>;
@@ -224,16 +193,22 @@ export const roleInputSchema = z
   .strict();
 export type RoleInput = z.infer<typeof roleInputSchema>;
 export const updateRoleSchema = roleInputSchema.extend({ version: z.number().int().positive() });
+export const registrationSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    defaultRoleId: identifierSchema,
+    version: z.number().int().positive(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export const registrationSettingsInputSchema = registrationSettingsSchema.omit({ updatedAt: true });
+export const registrationSettingsResponseSchema = z
+  .object({ settings: registrationSettingsSchema })
+  .strict();
+export type RegistrationSettings = z.infer<typeof registrationSettingsSchema>;
+export type RegistrationSettingsInput = z.infer<typeof registrationSettingsInputSchema>;
 export const roleResponseSchema = z.object({ role: roleSchema }).strict();
-export const auditOperations = [
-  'users.create',
-  'users.update',
-  'users.status',
-  'users.roles',
-  'account.update',
-  'roles.create',
-  'roles.update',
-] as const;
+
 export const auditRecordSchema = z
   .object({
     id: identifierSchema,
@@ -258,13 +233,7 @@ export const auditQuerySchema = z
   })
   .strict();
 export type AuditQuery = z.infer<typeof auditQuerySchema>;
-export const defaultAuditQuery: AuditQuery = {
-  q: '',
-  operation: 'all',
-  result: 'all',
-  page: 1,
-  pageSize: 20,
-};
+
 export const auditPageSchema = z
   .object({
     items: z.array(auditRecordSchema),

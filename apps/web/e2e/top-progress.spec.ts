@@ -64,6 +64,30 @@ test('极快导航（warm 缓存路由）仍显示一次完整进度周期并自
   await page.goto('/');
   await expectHydrated(page);
 
+  await expect(progressBar(page)).toHaveCount(0);
+  // Start pixel sampling before the click: a valid short cycle can finish while
+  // Playwright is still waiting for the destination heading.
+  await page.evaluate(() => {
+    const sampleState = { visible: false };
+    (window as unknown as { __warmProgress?: typeof sampleState }).__warmProgress = sampleState;
+    const startedAt = performance.now();
+    const sample = () => {
+      const root = document.querySelector('.top-progress');
+      const fill = root?.querySelector('.top-progress-fill');
+      if (root && fill) {
+        const rect = fill.getBoundingClientRect();
+        sampleState.visible =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.top === 0 &&
+          Number(getComputedStyle(root).opacity) > 0.05 &&
+          Number(getComputedStyle(fill).opacity) > 0.05;
+      }
+      if (!sampleState.visible && performance.now() - startedAt < 5000)
+        requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
   await navigateViaSidebar(page, '浮层与弹出界面');
   await expect(page).toHaveURL(/\/ui-elements\/overlays$/);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -71,13 +95,13 @@ test('极快导航（warm 缓存路由）仍显示一次完整进度周期并自
   // 即使导航极快（缓存路由，<60ms 完成），也保证最小视觉周期：
   // 进度条必须出现过（enter/completing），且最终自然退出。
   await expect
-    .poll(async () => {
-      const count = await progressBar(page).count();
-      if (count === 0) return null;
-      const phase = await progressBar(page).getAttribute('data-phase');
-      return { count, phase };
-    })
-    .not.toBeNull();
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { __warmProgress?: { visible: boolean } }).__warmProgress?.visible,
+      ),
+    )
+    .toBe(true);
   await expect(progressBar(page)).toHaveCount(0);
 });
 
@@ -202,6 +226,7 @@ test('进度条不推动 Header/Sidebar/内容布局', async ({ page }) => {
   await expectHydrated(page);
 
   const header = page.locator('header').first();
+  await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible();
   await expect(header).toBeVisible();
   const before = await header.boundingBox();
 

@@ -2,7 +2,7 @@
 import { Page, PageHeader } from '@community-go/surface-foundation/layout';
 import { useFrontendTranslation } from '@community-go/i18n';
 import { route, RouteLink } from '@community-go/plugin-framework/plugin';
-import { useIdentityPort, IdentityError, identifierSchema } from '@community-go/surface/identity';
+import { useIdentityPort, IdentityError } from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import { IdentityQueryState, IdentityModeNotice } from '../../../src/identity/query-state';
 import { UserForm } from '../../../src/identity/user-form';
@@ -11,6 +11,7 @@ export function UserEditorPage({ id }: Readonly<{ id?: string }>) {
   const port = useIdentityPort();
   const mode = id === undefined ? 'create' : 'edit';
   const query = useIdentityQuery(`users.${mode}:${id ?? ''}`, async (service) => {
+    const { identifierSchema } = await import('../../../src/identity/model');
     const access = await service.access();
     if (!access.permissions.includes(mode === 'create' ? 'users.create' : 'users.update'))
       throw new IdentityError('forbidden');

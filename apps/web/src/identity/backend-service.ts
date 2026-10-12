@@ -1,5 +1,7 @@
 import {
   accessSchema,
+  registrationSettingsInputSchema,
+  registrationSettingsResponseSchema,
   roleInputSchema,
   updateRoleSchema,
   roleResponseSchema,
@@ -63,6 +65,19 @@ export function createBackendIdentityService(
   }
   return {
     access: async () => parseIdentity(accessSchema, await call('/auth/access')),
+    registrationSettings: async () =>
+      parseIdentity(registrationSettingsResponseSchema, await call('/system/registration'))
+        .settings,
+    updateRegistrationSettings: async (input) => {
+      const parsed = registrationSettingsInputSchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      const settings = parseIdentity(
+        registrationSettingsResponseSchema,
+        await call('/system/registration', 'PATCH', parsed.data),
+      ).settings;
+      if (settings.version <= input.version) throw new IdentityError('protocol');
+      return settings;
+    },
     roles: async () => parseIdentity(rolePageSchema, await call('/roles')).items,
     readRole: async (id) => {
       if (!identifierSchema.safeParse(id).success) throw new IdentityError('validation');

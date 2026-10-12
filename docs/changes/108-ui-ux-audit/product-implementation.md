@@ -4,7 +4,7 @@
 
 ## M1：产品信息架构与工作台
 
-状态：M1 已完成并通过完整门禁；用户已人工确认视觉变化，对应基线已更新。用户随后明确要求合并执行 M2–M3，正在实施；M4–M7 未开始。
+状态：M1 已完成并通过完整门禁；用户已人工确认视觉变化，对应基线已更新。M2–M5 功能已实施，当前进行累计联合验收，尚未完成最终门禁。用户最新目标已扩大为 M2–M7 合并执行，M6 选定注册策略，M7 覆盖全量验收。下文早期阶段记录保留当时状态，以最新联合验收进展为准。
 
 ### 问题、设计与改动
 
@@ -78,6 +78,25 @@ M2–M3 初始角色目录只读并支持分配现有角色；后续 M4 已将�
 
 ## M4–M5：角色授权、通知中心与审计（合并执行）
 
+### M2–M5 联合验收进展（2026-10-12）
+
+用户已明确恢复验收，范围是累计 M2–M5；此前“暂不检查”不再约束验收。本阶段仍未登记完成，下面区分已取得的证据与尚待收口的项目。
+
+1. **发现的问题**：缺少正式业务仓储、可变角色授权、服务端通知与审计契约。首轮门禁发现 SearchBox 回调名、PageHeader 必填描述、类型 import 与测试文件空数组访问错误，已修复。产物预算暴露 Shell 错误类型入口与页面参数解析同时带入全量业务 Schema；已分离纯渲染契约和按需校验，但最大路由仍超预算。
+2. **复用**：现役 Cookie/CSRF/Auth、state-foundation、Plugin/Next 路由生成、Page/Section/Collection、DataTable、FoundationForm、正式字段、ConfirmDialog、离开保护、i18n、通知反馈和 HeroUI Focus/Overlay。没有更换基础框架或降低规则。
+3. **页面功能**：用户与个人账户、角色与权限目录、角色成员关系、完整通知及详情、只读审计查询/详情；导航、全局搜索、工作台和账户菜单接入同一产品数据关系。
+4. **设计原因**：采用当前 Surface × Web Host 边界，具体 Product Port 共享模型，Host 承担请求/仓储；使用固定详情 URL + id query 保持静态部署。渲染入口 `/identity/runtime` 不加载 Schema，数据 Adapter 和参数/表单操作按需加载同一 Schema，保留全部校验。页签关闭时不加载显示模块；通知抽屉首次打开时加载并保留实例，让 HeroUI 继续管理关闭动效与焦点。
+5. **Mock/API**：17 项当前契约测试通过，覆盖两种 Adapter 的用户/角色、有效授权变化、保护规则、通知隔离/批量、成功/失败审计、v1/v2 迁移、写入失败、网络与协议错误及并发创建。Mock 同文档写入新增队列，Web Locks 可用时再串行跨文档写入；无 Web Locks 不承诺跨文档强一致。Backend 浏览器契约用例已通过真实 Adapter/UI 的受控 HTTP 请求，确认 CSRF、409 草稿保留/重新读取、角色创建、通知和审计，以及不写 auth-mock。它不是实际后端服务联调。
+6. **浏览器操作**：完整 Mock 用户创建→编辑→角色创建/分配→成员查询→审计列表/详情→通知全部已读与顶部同步→新用户凭据登录→获授权访问审计→用户越权拒绝→个人资料保存/刷新/账户菜单同步已通过。受限账户入口隐藏/直达拒绝、自己的通知和账户也通过。中文 Light/英文 Dark 在 390/1440 的 11 个页面共 44 次无横向溢出、Axe AA 与证据截图检查通过；后续加强到等待数据骨架退出，当前源码的复查已启动。新测试中修正了导航未提交就 reload、模糊重复标题定位及冷编译导航等待，未放宽视觉差异阈值。
+7. **未完成/风险**：首轮完整 check 通过静态、类型和 420 项单元测试，构建曾因新增测试文件类型错误失败；修复后生产构建成功。最新已测首页 gzip 378886 bytes，CSS 48440 bytes，最大路由 `/page-archetypes/resource-list` gzip 445009 bytes，超过 440320 bytes 预算约 4.6 KiB。预算仍失败，未提高限额。新源码的完整 check 与工作台/页签/管理页面复查已启动；全量浏览器、视觉审阅和最终格式/文档检查未收口，不能宣称无回归。
+8. **下一阶段依赖**：先完成 M2–M5 联合验收、预算修复及人工视觉确认；真实后端依据契约联调。M6 的系统级配置需要明确实际配置范围，不在当前验收中预造配置项。
+
+当前过程日志位于任务主机 TEMP 的 `m25-*` 文件，测试证据位于 `test-results/playwright/`；收口后将最终结果与正式审阅证据归档到本 change 下。过程通过成绩只对应当时源码，后续修改必须由最终门禁重新确认。
+
+当前源码的管理/工作台/页签联合浏览器复查 **11/11 通过**（`m25-browser-current.txt`），其中响应式与 Axe 在数据骨架退出后扫描，覆盖中文 Light/英文 Dark。Backend 浏览器契约 **1/1 通过**（`m25-browser-backend.txt`）。新 fixture 的未使用 password 解构变量已移除，不保存或输出密码。一次并行门禁扫描命中了 Playwright 活跃 trace 的临时 CSS，属于运行顺序冲突；浏览器已结束后重新启动顺序门禁，没有添加排除规则。
+
+全量浏览器回归本轮结果为 **341/348 通过、7 项失败**（见 `evidence/product-m25/browser-full-first.txt`），不作为最终通过证据。两项导航视觉基线存在差异，尚未人工确认或更新。其余失败涉及认证恢复前读取标题/布局、Backend 认证 fixture 将新增 GET access 误记为写请求，以及磁盘耗尽导致缓存/trace 写入失败；另见旧 Reference 路由模块解析报错，需在环境恢复后复查。已修正等待应用导航就绪的采样条件，并为认证 fixture 增加有效 access 响应及严格 HTTP method/path 分类，保留原断言。停止本任务的 4173 开发服务后，将约 14 GB 的 `.next/dev` 缓存迁移到 `C:\Users\xiaol\.codex\attachments\m25-next-cache-20261012`，D 盘可用空间恢复至约 14 GB；没有删除失败日志或修改门禁规则。5 个非视觉失败用例正在补跑。
+
 2026-10-12 用户指令：“先不检查门禁等审查，直接继续m4 ~ m5”。本轮直接实施，不开展浏览器验收、测试、Lint、类型检查、构建、预算或视觉基线审查；以下是源码实现记录，不代表阶段验收通过。M2–M3 尚未收口的验收继续保留，M6–M7 未展开。
 
 ### 现役能力复用与最小扩展
@@ -118,6 +137,71 @@ Host 为每次 Mock 请求绑定开始时的操作人，异步密码摘要或数
 
 本轮功能代码及下列 REST 契约已落地；未新增“全绿”证据，未更新视觉基线，未部署。桌面/移动/键盘/Axe、Mock 完整任务、Backend fixture 与真实联调、类型/构建/性能预算仍待后续验收。既有 M1 的通过记录只证明 M1，不覆盖本轮改动。
 
+## M6 范围确认与实施依据（2026-10-12）
+
+用户最新目标为 M2–M7，并明确选择“注册策略：是否开放注册、注册账号默认角色”。源码核实：现役 `/register` 具备完整表单与 Mock/Backend 注册行为；Mock 的 `saveAccount` 在同一业务数据库写入账户及用户，注册默认 viewer 由 `fromIdentity` 固定，尚无系统级可修改策略。现役 `/settings` 为个人偏好，不应承担管理员配置。
+
+M6 将基于真实注册场景增加独立系统配置入口、受权限限制的读取/版本化更新、关闭注册的影响确认、未保存保护及冲突恢复。公开注册策略只暴露注册可用状态，默认角色配置及管理员信息不向匿名用户暴露；默认角色在注册提交时由 Mock 仓储或 Backend 判定，不接受客户端指定注册权限。老版本数据库迁移保留当前开放注册 + viewer 的行为，已有账户不随策略变更自动改角色。配置成功/失败需纳入现役审计与反馈。真实 Backend 仍按明确契约待联调，不以 fixture 代替实际服务验收。
+
+环境恢复后的非视觉补跑结果：滚动呈现、四级视口 Archetype、顶部进度条及 Backend 认证 **4/4 通过**；页面层级在设置 10 路由冷编译总时限后 **1/1 通过**（原页面断言不变）。两项导航视觉差异再次复现，已归档对照图，未更新基线。M6 实施、性能预算、最终全量门禁及人工视觉确认仍未完成。
+
+### M6 注册策略实现与契约
+
+新增独立 `/system-settings` Plugin（当前生成 15 Plugins / 53 Routes），复用 Page/Section、FoundationForm、SelectField、SwitchField、ConfirmDialog、FormActions、离开保护及统一反馈。`/settings` 继续作为个人偏好。管理员可以读取、版本化保存注册开关和默认角色；只读授权不能保存；无权限的导航与直接访问均受控。409 保留编辑输入并允许显式重新读取。表单 reset 后后续编辑仍启用未保存保护。
+
+| Method | Path                        | 权限              | 请求/响应                                                                                                               |
+| ------ | --------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/auth/registration-policy` | 匿名可读          | `{ "enabled": true }`，严格只含公开可用状态                                                                             |
+| GET    | `/system/registration`      | `settings.read`   | `{ "settings": { "enabled": true, "defaultRoleId": "viewer", "version": 1, "updatedAt": "2026-10-12T00:00:00.000Z" } }` |
+| PATCH  | `/system/registration`      | `settings.update` | body `{ "enabled": false, "defaultRoleId": "viewer", "version": 1 }`；返回 `{settings}`，version 必须增加               |
+
+以上路径均基于已有 API base，管理写请求沿用 Cookie/CSRF、no-store、15 秒超时和 Schema 校验。PATCH 的 version 必须匹配当前记录，否则 409；未知或不允许的角色 422；无权限 403；匿名管理请求 401。默认角色必须存在，权限不得超过操作人的有效权限，且不能包含 `users.roles / roles.create / roles.update / settings.update`，避免公开注册获得授权管理或系统写能力。已被选为注册默认值的角色不得再添加这些权限；管理员需先选择另一个合适的默认角色。
+
+`POST /auth/register` 不新增客户端 roleId/permissions 字段：服务端在提交时检查注册开关并分配当时的默认角色。关闭注册必须拒绝请求，浏览器隐藏表单只改善体验，不是授权机制；禁止用管理员创建用户接口绕过公开注册策略。策略变更不修改已注册用户角色，管理员创建账号继续遵守已有创建权限规则。
+
+Mock 数据库沿用原 key，v4 迁移保留 v1/v2/v3 记录，默认策略为开放 + viewer。只有迁移后的受保护 administrator 角色补入 `settings.read/update`，其他角色不自动提权。策略成功写入、通知和 `settings.update` 审计单次原子提交；拒绝、校验及冲突写入失败审计，不改变策略。公开注册在同一串行写队列内再次校验当前开关/角色，解决读取策略后被关闭的竞态。匿名页策略读取失败提供重试；不提供账号角色或管理员配置信息。
+
+已取得证据：TypeScript、Lint 通过；两种 Adapter 累计 **22 项契约测试通过**，包含策略实际角色分配、关闭拒绝、已有角色不变、冲突与失败审计、权限拒绝、高权限角色保护和 v3 保真迁移。Backend 配置 UI/CSRF、刷新恢复与原有 3 项认证浏览器用例 **4/4 通过**；Mock 注册策略完整流程 **1/1 通过**，包含初始 Axe AA、关闭注册、匿名页无表单、重新开放 + operator、新账号进入用户管理且直达系统配置被拒绝。首轮 Switch 测试点击隐藏 input 被可见 label 拦截，改为键盘 Space 和可见标签点击；末次拒绝标题断言改为现役“没有操作权限”。均未改变组件行为或降低视觉阈值。最终全量门禁、性能预算、窄屏/深色/英文和新增配置页边界验收仍待收口。真实后端未提供，全部新增 REST 仍为待联调契约，不能把受控 HTTP fixture 称为真实服务验收。
+
+## M7 联合验收与性能收口（2026-10-12）
+
+首轮 M6 后最大路由 gzip 445763 bytes，超预算 5443 bytes。评估全部消费者后，先将 Host 离开确认与 Reference 批量导出确认改为首次请求加载，保留导航 resolver、确认语义和使用后的组件实例；最大路由降至 444413 bytes，仍超预算。随后将 UI Adapter 的 FeedbackProvider 拆分为同步 HeroUI ToastQueue 与首次反馈加载的内部 Region，未改动 Toast anatomy/Portal/Focus/Token。全局真实 Provider 位于 Host，用户/角色/系统策略表单、Reference、UI Elements 与偏好预览等消费者仍使用同一个 useFeedback Contract。完整门禁要求 Suspense 不能使用空 fallback，因而 Host/Reference 确认加载及 Toast 首次加载均增加正式 BusyIndicator，放入既有语义层级的固定浮层，不改变页面空间；Provider 增加由装配方本地化的 loadingLabel，Host 和唯一直接测试消费者均同步。
+
+公共组件变更前，实际进入 [TailAdmin Notification](https://react-demo.tailadmin.com/notifications) 复核 Announcement、带关闭/操作的 Toast、成功/信息/警告/错误通知，并实测关闭（证据 `evidence/product-m25/tailadmin-notification-calibration.png`）；只校准层级和操作规律，没有复制组件、样式或素材进产品。项目 `/ui-elements/feedback` 仍使用同一 Provider 与原有视觉。
+
+初始拆分的性能门禁通过：首页 gzip **371518 bytes**，最大路由 `/page-archetypes/resource-list` **437661 bytes**，低于 **440320 bytes** 限额；CSS **48440 bytes**，最大 chunk **84658 bytes**。初始性能修复并未删除业务功能、取消 Schema 校验或修改预算。
+
+当前定向证据：离开保护、批量导出取消/直接执行、复制反馈及收纳偏好、3 秒/8 秒 Toast 时长 **10/10 浏览器通过**；Toast 打开态 Axe、Toast/Destructive Confirm/Compact 的既有视觉基线通过；Backend 配置 409 保留 draft、取消确认、显式读取最新值、重新保存和刷新恢复通过。系统策略矩阵在 320/768/1440/2048、中文 Light/英文 Dark 共 8 个场景验证 Page、禁用高权限选项的下拉框、确认框 Axe AA、键盘焦点、取消保留草稿、重置恢复与截图。首轮在 Modal 入场中采样得到临时对比度 4.45:1，改为调用现役 waitForVisualReadiness 等待有限动效完成后通过；未改颜色、标准或扫描规则。
+
+统一记录缺失文案从“用户”改为“记录”，适用于用户、角色、通知关联和审计详情；Auth README 同步 v4 及注册策略真实职责。注册配置的错误契约补齐 enabled/defaultRoleId 字段。最新完整 pnpm check、累计浏览器回归及新增导航的人工视觉确认仍未收口，以上是定向证据，不能替代最终验收。
+
+用户已审阅 `evidence/product-m25/navigation-review.html` 的 M2–M6 桌面/手机对照，明确回复“认可导航变化，更新这两项基线”。仅更新 `surface-shell-parent-navigation` 与 `mobile-navigation-open` 两项，使用获准的原始实际截图，没有提高 diff 阈值。全量回归随后还发现两项收缩侧栏 Flyout 截图差异；交互、键盘与焦点断言通过，额外基线仍待完整清单审阅，没有随本次批准一起更新。
+
+### 累计 M2–M7 本轮全量结果与剩余视觉审阅
+
+完整 `pnpm check` 通过 Foundation、Architecture、Dependency、Codegen、Lint、TypeScript、**427 项单元测试**、生产构建与性能预算。包含正式 BusyIndicator fallback 的当前产物：首页 gzip **371650 bytes**、最大路由 **437832 bytes**、CSS **48460 bytes**、最大 chunk **84658 bytes**；所有预算保持原限额。全量浏览器 **347/350 通过**，3 项失败均为导航截图差异，没有其他断言失败；其中展开导航测试在用户批准并更新之前已经执行，手机导航在更新之后执行并通过。该次命令仍以失败退出，不是最终全绿证据。完整日志与 96 项浏览器产物归档在 `evidence/product-m25/m7-check-before-visual-review.txt`、`evidence/product-m25/m7-full-before-visual-review/`。独立格式和文档检查通过。
+
+收缩侧栏新增菜单后，Page Archetypes 首次位于视口下边界之外。诊断复现 Playwright 自动定位使侧栏 scrollTop=299、主页面 scrollY=52；在导航容器内先将被裁剪条目滚入视口后再 hover，侧栏同样滚动而主页面 scrollY=0。测试按此流程修正，并增加主页面保持顶部的断言；未修改产品布局或导航组件。剩余两张截图需按修正后的真实状态审阅，再决定是否更新；未批准的基线继续保留。
+
+修正后定向复测 **3/4 通过**（`evidence/product-m25/m7-navigation-final-review.txt`）：获准的展开导航与手机打开态均通过；兄弟菜单切换通过原基线，未更新该 PNG。唯一失败是 Hover Flyout 的截图差异，所有后续悬停/点击/Enter/Escape/焦点恢复断言通过。触发器随新导航项下移，浮层继续由现役视口约束定位；主页面 scrollY=0。最终剩余视觉清单已集中到 `navigation-review.html` 的唯一待确认项，使用 `m27-surface-shell-compact-flyout-*` 原始对照，不纳入此前两项授权。
+
+用户随后完整审阅剩余清单，明确回复“认可完整清单，更新该基线并统一完成最终门禁”。已将 `m27-surface-shell-compact-flyout-actual.png` 原样更新为唯一剩余的 `surface-shell-compact-flyout` 基线；兄弟菜单切换原基线保持不变，全部 diff 阈值保持不变。源码与基线冻结后，一次性启动最终完整 `pnpm check`；本记录的最终通过状态将在该命令结束后补充。
+
+获批后的全量运行通过同一静态/单元/构建/预算门禁，浏览器 **348/350 通过**（`m7-check-approved-first.txt`）；两项失败分别为 warm 导航进度条观察过晚、UI Elements 目录入场尚未稳定时截图。Trace 中进度条确有 pending/completing，原测试等待目标标题后再轮询，错过短暂周期；改为导航前逐帧采集真实尺寸/位置/容器及 fill opacity，并保留最终退出断言。视觉等待补充可见 reveal item 的观察器完成和有限动效退出，UI Elements 在契约目录可读后再次等待。没有修改产品 Motion、放宽像素断言或更新额外基线。相关管理/注册策略/进度条/全部视觉场景统一复测 **22/22 通过**（`m7-batch-sampling-verification.txt`），随后针对原时序失败重复 warm 用例，再执行最终完整门禁。原始失败现场及复测产物保存在对应 ZIP；早期完整现场原始包为 `m7-full-before-visual-review-original.zip`，展开的 JSON/Markdown 只按仓库格式规范调整空白。
+
+warm 用例连续 **5/5 通过**（`m7-warm-progress-repeat.txt`），像素可见与最终退出断言均保留。之后一次性重新执行完整 `pnpm check`，期间不修改源码、视觉基线、测试阈值或预算。
+
+累计交付说明：
+
+1. **发现与处理的问题**：业务管理缺口、授权变更后的实际访问、通知来源一致性、失败审计、版本冲突草稿、旧数据库迁移、关闭注册提交竞态，以及 Shell 常驻加载全量 Schema/确认框/Toast Region 导致的预算超限均已处理。全部导航视觉变化已人工确认。
+2. **已有能力复用**：Product Identity Port、Cookie/CSRF 请求层、state-foundation、Plugin/Next 装配、Page/Section/Collection、DataTable、FoundationForm、正式字段、ConfirmDialog、离开保护、HeroUI Overlay/Focus、i18n 和统一反馈。没有新增平行 UI 库、Router、全局 Token 或业务 CSS。
+3. **页面与功能**：用户列表/创建/编辑/详情/状态/角色分配、个人账户、角色列表/编辑/详情/成员/权限目录、完整通知与详情、只读审计与详情、独立系统注册策略；工作台、顶部通知、导航与全局搜索连到同一数据关系。现为 15 Plugins / 53 Routes，既有路由保留。
+4. **设计与实现理由**：保留 Surface × Runtime 边界和固定详情 URL，业务 Port 共享具体产品契约，Host 承担仓储与 HTTP。系统配置独立于个人偏好，公开注册只读可用状态，角色由提交时策略决定。按需加载只改变加载时机，继续使用现役 Schema、HeroUI 和反馈实现。
+5. **Mock 与 API**：Mock v4 已实现可持久化业务关系、版本化更新、迁移与串行提交；两种 Adapter 的 22 项契约测试通过。Backend UI 受控 HTTP 流程通过，证明真实 Adapter 的请求/CSRF/响应校验及失败恢复，不代表实际服务器验收。所有新增后端 endpoint **待联调**。
+6. **实际浏览器验证**：完整管理任务、授权变化/受限身份、自己的通知、个人资料同步、筛选返回、已读同步、审计详情、注册关闭/开放/默认角色、409 保留与重新读取、保存/取消/重置/刷新、未保存离开与页签关闭、键盘焦点、Axe AA、多视口、中文 Light/英文 Dark、动效与持久化；旧开发中心、Reference、全部 UI Element Family 和现役浮层回归也完成本轮扫描。
+7. **未完成与风险**：人工视觉确认已收口，更新后的最终完整 `pnpm check` 正在进行，不能提前宣布 M7 无回归。实际后端、生产授权/审计可信性/事务和通知保留策略待联调；无 Web Locks 的环境不承诺 Mock 跨文档强一致。当前未实现服务端实时通知推送，完整 inbox 规模需后端确认。
+8. **下一阶段依赖**：先收口最终完整门禁；随后依照本文件 REST 契约接入实际服务，确认新增路径、权限、版本错误语义、通知集合规模与审计保留政策。无需为接入再引入新的页面架构。
+
 ## M2–M5 REST 对接契约（实现稿，待后端联调）
 
 源码 authority 为 `surfaces/src/identity/model.ts`、`apps/web/src/identity/backend-service.ts` 与既有 Auth Contract。当前没有真实管理后端，不声称这些新增 endpoint 已在线存在。
@@ -132,25 +216,25 @@ Host 为每次 Mock 请求绑定开始时的操作人，异步密码摘要或数
 
 以下路径相对 API Base URL。GET 成功 200、创建成功 201、PATCH 成功 200；通知已读成功为 204 空 body。返回体必须符合严格 Schema，不可随意加入字段。
 
-| 方法 / 路径                 | 权限与用途                             | 请求 / 响应                                                                            |
-| --------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------- |
-| GET `/auth/access`          | 当前有效账户                           | `{user, permissions}`；权限是角色授权并集                                              |
-| GET `/me`                   | 当前有效账户                           | `{user}`，必须等于当前会话 user ID                                                     |
-| PATCH `/me`                 | `account.update`                       | `{name,email,version}` → `{user}`；禁止 role/status/password 字段                      |
-| GET `/roles`                | 当前有效账户的可用角色目录             | `{items: Role[]}`；有 `roles.read` 或 `users.read` 可获完整目录，否则只返回自身角色    |
-| GET `/roles/:id`            | `roles.read`                           | `{role}`                                                                               |
-| POST `/roles`               | `roles.create`，且授权范围不能超出自身 | `{name,permissions}` → `{role}`                                                        |
-| PATCH `/roles/:id`          | `roles.update`，且授权范围不能超出自身 | `{name,permissions,version}` → `{role}`；系统角色/自己的角色拒绝                       |
-| GET `/users`                | `users.read`                           | 下述 Query → `{items,total,page,pageSize}`                                             |
-| GET `/users/:id`            | `users.read`                           | `{user}`                                                                               |
-| POST `/users`               | `users.create`                         | `{name,email,password,roleIds,status}` → `{user}`                                      |
-| PATCH `/users/:id`          | `users.update`                         | `{name,email,version}` → `{user}`                                                      |
-| PATCH `/users/:id/status`   | `users.status`                         | `{status,version}` → `{user}`                                                          |
-| PATCH `/users/:id/roles`    | `users.roles`，授权范围不能超出自身    | `{roleIds,version}` → `{user}`                                                         |
-| GET `/notifications`        | 当前有效账户，只返回自己的通知         | `{items: ProductNotification[]}`，新到旧；完整当前 inbox，前端分页/筛选                |
-| PATCH `/notifications/read` | 当前有效账户，只更新自己的记录         | `{ids: string[]}`（1–200，不重复）→ 204；已读操作幂等，未知/别人的 ID 拒绝，不部分提交 |
-| GET `/audit-logs`           | `audit.read`                           | 下述 Query → `{items,total,page,pageSize}`，时间降序并用 ID 决定并列顺序               |
-| GET `/audit-logs/:id`       | `audit.read`                           | `{record}`；没有前端编辑/删除 endpoint                                                 |
+| 方法 / 路径                 | 权限与用途                             | 请求 / 响应                                                                                          |
+| --------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| GET `/auth/access`          | 当前有效账户                           | `{user, permissions}`；权限是角色授权并集                                                            |
+| GET `/me`                   | 当前有效账户                           | `{user}`，必须等于当前会话 user ID                                                                   |
+| PATCH `/me`                 | `account.update`                       | `{name,email,version}` → `{user}`；禁止 role/status/password 字段                                    |
+| GET `/roles`                | 当前有效账户的可用角色目录             | `{items: Role[]}`；有 `roles.read`、`users.read` 或 `settings.read` 可获完整目录，否则只返回自身角色 |
+| GET `/roles/:id`            | `roles.read`                           | `{role}`                                                                                             |
+| POST `/roles`               | `roles.create`，且授权范围不能超出自身 | `{name,permissions}` → `{role}`                                                                      |
+| PATCH `/roles/:id`          | `roles.update`，且授权范围不能超出自身 | `{name,permissions,version}` → `{role}`；系统角色/自己的角色拒绝                                     |
+| GET `/users`                | `users.read`                           | 下述 Query → `{items,total,page,pageSize}`                                                           |
+| GET `/users/:id`            | `users.read`                           | `{user}`                                                                                             |
+| POST `/users`               | `users.create`                         | `{name,email,password,roleIds,status}` → `{user}`                                                    |
+| PATCH `/users/:id`          | `users.update`                         | `{name,email,version}` → `{user}`                                                                    |
+| PATCH `/users/:id/status`   | `users.status`                         | `{status,version}` → `{user}`                                                                        |
+| PATCH `/users/:id/roles`    | `users.roles`，授权范围不能超出自身    | `{roleIds,version}` → `{user}`                                                                       |
+| GET `/notifications`        | 当前有效账户，只返回自己的通知         | `{items: ProductNotification[]}`，新到旧；完整当前 inbox，前端分页/筛选                              |
+| PATCH `/notifications/read` | 当前有效账户，只更新自己的记录         | `{ids: string[]}`（1–200，不重复）→ 204；已读操作幂等，未知/别人的 ID 拒绝，不部分提交               |
+| GET `/audit-logs`           | `audit.read`                           | 下述 Query → `{items,total,page,pageSize}`，时间降序并用 ID 决定并列顺序                             |
+| GET `/audit-logs/:id`       | `audit.read`                           | `{record}`；没有前端编辑/删除 endpoint                                                               |
 
 创建用户的非 `viewer` 初始角色额外需要 `users.roles`，初始 disabled 需要 `users.status`。禁用账户不能继续登录/恢复会话；角色、状态、个人资料和邮箱变更在同一身份数据关系内生效。授权变化对未来请求立即生效，不仅改变侧栏。
 
@@ -159,10 +243,10 @@ Host 为每次 Mock 请求绑定开始时的操作人，异步密码摘要或数
 - Identifier：1–100 位 `[A-Za-z0-9][A-Za-z0-9_.:-]*` opaque ID；姓名/角色名称 trim 后 1–80 字符；邮箱 trim/lowercase 后有效邮箱、最多 254 字符；密码仅创建请求，12–128 字符。
 - User：`id,name,email,status,roleIds,version,createdAt,updatedAt`；status=`active|disabled`；roleIds 为不重复有效 ID，1–20 项；version 为正整数；时间是 UTC ISO datetime。
 - Role：`id,name,permissions,protected,version,createdAt,updatedAt`。permissions 是下述受控 code 的不重复集合，允许空集；protected=true 不可变。修改必须检查 version 并增加版本，不接受客户端 protected/id/time。
-- 权限目录：`users.read/create/update/status/roles`、`roles.read/create/update`、`account.update`、`audit.read`（斜线表示多个独立 code）。资源与操作在 UI 分组展示；角色的 permissions 是授权关系，access 是当前角色并集。只授予写权限不隐式赋予读权限，配置时应一并考虑所需读权限。
+- 权限目录：`users.read/create/update/status/roles`、`roles.read/create/update`、`account.update`、`audit.read`、`settings.read/update`（斜线表示多个独立 code）。资源与操作在 UI 分组展示；角色的 permissions 是授权关系，access 是当前角色并集。只授予写权限不隐式赋予读权限，配置时应一并考虑所需读权限。`GET /roles` 在拥有 users.read、roles.read 或 settings.read 时可提供配置所需角色目录，否则只返回自己所属角色；完整角色详情继续检查 roles.read。
 - Users Query：`q` ≤100，`status=all|active|disabled`，`roleId=all|ID`，`sort=name|email|createdAt`，`direction=asc|desc`，`page=1..100000`，`pageSize=10|20|50`。缺省空搜索/all/all/name/asc/1/20；排序以 ID 作为稳定并列键；分页越界返回空 items 和真实 total。
 - Audit Query：`q` ≤100（匹配 actorId/actorName/objectId/objectName），`operation=all|受控操作`，`result=all|success|failure`，page/pageSize 同 Users；缺省空/all/all/1/20。
-- AuditRecord：`id,actorId,actorName,objectId,objectName,operation,createdAt,result,errorCode?`。operation 为用户 create/update/status/roles、account.update、roles.create/update；errorCode 仅失败记录。操作主体由服务端会话确定，客户端不能提交 audit record。
+- AuditRecord：`id,actorId,actorName,objectId,objectName,operation,createdAt,result,errorCode?`。operation 为用户 create/update/status/roles、account.update、roles.create/update、settings.update；errorCode 仅失败记录。操作主体由服务端会话确定，客户端不能提交 audit record。
 - ProductNotification：`id,ownerId,operation,objectId,objectName,category,createdAt,read`；category=`success|failure|system`；operation 同 Audit；接收人必须是当前账户。通知标题由语义 operation 和对象名在当前语言生成，Backend 响应不落入本地事件 Store。
 - 通知页面 URL Query（当前是前端集合筛选，不改变 GET `/notifications`）：`q` ≤100，`category=all|system|success|failure|warning|task`，`read=all|read|unread`，`page=1..100000`，每页 20 条。category 的 warning/task 来自已有应用事件；详情同时带 `id` 与列表 Query，返回时恢复筛选。页面 ID 的 `product:` 来源前缀不进入 REST body。
 - Page 响应：total 非负整数，page/pageSize 与请求一致；items 不超过 pageSize、ID 不重复且 total 不小于 items 长度。单实体响应 ID 必须匹配请求；写响应 version 必须增加。
@@ -173,7 +257,7 @@ HTTP 401 使认证过期；403 只呈现权限拒绝，不切换到 Mock；404 �
 
 错误体：`{"error":{"code":"conflict","reason":"stale-version","fields":[{"field":"version","reason":"stale"}],"requestId":"req-123"}}`。
 
-code 必须与 HTTP 状态一致；reason 可选 `duplicate-email|duplicate-role|stale-version|protected-user|protected-role|last-administrator`；fields 中 field 为 name/email/password/roleIds/permissions/status/version/query，reason 为 required/format/length/duplicate/protected/stale/unknown；requestId 最多 128 字符，不含秘密。409 保留当前输入并提供显式读取最新记录，不自动覆盖或重试。
+code 必须与 HTTP 状态一致；reason 可选 `duplicate-email|duplicate-role|stale-version|protected-user|protected-role|last-administrator`；fields 中 field 为 name/email/password/roleIds/permissions/status/version/query/enabled/defaultRoleId，reason 为 required/format/length/duplicate/protected/stale/unknown；requestId 最多 128 字符，不含秘密。409 保留当前输入并提供显式读取最新记录，不自动覆盖或重试。
 
 通知策略：用户/个人资料写入通知操作人及被操作用户；角色写入通知操作人及该角色现有成员，接收人去重。成功业务写入、版本更新、凭据/会话资料同步、通知生成与成功审计必须由后端原子提交。失败审计独立记录授权主体、受控对象 ID 与错误语义，禁止密码、凭据或原始 body。Mock 仅模拟这些业务规则，浏览器可修改的数据不提供生产授权与审计可信性。
 
@@ -186,3 +270,5 @@ code 必须与 HTTP 状态一致；reason 可选 `duplicate-email|duplicate-role
 查询失败日志：`GET /audit-logs?q=member-001&operation=users.roles&result=failure&page=1&pageSize=20`；返回只读分页。通知已读：`PATCH /notifications/read`，body `{"ids":["inbox-42"]}`，成功 204；读取集合后同一 ID 的 read=true。
 
 后端上线前需确认新增路径、权限 code、Inbox 的完整集合规模与保留政策、审计保留和分页稳定性。当前没有 SSE/WebSocket 推送或通知删除 API；未来服务端分页 inbox 需要同时约定准确未读总数与筛选/批处理语义，不能仅返回最近一页冒充完整集合。
+
+M6 实施后第一次完整门禁（evidence/product-m25/m67-check-first.txt）：Foundation/Architecture/Dependency/Codegen/Lint/TypeScript 通过，427 项单元测试通过，生产构建成功；performance:check 仍失败。最新首页 gzip 379640 bytes、CSS 48440 bytes、最大路由 /page-archetypes/resource-list gzip 445763 bytes，超过 440320 bytes 限额 5443 bytes。后续全量浏览器、格式/文档门禁尚未由该次 check 执行，M7 仍进行中。未修改预算或视觉阈值。

@@ -29,7 +29,6 @@ import { useCommandsPort } from '@community-go/plugin-framework/commands';
 import { BrandMark } from './brand-mark';
 import { useProductNavigation } from './use-product-navigation';
 import { NotificationCenter } from './notification-center';
-import { PageTabs } from './page-tabs';
 import { usePageTabsRecorder } from './use-page-tabs-recorder';
 
 const NavigationTree = lazy(() =>
@@ -45,6 +44,10 @@ const desktopSnapshot = () => window.innerWidth >= 768;
 const AccountMenu = dynamic(() => import('./account-menu').then((module) => module.AccountMenu), {
   ssr: false,
   loading: () => <Skeleton className="h-control w-control md:w-28" />,
+});
+const PageTabs = dynamic(() => import('./page-tabs').then((module) => module.PageTabs), {
+  ssr: false,
+  loading: () => <Skeleton className="h-control w-full" />,
 });
 
 const CommandMenu = dynamic(
@@ -113,6 +116,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const shellRef = useRef<HTMLDivElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const pageTabsPinned = useShellStore((state) => state.preferences.navigation.pageTabsPinned);
+  const pageTabsEnabled = useShellStore((state) => state.preferences.navigation.pageTabsEnabled);
   useEffect(() => {
     const chrome = chromeRef.current;
     const shell = shellRef.current;
@@ -337,9 +341,9 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               />
             </div>
           </header>
-          {pageTabsPinned ? <PageTabs /> : null}
+          {pageTabsEnabled && pageTabsPinned ? <PageTabs /> : null}
         </div>
-        {pageTabsPinned ? null : <PageTabs />}
+        {pageTabsEnabled && !pageTabsPinned ? <PageTabs /> : null}
         <main className="mx-auto max-w-screen-2xl p-4 sm:p-6 xl:p-8" id="main-content">
           <RouteTransition>
             <PluginLocaleProvider

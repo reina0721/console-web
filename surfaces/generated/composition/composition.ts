@@ -21,6 +21,7 @@ import { pluginI18nResources as pluginI18nResources_reference_resources } from '
 import { pluginI18nResources as pluginI18nResources_roles } from '../../plugins/roles/i18n';
 import { pluginI18nResources as pluginI18nResources_settings } from '../../plugins/settings/i18n';
 import { pluginI18nResources as pluginI18nResources_states } from '../../plugins/states/i18n';
+import { pluginI18nResources as pluginI18nResources_system_settings } from '../../plugins/system-settings/i18n';
 import { pluginI18nResources as pluginI18nResources_system_tools } from '../../plugins/system-tools/i18n';
 import { pluginI18nResources as pluginI18nResources_ui_elements } from '../../plugins/ui-elements/i18n';
 import { pluginI18nResources as pluginI18nResources_users } from '../../plugins/users/i18n';
@@ -43,6 +44,7 @@ export const generatedSurfaceI18nResources: TranslationResources = mergeTranslat
   pluginI18nResources_roles,
   pluginI18nResources_settings,
   pluginI18nResources_states,
+  pluginI18nResources_system_settings,
   pluginI18nResources_system_tools,
   pluginI18nResources_ui_elements,
   pluginI18nResources_users,

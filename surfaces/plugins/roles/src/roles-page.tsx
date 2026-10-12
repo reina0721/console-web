@@ -5,7 +5,7 @@ import { Page, PageHeader, Section } from '@community-go/surface-foundation/layo
 import { SearchBox } from '@community-go/ui-adapter/search-box';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { route, RouteLink } from '@community-go/plugin-framework/plugin';
-import { IdentityError, useIdentityPort } from '@community-go/surface/identity';
+import { IdentityError, useIdentityPort } from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import { IdentityModeNotice, IdentityQueryState } from '../../../src/identity/query-state';
 export function RolesPage() {
@@ -42,7 +42,7 @@ export function RolesPage() {
               label={t('roles.search')}
               placeholder={t('roles.search')}
               value={search}
-              onChange={setSearch}
+              onValueChange={setSearch}
             />
             {roles?.length === 0 ? (
               <p className="text-sm text-ink-muted">{t('roles.empty')}</p>

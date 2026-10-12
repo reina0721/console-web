@@ -17,11 +17,10 @@ import type { Preferences } from '@community-go/surface/preferences-model';
 import {
   useIdentityPort,
   IdentityError,
-  identifierSchema,
   type DirectoryUser,
   type DirectoryRole,
   type IdentityAccess,
-} from '@community-go/surface/identity';
+} from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import {
   IdentityQueryState,
@@ -223,6 +222,7 @@ export function UserDetailPage({ id }: Readonly<{ id: string | null }>) {
   const workbench = useWorkbenchPort();
   const preferences = usePreferencesPort<Preferences>().getSnapshot();
   const query = useIdentityQuery(`users.detail:${id ?? ''}`, async (service) => {
+    const { identifierSchema } = await import('../../../src/identity/model');
     const access = await service.access();
     if (!access.permissions.includes('users.read')) throw new IdentityError('forbidden');
     if (!id || !identifierSchema.safeParse(id).success) throw new IdentityError('not-found');

@@ -75,12 +75,12 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: '**/authentication-backend.spec.ts',
+      testIgnore: '**/*-backend.spec.ts',
       use: { browserName: 'chromium' },
     },
     {
       name: 'backend-contract',
-      testMatch: '**/authentication-backend.spec.ts',
+      testMatch: '**/*-backend.spec.ts',
       use: {
         browserName: 'chromium',
         baseURL: 'http://127.0.0.1:4174',

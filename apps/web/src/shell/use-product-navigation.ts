@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import { useProductAccess, type IdentityPermission } from '@community-go/surface/identity';
+import { useProductAccess, type IdentityPermission } from '@community-go/surface/identity/runtime';
 import type { NavigationGroup, NavigationNode } from '@community-go/types';
 import { combinedShellNavigationGroups } from './navigation';
 
@@ -9,6 +9,7 @@ function requiredPermission(id: string): IdentityPermission | null {
   if (id === 'users.root') return 'users.read';
   if (id === 'roles.root') return 'roles.read';
   if (id === 'audit.root') return 'audit.read';
+  if (id === 'system-settings.root') return 'settings.read';
   return null;
 }
 export function useProductNavigation() {

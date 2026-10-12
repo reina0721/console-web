@@ -11,7 +11,8 @@
     "./icon-components": "./src/navigation-icon-components.ts",
     "./generated/composition": "./generated/composition/composition.ts",
     "./generated/catalog": "./generated/catalog/catalog.ts",
-    "./plugin-routes/*": "./generated/plugin-routes/*.ts"
+    "./plugin-routes/*": "./generated/plugin-routes/*.ts",
+    "./identity/runtime": "./src/identity/runtime.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

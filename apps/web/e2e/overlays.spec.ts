@@ -234,6 +234,7 @@ test('普通 ConfirmDialog 与危险确认保持独立契约', async ({ page }) 
 test('Toast 与 Data 状态可通过确定性 URL 直接验证', async ({ page }) => {
   await page.goto('/ui-elements/feedback?overlay=toast');
   await expect(page.getByText('项目反馈已入队')).toBeVisible();
+  await assertOverlayAccessibility(page);
 
   await page.goto('/ui-elements/data?data=empty');
   await expect(page.getByText('当前筛选条件下没有 UI Element。')).toBeVisible();

@@ -208,7 +208,8 @@
         "./icon-components",
         "./generated/catalog",
         "./generated/composition",
-        "./plugin-routes/*"
+        "./plugin-routes/*",
+        "./identity/runtime"
       ],
       "authorityRoutes": [
         "/reference-resources",

@@ -4,16 +4,16 @@ import { Page, PageHeader, Section } from '@community-go/surface-foundation/layo
 import { route, RouteLink } from '@community-go/plugin-framework/plugin';
 import {
   IdentityError,
-  identifierSchema,
   defaultUserQuery,
   useIdentityPort,
-} from '@community-go/surface/identity';
+} from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import { IdentityModeNotice, IdentityQueryState } from '../../../src/identity/query-state';
 export function RoleDetailPage({ id }: Readonly<{ id: string | null }>) {
   const { t, locale } = useFrontendTranslation();
   const port = useIdentityPort();
   const result = useIdentityQuery(`role:${id}`, async (service) => {
+    const { identifierSchema } = await import('../../../src/identity/model');
     if (!identifierSchema.safeParse(id).success || !id) throw new IdentityError('not-found');
     const access = await service.access();
     if (!access.permissions.includes('roles.read')) throw new IdentityError('forbidden');

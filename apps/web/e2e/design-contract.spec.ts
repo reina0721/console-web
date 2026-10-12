@@ -25,9 +25,12 @@ const contractPages = [
 ] as const;
 
 test('代表性页面保持统一 Page Hierarchy（单 h1 + 导航 + main）', async ({ page }) => {
+  test.setTimeout(120_000); // Ten routes may compile independently in a fresh dev cache.
   for (const { path, label } of contractPages) {
     await page.goto(path);
     await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
+    // Hydration also covers the authentication surface; measure the restored application.
+    await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible();
 
     // 恰一个 h1（页面标题来自 PageHeader，不重复、不缺失）
     const h1s = page.getByRole('heading', { level: 1 });

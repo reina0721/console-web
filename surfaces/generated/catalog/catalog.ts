@@ -15,6 +15,7 @@ export const generatedRouteCatalog: RouteCatalog = {
     { pluginId: 'roles', mount: '/roles' },
     { pluginId: 'settings', mount: '/settings' },
     { pluginId: 'states', mount: '/states' },
+    { pluginId: 'system-settings', mount: '/system-settings' },
     { pluginId: 'system-tools', mount: '/system-tools' },
     { pluginId: 'ui-elements', mount: '/ui-elements' },
     { pluginId: 'users', mount: '/users' },
@@ -314,6 +315,14 @@ export const generatedRouteCatalog: RouteCatalog = {
       path: '',
       segments: [],
       pattern: '/states',
+      paramNames: [],
+    },
+    {
+      routeId: 'system-settings',
+      pluginId: 'system-settings',
+      path: '',
+      segments: [],
+      pattern: '/system-settings',
       paramNames: [],
     },
     {
@@ -677,6 +686,21 @@ export const generatedRouteCatalog: RouteCatalog = {
             order: 70,
             iconId: 'states',
             routeId: 'states',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'system-settings',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'system-settings.root',
+            labelKey: 'systemSettings.nav',
+            groupId: 'management',
+            order: 40,
+            iconId: 'settings',
+            routeId: 'system-settings',
           },
         ],
       },

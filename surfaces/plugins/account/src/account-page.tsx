@@ -1,7 +1,7 @@
 'use client';
 import { Page, PageHeader, Section } from '@community-go/surface-foundation/layout';
 import { useFrontendTranslation } from '@community-go/i18n';
-import { useIdentityPort, IdentityError } from '@community-go/surface/identity';
+import { useIdentityPort, IdentityError } from '@community-go/surface/identity/runtime';
 import { DescriptionList } from '@community-go/ui-adapter/description-list';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import { IdentityQueryState, IdentityModeNotice } from '../../../src/identity/query-state';

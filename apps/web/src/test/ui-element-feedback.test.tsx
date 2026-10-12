@@ -28,7 +28,7 @@ describe('FeedbackProvider', () => {
   it('只通过项目契约入队、执行动作并关闭 Toast', async () => {
     const onAction = vi.fn();
     render(
-      <FeedbackProvider closeLabel="关闭反馈">
+      <FeedbackProvider closeLabel="关闭反馈" loadingLabel="正在加载反馈">
         <FeedbackHarness onAction={onAction} />
       </FeedbackProvider>,
     );

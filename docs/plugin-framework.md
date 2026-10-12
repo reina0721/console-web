@@ -36,7 +36,7 @@ apps/web                Runtime Host：Next Router、Shell 装配、Host Navigat
 ### Surface 对 Host 只开放
 
 - `@community-go/surface/shell`
-- `@community-go/surface/preferences-model`、`/identity`（当前产品共享偏好、身份目录、角色授权、通知及只读审计模型与语义 Port/hook，Web 注入实现；不含 HTTP、Storage、Session 或后端授权实现）
+- `@community-go/surface/preferences-model`、`/identity`、`/identity/runtime`（当前产品共享偏好、身份目录、角色授权、通知及只读审计模型与语义 Port/hook，Web 注入实现；不含 HTTP、Storage、Session 或后端授权实现）
 - `@community-go/surface/icon-presentation`、`/icon-components`
 - `@community-go/surface/generated/composition`
 - `@community-go/surface/generated/catalog`

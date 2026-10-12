@@ -15,10 +15,10 @@ import { NOTIFICATION_CATEGORIES } from '@community-go/plugin-framework/notifica
 import { route, RouteLink, usePluginNavigation } from '@community-go/plugin-framework/plugin';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
-import { IdentityError, useIdentityPort } from '@community-go/surface/identity';
+import { IdentityError, useIdentityPort } from '@community-go/surface/identity/runtime';
 import { useProductInbox } from '../../../src/identity/use-inbox';
 import { useIdentityQuery } from '../../../src/identity/use-query';
-import { defaultInboxQuery, inboxQuerySchema, type InboxQuery } from './query';
+import { defaultInboxQuery, type InboxQuery } from './query-model';
 import {
   IdentityModeNotice,
   IdentityMutationError,
@@ -41,6 +41,7 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
     read: filters.read,
     page: String(filters.page),
   };
+  const [filterError, setFilterError] = useState<IdentityError | null>(null);
   const [search, setSearch] = useState(filters.q);
   const [filterFailure, setFilterFailure] = useState(false);
   const selected =
@@ -78,23 +79,32 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
       if (associatedRoute === 'users.detail') await service.read(associatedId);
       else if (associatedRoute === 'roles.detail') await service.readRole(associatedId);
       else if (associatedRoute === 'account') await service.me();
+      else if (associatedRoute === 'system-settings') await service.registrationSettings();
       return true;
     },
   );
   function apply(patch: Partial<InboxQuery>) {
-    const parsed = inboxQuerySchema.safeParse({ ...filters, ...patch });
-    if (!parsed.success) {
-      setFilterFailure(true);
-      return;
-    }
-    const next = parsed.data;
-    navigation.navigate(
-      route(
-        'notifications',
-        {},
-        { query: { q: next.q, category: next.category, read: next.read, page: String(next.page) } },
-      ),
-    );
+    setFilterError(null);
+    void (async () => {
+      const { inboxQuerySchema } = await import('./query');
+      const parsed = inboxQuerySchema.safeParse({ ...filters, ...patch });
+      if (!parsed.success) {
+        setFilterFailure(true);
+        return;
+      }
+      const next = parsed.data;
+      navigation.navigate(
+        route(
+          'notifications',
+          {},
+          {
+            query: { q: next.q, category: next.category, read: next.read, page: String(next.page) },
+          },
+        ),
+      );
+    })().catch((error: unknown) => {
+      setFilterError(error instanceof IdentityError ? error : new IdentityError('unavailable'));
+    });
   }
   const unavailable =
     id !== undefined && !selected && !inbox.loading ? new IdentityError('not-found') : null;
@@ -125,7 +135,7 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
         }
       />
       <IdentityModeNotice mode={port.mode} />
-      <IdentityMutationError error={inbox.failure} />
+      <IdentityMutationError error={inbox.failure ?? filterError} />
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-ink-muted">{t('shell.unreadCount', { count: inbox.unread })}</p>
         <Action variant="quiet" disabled={inbox.loading || inbox.pending} onPress={inbox.reload}>
@@ -203,7 +213,7 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
                   label={t('notifications.search')}
                   placeholder={t('notifications.search')}
                   value={search}
-                  onChange={(value) => {
+                  onValueChange={(value) => {
                     setSearch(value);
                     setFilterFailure(false);
                   }}
@@ -216,8 +226,9 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
                 label={t('notifications.category')}
                 value={filters.category}
                 onValueChange={(value) => {
-                  const parsed = inboxQuerySchema.shape.category.safeParse(value);
-                  if (parsed.success) apply({ category: parsed.data, page: 1 });
+                  const category = NOTIFICATION_CATEGORIES.find((item) => item === value);
+                  if (value === 'all') void apply({ category: 'all', page: 1 });
+                  else if (category) void apply({ category, page: 1 });
                 }}
                 options={[
                   { value: 'all', label: t('management.all') },
@@ -231,8 +242,8 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
                 label={t('notifications.state')}
                 value={filters.read}
                 onValueChange={(value) => {
-                  const parsed = inboxQuerySchema.shape.read.safeParse(value);
-                  if (parsed.success) apply({ read: parsed.data, page: 1 });
+                  if (value === 'all' || value === 'read' || value === 'unread')
+                    void apply({ read: value, page: 1 });
                 }}
                 options={[
                   { value: 'all', label: t('management.all') },

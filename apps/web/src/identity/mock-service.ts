@@ -1,5 +1,7 @@
 import {
   createUserSchema,
+  registrationSettingsInputSchema,
+  registrationRestrictedPermissions,
   roleInputSchema,
   updateRoleSchema,
   auditQuerySchema,
@@ -191,6 +193,45 @@ export function createMockIdentityService(currentUserId: () => string | null): I
     });
   }
   const operations: IdentityOperations = {
+    registrationSettings: async () => {
+      const database = await readMockDatabase();
+      actor(database, currentUserId(), 'settings.read');
+      return database.registrationSettings;
+    },
+    updateRegistrationSettings: async (input) => {
+      const parsed = registrationSettingsInputSchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      return mutateMockDatabase((database) => {
+        const access = actor(database, currentUserId(), 'settings.update');
+        if (database.registrationSettings.version !== parsed.data.version)
+          throw new IdentityError('conflict', 'stale-version');
+        const role = database.roles.find((candidate) => candidate.id === parsed.data.defaultRoleId);
+        if (
+          !role ||
+          role.permissions.some(
+            (permission) =>
+              !access.permissions.includes(permission) ||
+              registrationRestrictedPermissions.some((restricted) => restricted === permission),
+          )
+        )
+          throw new IdentityError('validation');
+        const settings = {
+          ...parsed.data,
+          version: parsed.data.version + 1,
+          updatedAt: new Date().toISOString(),
+        };
+        return {
+          database: recordMutation(
+            { ...database, registrationSettings: settings },
+            access.user,
+            'settings.update',
+            'registration-policy',
+            'Registration policy',
+          ),
+          result: settings,
+        };
+      });
+    },
     readRole: async (id) => {
       const database = await readMockDatabase();
       actor(database, currentUserId(), 'roles.read');
@@ -239,6 +280,13 @@ export function createMockIdentityService(currentUserId: () => string | null): I
         if (!prior) throw new IdentityError('not-found');
         checkVersion(prior, parsed.data.version);
         if (prior.protected) throw new IdentityError('conflict', 'protected-role');
+        if (
+          database.registrationSettings.defaultRoleId === id &&
+          parsed.data.permissions.some((permission) =>
+            registrationRestrictedPermissions.some((restricted) => restricted === permission),
+          )
+        )
+          throw new IdentityError('conflict', 'protected-role');
         if (access.user.roleIds.includes(id)) throw new IdentityError('conflict', 'protected-user');
         if (parsed.data.permissions.some((permission) => !access.permissions.includes(permission)))
           throw new IdentityError('forbidden');
@@ -335,7 +383,9 @@ export function createMockIdentityService(currentUserId: () => string | null): I
       const database = await readMockDatabase();
       actor(database, currentUserId());
       const access = actor(database, currentUserId());
-      return access.permissions.includes('roles.read') || access.permissions.includes('users.read')
+      return access.permissions.includes('roles.read') ||
+        access.permissions.includes('users.read') ||
+        access.permissions.includes('settings.read')
         ? database.roles
         : database.roles.filter((role) => access.user.roleIds.includes(role.id));
     },
@@ -511,6 +561,10 @@ export function createMockIdentityService(currentUserId: () => string | null): I
   }
   return {
     ...operations,
+    updateRegistrationSettings: (input) =>
+      audited('settings.update', 'registration-policy', () =>
+        operations.updateRegistrationSettings(input),
+      ),
     create: (input) => audited('users.create', 'new-user', () => operations.create(input)),
     update: (id, input) => audited('users.update', id, () => operations.update(id, input)),
     updateMe: (input) =>

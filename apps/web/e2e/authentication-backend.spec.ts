@@ -29,10 +29,35 @@ test('Backend mode uses CSRF/session API for login, restore and logout without M
             }
           : { status: 401 },
       );
-    } else {
+    } else if (path === '/api/auth/access' && request.method() === 'GET') {
+      await route.fulfill(
+        authenticated
+          ? {
+              json: {
+                user: {
+                  id: 'backend-review',
+                  name: 'Backend Review',
+                  email: 'backend@example.test',
+                  status: 'active',
+                  roleIds: ['viewer'],
+                  version: 1,
+                  createdAt: '2026-10-12T00:00:00.000Z',
+                  updatedAt: '2026-10-12T00:00:00.000Z',
+                },
+                permissions: ['account.update'],
+              },
+            }
+          : { status: 401 },
+      );
+    } else if (
+      request.method() === 'POST' &&
+      (path === '/api/auth/login' || path === '/api/auth/logout')
+    ) {
       writes.push({ path, csrf: request.headers()['x-csrf-token'], body: request.postData() });
       authenticated = path !== '/api/auth/logout';
       await route.fulfill({ status: 204 });
+    } else {
+      throw new Error(`Unexpected authentication request: ${request.method()} ${path}`);
     }
   });
   await page.goto('/settings');
@@ -97,6 +122,8 @@ test('Backend registration reports pending/success and failed logout keeps all p
   await context.route('**/api/auth/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/auth/csrf') await route.fulfill({ json: { token: 'register-csrf' } });
+    else if (path === '/api/auth/registration-policy')
+      await route.fulfill({ json: { enabled: true } });
     else if (path === '/api/auth/session')
       await route.fulfill(
         authenticated

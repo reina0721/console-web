@@ -23,7 +23,12 @@ NEXT_PUBLIC_AUTH_MODE=mock
 Mock 演示账户：`demo@community.test` / `CommunityDemo2026!`。可在 `/register` 创建
 演示账户；不要输入真实密码。注册记录只保存随机盐和 PBKDF2-SHA256 摘要（100000
 次迭代），不保存明文。模拟会话持续 30 分钟，刷新可恢复。客户端记录可任意修改，
-不是安全认证或服务器授权。账户持久化键为 `community-go.auth-mock`，version 1。
+不是安全认证或服务器授权。账户持久化键为 `community-go.auth-mock`，当前 version 4；
+v1/v2/v3 原地迁移，保留账户、会话及已有业务记录。注册提交在同一业务写队列内
+检查当前开放策略并分配默认角色，页面不会提交 roleId 或 permissions。
+公开注册页只读取 `/auth/registration-policy` 的 enabled 状态；系统策略读写由
+`/system/registration` 与 settings.read/update 权限管理。完整字段、版本冲突与后端
+授权责任见 [产品实施与 REST 契约](../../../../docs/changes/108-ui-ux-audit/product-implementation.md)。
 
 损坏记录和不兼容版本显示错误并保留原值，不静默重建。开发人员修复该记录或明确
 清除演示记录后可重试；清除会丢失本机演示账户。存储不可用显示独立错误。

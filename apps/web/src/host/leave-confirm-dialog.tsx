@@ -3,14 +3,17 @@
 import { useFrontendTranslation } from '@community-go/i18n';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
-import { ConfirmDialog } from '@community-go/ui-adapter/overlays';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { BusyIndicator } from '@community-go/ui-adapter/busy-indicator';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
   installBeforeUnloadGuard,
   setLeaveConfirmEnabled,
   setLeaveConfirmResolver,
 } from './leave-confirm';
+const ConfirmDialog = lazy(() =>
+  import('@community-go/ui-adapter/overlays').then((module) => ({ default: module.ConfirmDialog })),
+);
 
 /**
  * Host —— 离开确认对话框（composition root 安装一次）。
@@ -72,20 +75,28 @@ export function LeaveConfirmationGuard({ children }: Readonly<{ children: ReactN
     <>
       {children}
       {pendingMessage !== null && confirmLeaveEnabled ? (
-        <ConfirmDialog
-          cancelLabel={t('common.cancel')}
-          confirmLabel={t('common.leave')}
-          description={pendingMessage}
-          failureMessage=""
-          impact=""
-          isOpen
-          onOpenChange={(open) => {
-            if (!open) finish(false); // 关闭（Escape/背景）视为取消离开
-          }}
-          onConfirm={() => finish(true)}
-          title={t('shell.leaveConfirmTitle')}
-          triggerLabel={t('shell.leaveConfirmTitle')}
-        />
+        <Suspense
+          fallback={
+            <div className="pointer-events-none fixed inset-0 z-overlay grid place-items-center">
+              <BusyIndicator label={t('common.confirmLoading')} />
+            </div>
+          }
+        >
+          <ConfirmDialog
+            cancelLabel={t('common.cancel')}
+            confirmLabel={t('common.leave')}
+            description={pendingMessage}
+            failureMessage=""
+            impact=""
+            isOpen
+            onOpenChange={(open) => {
+              if (!open) finish(false); // 关闭（Escape/背景）视为取消离开
+            }}
+            onConfirm={() => finish(true)}
+            title={t('shell.leaveConfirmTitle')}
+            triggerLabel={t('shell.leaveConfirmTitle')}
+          />
+        </Suspense>
       ) : null}
     </>
   );

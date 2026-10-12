@@ -9,6 +9,8 @@ import {
   roleSchema,
   auditRecordSchema,
   productNotificationSchema,
+  registrationSettingsSchema,
+  registrationRestrictedPermissions,
   type DirectoryUser,
   type DirectoryRole,
   IdentityError,
@@ -19,6 +21,12 @@ import type { MockAccount } from '../auth/mock-adapter';
 
 export const MOCK_DATABASE_KEY = 'community-go.auth-mock';
 const seedDate = '2026-10-01T00:00:00.000Z';
+const defaultRegistrationSettings = {
+  enabled: true,
+  defaultRoleId: 'viewer',
+  version: 1,
+  updatedAt: seedDate,
+};
 export const mockRoles: readonly DirectoryRole[] = [
   {
     id: 'administrator',
@@ -100,6 +108,7 @@ const databaseSchema = z
     roles: z.array(roleSchema),
     auditRecords: z.array(auditRecordSchema),
     notifications: z.array(productNotificationSchema),
+    registrationSettings: registrationSettingsSchema,
   })
   .strict();
 export type MockDatabase = z.infer<typeof databaseSchema>;
@@ -122,12 +131,29 @@ function parseDatabase(value: unknown): MockDatabase {
     new Set(users.map((user) => user.id)).size !== users.length ||
     new Set(users.map((user) => user.email)).size !== users.length ||
     new Set(accounts.map((account) => account.user.email)).size !== accounts.length ||
-    users.some((user) => user.roleIds.some((id) => !roles.some((role) => role.id === id)))
+    users.some((user) => user.roleIds.some((id) => !roles.some((role) => role.id === id))) ||
+    !roles.some((role) => role.id === parsed.data.registrationSettings.defaultRoleId)
   )
     throw new AuthError('protocol');
   return parsed.data;
 }
 function migrateLegacy(value: unknown, version: number): MockDatabase {
+  if (version === 3) {
+    const prior = databaseSchema.omit({ registrationSettings: true }).safeParse(value);
+    if (!prior.success) throw new AuthError('protocol');
+    return parseDatabase({
+      ...prior.data,
+      registrationSettings: defaultRegistrationSettings,
+      roles: prior.data.roles.map((role) =>
+        role.id === 'administrator' && role.protected
+          ? {
+              ...role,
+              permissions: [...new Set([...role.permissions, 'settings.read', 'settings.update'])],
+            }
+          : role,
+      ),
+    });
+  }
   if (version === 2) {
     const prior = z
       .object({
@@ -144,6 +170,7 @@ function migrateLegacy(value: unknown, version: number): MockDatabase {
       roles: [...mockRoles],
       auditRecords: [],
       notifications: [],
+      registrationSettings: defaultRegistrationSettings,
     });
   }
   if (version !== 1) throw new AuthError('protocol');
@@ -166,6 +193,7 @@ function migrateLegacy(value: unknown, version: number): MockDatabase {
     roles: [...mockRoles],
     auditRecords: [],
     notifications: [],
+    registrationSettings: defaultRegistrationSettings,
   });
 }
 async function ready() {
@@ -179,13 +207,24 @@ async function ready() {
       roles: [...mockRoles],
       auditRecords: [],
       notifications: [],
+      registrationSettings: defaultRegistrationSettings,
     }),
     {
       name: MOCK_DATABASE_KEY,
-      version: 3,
+      version: 4,
       skipHydration: true,
       storage: createLocalStorage(),
-      partialize: ({ accounts, session, users, sequence, roles, auditRecords, notifications }) => ({
+      partialize: ({
+        accounts,
+        session,
+        users,
+        sequence,
+        roles,
+        auditRecords,
+        notifications,
+        registrationSettings,
+      }) => ({
+        registrationSettings,
         roles,
         auditRecords,
         notifications,
@@ -227,6 +266,9 @@ export async function readMockDatabase(): Promise<MockDatabase> {
   return parseDatabase((await ready()).getState());
 }
 
+// Serialize writes in this document as well as across documents when Web Locks are available.
+let pendingMutation: Promise<void> = Promise.resolve();
+
 /** One durable write for user/profile/credential changes; no partial success on persistence failure. */
 export async function mutateMockDatabase<T>(
   mutation: (database: MockDatabase) => Readonly<{ database: MockDatabase; result: T }>,
@@ -242,22 +284,43 @@ export async function mutateMockDatabase<T>(
     }
     return next.result;
   };
-  if (typeof navigator !== 'undefined' && navigator.locks)
-    return navigator.locks.request(MOCK_DATABASE_KEY, perform);
-  return perform();
+  const operation = pendingMutation.then(async () => {
+    if (typeof navigator !== 'undefined' && navigator.locks)
+      return await navigator.locks.request(MOCK_DATABASE_KEY, perform);
+    return await perform();
+  });
+  pendingMutation = operation.then(
+    () => undefined,
+    () => undefined,
+  );
+  return operation;
 }
 export function createDatabaseAuthRepository() {
   return {
     readAccounts: async (): Promise<readonly MockAccount[]> => (await readMockDatabase()).accounts,
     saveAccount: async (account: MockAccount) => {
       await mutateMockDatabase((database) => {
+        if (!database.registrationSettings.enabled) throw new AuthError('forbidden');
+        const defaultRole = database.roles.find(
+          (role) => role.id === database.registrationSettings.defaultRoleId,
+        );
+        if (
+          !defaultRole ||
+          defaultRole.permissions.some((permission) =>
+            registrationRestrictedPermissions.some((restricted) => restricted === permission),
+          )
+        )
+          throw new AuthError('forbidden');
         if (database.users.some((user) => user.email === account.user.email))
           throw new AuthError('account-exists');
         return {
           database: {
             ...database,
             accounts: [...database.accounts, account],
-            users: [...database.users, fromIdentity(account.user)],
+            users: [
+              ...database.users,
+              { ...fromIdentity(account.user), roleIds: [defaultRole.id] },
+            ],
           },
           result: undefined,
         };

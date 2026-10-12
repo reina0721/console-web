@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useIdentityPort } from './context';
-import { IdentityError, type IdentityPort } from './model';
+import { IdentityError } from './errors';
+import type { IdentityPort } from './model';
 
 /** Feature-owned async result; old requests never replace a different query or identity revision. */
 export function useIdentityQuery<T>(key: string, load: (port: IdentityPort) => Promise<T>) {

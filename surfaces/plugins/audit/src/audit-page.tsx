@@ -16,19 +16,23 @@ import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
 import {
   IdentityError,
-  auditQuerySchema,
   auditOperations,
   defaultAuditQuery,
   useIdentityPort,
   type AuditQuery,
-} from '@community-go/surface/identity';
+} from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
-import { IdentityModeNotice, IdentityQueryState } from '../../../src/identity/query-state';
+import {
+  IdentityModeNotice,
+  IdentityQueryState,
+  IdentityMutationError,
+} from '../../../src/identity/query-state';
 export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
   const { t, locale } = useFrontendTranslation();
   const port = useIdentityPort();
   const { navigate } = usePluginNavigation();
   const preferences = usePreferencesPort<Preferences>().getSnapshot();
+  const [filterError, setFilterError] = useState<IdentityError | null>(null);
   const [search, setSearch] = useState(query?.q ?? '');
   const result = useIdentityQuery(`audit:${JSON.stringify(query)}`, async (service) => {
     if (!query) throw new IdentityError('validation');
@@ -40,24 +44,30 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
   const page = query?.page ?? 1;
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / (query?.pageSize ?? 20)));
   function apply(patch: Partial<AuditQuery>) {
-    const parsed = auditQuerySchema.safeParse({ ...(query ?? defaultAuditQuery), ...patch });
-    if (!parsed.success) return;
-    const next = parsed.data;
-    navigate(
-      route(
-        'audit',
-        {},
-        {
-          query: {
-            q: next.q,
-            operation: next.operation,
-            result: next.result,
-            page: String(next.page),
-            pageSize: String(next.pageSize),
+    setFilterError(null);
+    void (async () => {
+      const { auditQuerySchema } = await import('../../../src/identity/model');
+      const parsed = auditQuerySchema.safeParse({ ...(query ?? defaultAuditQuery), ...patch });
+      if (!parsed.success) return;
+      const next = parsed.data;
+      navigate(
+        route(
+          'audit',
+          {},
+          {
+            query: {
+              q: next.q,
+              operation: next.operation,
+              result: next.result,
+              page: String(next.page),
+              pageSize: String(next.pageSize),
+            },
           },
-        },
-      ),
-    );
+        ),
+      );
+    })().catch((error: unknown) => {
+      setFilterError(error instanceof IdentityError ? error : new IdentityError('unavailable'));
+    });
   }
   return (
     <Page>
@@ -71,6 +81,7 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
         }
       />
       <IdentityModeNotice mode={port.mode} />
+      <IdentityMutationError error={filterError} />
       {result.error || !data ? (
         <IdentityQueryState error={result.error} retry={result.reload} />
       ) : (
@@ -87,7 +98,7 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
                 label={t('audit.search')}
                 placeholder={t('audit.search')}
                 value={search}
-                onChange={setSearch}
+                onValueChange={setSearch}
               />
               <Action type="submit">{t('identityProduct.search')}</Action>
             </form>
@@ -103,8 +114,11 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
                   })),
                 ]}
                 onValueChange={(operation) => {
-                  const parsed = auditQuerySchema.shape.operation.safeParse(operation);
-                  if (parsed.success) apply({ operation: parsed.data, page: 1 });
+                  if (operation === 'all' || auditOperations.some((value) => value === operation)) {
+                    const known = auditOperations.find((value) => value === operation);
+                    if (operation === 'all') void apply({ operation: 'all', page: 1 });
+                    else if (known) void apply({ operation: known, page: 1 });
+                  }
                 }}
               />
               <SelectField

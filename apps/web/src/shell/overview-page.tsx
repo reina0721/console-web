@@ -11,7 +11,7 @@ import { routeTargetResolver } from '../host/route-target-resolver';
 import { useShellStore } from '../state/use-shell-store';
 import { useWorkbenchStore } from '../state/use-workbench-store';
 import { useWorkspaceStore } from '../state/use-workspace-store';
-import { useProductInbox } from '@community-go/surface/identity';
+import { useProductInbox } from '@community-go/surface/identity/runtime';
 import { useNavigationTitle } from './use-navigation-title';
 import { NotificationCenter } from './notification-center';
 

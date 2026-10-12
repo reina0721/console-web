@@ -10,5 +10,4 @@ export const inboxQuerySchema = z
     page: z.number().int().min(1).max(100000),
   })
   .strict();
-export type InboxQuery = z.infer<typeof inboxQuerySchema>;
-export const defaultInboxQuery: InboxQuery = { q: '', category: 'all', read: 'all', page: 1 };
+export type { InboxQuery } from './query-model';

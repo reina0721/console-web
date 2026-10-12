@@ -13,4 +13,19 @@ export async function waitForVisualReadiness(page: Page) {
     });
     await Promise.all(entranceAnimations.map((animation) => animation.finished.catch(() => {})));
   });
+  // Hydration does not guarantee that IO has revealed every visible content item.
+  // Wait for that registration and any resulting finite motion without altering it.
+  await page.waitForFunction(() => {
+    const pendingVisibleItems = [...document.querySelectorAll('[data-reveal="pending"]')].some(
+      (element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < innerHeight;
+      },
+    );
+    const moving = document.getAnimations().some((animation) => {
+      const iterations = animation.effect?.getTiming().iterations;
+      return iterations !== Infinity && (animation.playState === 'running' || animation.pending);
+    });
+    return !pendingVisibleItems && !moving;
+  });
 }

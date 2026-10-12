@@ -175,6 +175,7 @@ function RuntimeProviders({ children }: Readonly<{ children: ReactNode }>) {
                 <LeaveConfirmationGuard>
                   <FeedbackProvider
                     closeLabel={t('common.close')}
+                    loadingLabel={t('common.feedbackLoading')}
                     toastDurationMs={toastDurationMs}
                   >
                     {hydrationIssue ? (

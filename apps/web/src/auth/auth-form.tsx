@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FoundationForm, useFoundationForm } from '@community-go/form-foundation';
 import { Page, PageHeader } from '@community-go/surface-foundation/layout';
 import { TextField, PasswordField } from '@community-go/ui-adapter/form-field';
@@ -11,6 +11,7 @@ import { useFrontendTranslation } from '@community-go/i18n';
 import { useAuth } from './context';
 import { AuthFrame } from './frame';
 import { safeReturnTo } from './contract';
+import { readRegistrationAvailability } from './registration-policy';
 import type { AuthFormValues } from './form-schema';
 import { AlertTriangle, CheckCircle2, Clock, Eye, EyeOff } from 'lucide-react';
 
@@ -21,6 +22,27 @@ export function AuthForm({ kind }: Readonly<{ kind: 'login' | 'register' | 'expi
   const params = useSearchParams();
   const target = safeReturnTo(params.get('returnTo'));
   const [registered, setRegistered] = useState(false);
+  const [availability, setAvailability] = useState<boolean | null>(null);
+  const [policyFailure, setPolicyFailure] = useState(false);
+  const [policyRetry, setPolicyRetry] = useState(0);
+  useEffect(() => {
+    if (!register) return;
+    let cancelled = false;
+    void readRegistrationAvailability().then(
+      (enabled) => {
+        if (!cancelled) {
+          setAvailability(enabled);
+          setPolicyFailure(false);
+        }
+      },
+      () => {
+        if (!cancelled) setPolicyFailure(true);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [register, policyRetry]);
   const visibilityIcons = {
     show: <Eye aria-hidden="true" className="size-4" />,
     hide: <EyeOff aria-hidden="true" className="size-4" />,
@@ -56,7 +78,29 @@ export function AuthForm({ kind }: Readonly<{ kind: 'login' | 'register' | 'expi
             icon={<AlertTriangle aria-hidden="true" className="size-4" />}
           />
         ) : null}
-        {registered ? (
+        {register && availability !== true && !registered ? (
+          <div role="status" className="space-y-4">
+            <p className="text-sm text-ink-muted">
+              {t(
+                policyFailure
+                  ? 'auth.policyFailure'
+                  : availability === false
+                    ? 'auth.registrationClosed'
+                    : 'auth.policyLoading',
+              )}
+            </p>
+            {policyFailure ? (
+              <Action
+                onPress={() => {
+                  setPolicyFailure(false);
+                  setPolicyRetry((prior) => prior + 1);
+                }}
+              >
+                {t('auth.policyRetry')}
+              </Action>
+            ) : null}
+          </div>
+        ) : registered ? (
           <div role="status" className="space-y-4">
             <AlertBanner
               tone="success"

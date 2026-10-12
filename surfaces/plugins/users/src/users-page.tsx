@@ -13,22 +13,26 @@ import { NavigationIcon } from '@community-go/surface/icon-presentation';
 import {
   useIdentityPort,
   IdentityError,
-  userQuerySchema,
   defaultUserQuery,
   type UserQuery,
   type DirectoryUser,
-} from '@community-go/surface/identity';
+} from '@community-go/surface/identity/runtime';
 import { route, RouteLink, usePluginNavigation } from '@community-go/plugin-framework/plugin';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
 import { useIdentityQuery } from '../../../src/identity/use-query';
-import { IdentityQueryState, IdentityModeNotice } from '../../../src/identity/query-state';
+import {
+  IdentityQueryState,
+  IdentityModeNotice,
+  IdentityMutationError,
+} from '../../../src/identity/query-state';
 
 export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
   const port = useIdentityPort();
   const { t, locale } = useFrontendTranslation();
   const navigation = usePluginNavigation();
   const preferences = usePreferencesPort<Preferences>().getSnapshot();
+  const [filterError, setFilterError] = useState<IdentityError | null>(null);
   const [search, setSearch] = useState(query?.q ?? '');
   const result = useIdentityQuery(`users:${JSON.stringify(query)}`, async (service) => {
     if (!query) throw new IdentityError('validation');
@@ -38,26 +42,32 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
     return { access, page, roles };
   });
   function apply(patch: Partial<UserQuery>) {
-    const parsed = userQuerySchema.safeParse({ ...(query ?? defaultUserQuery), ...patch });
-    if (!parsed.success) return;
-    const next = parsed.data;
-    navigation.navigate(
-      route(
-        'users',
-        {},
-        {
-          query: {
-            q: next.q,
-            status: next.status,
-            roleId: next.roleId,
-            sort: next.sort,
-            direction: next.direction,
-            page: String(next.page),
-            pageSize: String(next.pageSize),
+    setFilterError(null);
+    void (async () => {
+      const { userQuerySchema } = await import('../../../src/identity/model');
+      const parsed = userQuerySchema.safeParse({ ...(query ?? defaultUserQuery), ...patch });
+      if (!parsed.success) return;
+      const next = parsed.data;
+      navigation.navigate(
+        route(
+          'users',
+          {},
+          {
+            query: {
+              q: next.q,
+              status: next.status,
+              roleId: next.roleId,
+              sort: next.sort,
+              direction: next.direction,
+              page: String(next.page),
+              pageSize: String(next.pageSize),
+            },
           },
-        },
-      ),
-    );
+        ),
+      );
+    })().catch((error: unknown) => {
+      setFilterError(error instanceof IdentityError ? error : new IdentityError('unavailable'));
+    });
   }
   const clear = () => navigation.navigate(route('users'));
   const data = result.data;
@@ -133,6 +143,7 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
         }
       />
       <IdentityModeNotice mode={port.mode} />
+      <IdentityMutationError error={filterError} />
       {!query ? (
         <StateSurface
           state="error"
