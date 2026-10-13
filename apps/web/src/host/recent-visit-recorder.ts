@@ -26,6 +26,7 @@ export function useRecentVisitRecorder(
           entries.find((entry) => entry.href === pathname)?.label;
         if (!title || location.pathname !== pathname) return;
         const id = new URLSearchParams(location.search).get('id');
+        if (/\/(detail|edit)$/.test(pathname) && !id) return;
         const href =
           pathname +
           (id &&

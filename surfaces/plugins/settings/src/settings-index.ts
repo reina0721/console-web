@@ -284,13 +284,7 @@ export const SETTINGS_INDEX: readonly SettingsEntry[] = [
     categoryLabelKey: 'settings.categories.navigation',
     synonyms: [],
   },
-  {
-    category: 'navigation',
-    fieldId: 'autoRestoreWorkspace',
-    nameKey: 'settings.navigation.autoRestoreWorkspace',
-    categoryLabelKey: 'settings.categories.navigation',
-    synonyms: [],
-  },
+
   {
     category: 'dataDisplay',
     fieldId: 'rowSeparators',

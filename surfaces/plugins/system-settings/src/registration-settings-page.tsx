@@ -1,4 +1,7 @@
 'use client';
+import { formatDate, formatTimeOfDay } from '@community-go/i18n';
+import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
+import type { Preferences } from '@community-go/surface/preferences-model';
 import { useState } from 'react';
 import {
   FoundationForm,
@@ -37,7 +40,8 @@ function SettingsForm({
   roles: readonly DirectoryRole[];
   allowed: boolean;
 }>) {
-  const { t } = useFrontendTranslation();
+  const { t, locale } = useFrontendTranslation();
+  const region = usePreferencesPort<Preferences>().getSnapshot().localeRegion;
   const port = useIdentityPort();
   const { notify } = useFeedback();
   const [baseline, setBaseline] = useState(settings);
@@ -111,6 +115,23 @@ function SettingsForm({
           setConfirmation(values);
         }}
       >
+        <dl className="grid gap-2 text-sm text-ink-muted">
+          <div className="flex flex-wrap gap-3">
+            <dt>{t('systemSettings.currentValue')}</dt>
+            <dd>{t(baseline.enabled ? 'systemSettings.open' : 'systemSettings.closed')}</dd>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <dt>{t('systemSettings.updatedAt')}</dt>
+            <dd>
+              {formatDate(
+                locale,
+                baseline.updatedAt,
+                region.timeZone === 'auto' ? {} : { timeZone: region.timeZone },
+              )}{' '}
+              · {formatTimeOfDay(locale, region, baseline.updatedAt)}
+            </dd>
+          </div>
+        </dl>
         {!allowed ? <p className="text-sm text-ink-muted">{t('systemSettings.readonly')}</p> : null}
         <IdentityMutationError
           error={failure}
@@ -131,21 +152,40 @@ function SettingsForm({
         </FoundationControlledField>
         <FoundationControlledField form={form} name="defaultRoleId">
           {(field) => (
-            <SelectField
-              label={t('systemSettings.role')}
-              hint={t('systemSettings.roleHint')}
-              value={field.value}
-              onValueChange={field.onChange}
-              disabled={!allowed || pending}
-              options={roles.map((role) => ({
-                value: role.id,
-                label: role.name,
-                disabled: role.permissions.some((permission) =>
-                  registrationRestrictedPermissions.some((restricted) => restricted === permission),
-                ),
-              }))}
-              {...(form.hasError('defaultRoleId') ? { error: t('systemSettings.invalid') } : {})}
-            />
+            <div className="grid min-w-0 gap-3">
+              <SelectField
+                label={t('systemSettings.role')}
+                hint={t('systemSettings.roleHint')}
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={!allowed || pending}
+                options={roles.map((role) => ({
+                  value: role.id,
+                  label: ['administrator', 'operator', 'viewer'].includes(role.id)
+                    ? t(`identityProduct.roleNames.${role.id}`)
+                    : role.name,
+                  disabled: role.permissions.some((permission) =>
+                    registrationRestrictedPermissions.some(
+                      (restricted) => restricted === permission,
+                    ),
+                  ),
+                }))}
+                {...(form.hasError('defaultRoleId') ? { error: t('systemSettings.invalid') } : {})}
+              />
+              <div className="text-sm text-ink-muted">
+                <p>{t('systemSettings.permissions')}</p>
+                <ul className="mt-2 grid gap-2">
+                  {roles
+                    .find((role) => role.id === field.value)
+                    ?.permissions.map((permission) => (
+                      <li key={permission}>{t(`management.permissions.${permission}`)}</li>
+                    ))}
+                </ul>
+                {!roles.find((role) => role.id === field.value)?.permissions.length ? (
+                  <p>{t('systemSettings.noPermissions')}</p>
+                ) : null}
+              </div>
+            </div>
           )}
         </FoundationControlledField>
         <FormActions

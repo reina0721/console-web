@@ -118,7 +118,7 @@ for (const category of [
           );
         const fieldCounts: Readonly<Record<string, number>> = {
           '': 7,
-          navigation: 12,
+          navigation: 11,
           'data-display': 10,
           actions: 18,
           locale: 7,

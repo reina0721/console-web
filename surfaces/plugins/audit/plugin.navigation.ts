@@ -4,7 +4,7 @@ export const navigationContribution = {
     {
       navigationId: 'audit.root',
       labelKey: 'audit.nav',
-      groupId: 'management',
+      groupId: 'administration',
       order: 20,
       iconId: 'list',
       routeId: 'audit',

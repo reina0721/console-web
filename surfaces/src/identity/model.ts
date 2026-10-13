@@ -178,6 +178,18 @@ export interface IdentityPort {
   update(id: string, input: UpdateUserInput): Promise<DirectoryUser>;
   setStatus(id: string, version: number, status: DirectoryUser['status']): Promise<DirectoryUser>;
   setRoles(id: string, version: number, roleIds: readonly string[]): Promise<DirectoryUser>;
+  batchStatus(input: BatchStatusInput): Promise<BatchStatusResult>;
+  roleSummaries(): Promise<readonly RoleSummary[]>;
+  roleMembers(id: string, query: UserQuery): Promise<UserPage>;
+  changeRoleMember(
+    roleId: string,
+    userId: string,
+    version: number,
+    add: boolean,
+  ): Promise<DirectoryUser>;
+  inboxPage(query: ProductInboxQuery): Promise<ProductInboxPage>;
+  readNotification(id: string): Promise<ProductNotification>;
+  readAllNotifications(): Promise<void>;
   me(): Promise<DirectoryUser>;
   updateMe(input: UpdateUserInput): Promise<DirectoryUser>;
 }
@@ -230,8 +242,13 @@ export const auditQuerySchema = z
     result: z.enum(['all', 'success', 'failure']),
     page: z.number().int().min(1).max(100000),
     pageSize: z.union([z.literal(10), z.literal(20), z.literal(50)]),
+    actor: z.string().trim().max(100).optional(),
+    object: z.string().trim().max(100).optional(),
+    from: z.union([z.literal(''), z.string().datetime()]).optional(),
+    to: z.union([z.literal(''), z.string().datetime()]).optional(),
   })
-  .strict();
+  .strict()
+  .refine((query) => !query.from || !query.to || Date.parse(query.from) <= Date.parse(query.to));
 export type AuditQuery = z.infer<typeof auditQuerySchema>;
 
 export const auditPageSchema = z
@@ -273,3 +290,59 @@ export const readNotificationsSchema = z
       .refine((ids) => new Set(ids).size === ids.length),
   })
   .strict();
+
+export const batchStatusInputSchema = z
+  .object({
+    status: userStatusSchema,
+    items: z
+      .array(z.object({ id: identifierSchema, version: z.number().int().positive() }).strict())
+      .min(1)
+      .max(200)
+      .refine((items) => new Set(items.map((item) => item.id)).size === items.length),
+  })
+  .strict();
+export type BatchStatusInput = z.infer<typeof batchStatusInputSchema>;
+export const batchStatusResultSchema = z
+  .object({
+    items: z
+      .array(
+        z.discriminatedUnion('success', [
+          z.object({ id: identifierSchema, success: z.literal(true), user: userSchema }).strict(),
+          z
+            .object({
+              id: identifierSchema,
+              success: z.literal(false),
+              code: z.enum(identityErrorCodes),
+              reason: z.enum(['stale-version', 'protected-user', 'last-administrator']).optional(),
+            })
+            .strict(),
+        ]),
+      )
+      .max(200),
+  })
+  .strict();
+export type BatchStatusResult = z.infer<typeof batchStatusResultSchema>;
+export const roleSummarySchema = roleSchema.extend({ memberCount: z.number().int().nonnegative() });
+export type RoleSummary = z.infer<typeof roleSummarySchema>;
+export const roleSummariesSchema = z.object({ items: z.array(roleSummarySchema) }).strict();
+export const productInboxQuerySchema = z
+  .object({
+    q: z.string().trim().max(100),
+    category: z.enum(['all', 'success', 'failure', 'system', 'task', 'warning']),
+    read: z.enum(['all', 'read', 'unread']),
+    page: z.number().int().min(1).max(100000),
+    pageSize: z.union([z.literal(10), z.literal(20), z.literal(50)]),
+  })
+  .strict();
+export type ProductInboxQuery = z.infer<typeof productInboxQuerySchema>;
+export const productInboxPageSchema = z
+  .object({
+    items: z.array(productNotificationSchema),
+    total: z.number().int().nonnegative(),
+    unread: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+  })
+  .strict();
+export type ProductInboxPage = z.infer<typeof productInboxPageSchema>;
+export const notificationResponseSchema = z.object({ item: productNotificationSchema }).strict();

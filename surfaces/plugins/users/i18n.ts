@@ -2,6 +2,19 @@ export const pluginI18nResources = {
   'zh-CN': {
     translation: {
       users: {
+        selectPage: '选择当前页',
+        selected: '已选择 {{count}} 位用户',
+        selectUser: '选择 {{name}}',
+        batchEnable: '批量启用',
+        batchDisable: '批量停用',
+        batchConfirm: '确认批量修改账号状态',
+        batchDescription: '将 {{count}} 位用户设置为{{status}}。',
+        batchProtection: '不能停用当前账号或最后一位管理员。失败项保留选中，可刷新版本后重试。',
+        batchCancel: '取消',
+        batchApply: '确认修改',
+        batchFailure: '修改未完成，请重试',
+        batchSuccess: '成功',
+
         nav: '用户管理',
         eyebrow: '身份与访问',
         title: '用户管理',
@@ -64,6 +77,20 @@ export const pluginI18nResources = {
   en: {
     translation: {
       users: {
+        selectPage: 'Select this page',
+        selected: '{{count}} users selected',
+        selectUser: 'Select {{name}}',
+        batchEnable: 'Enable selected',
+        batchDisable: 'Disable selected',
+        batchConfirm: 'Confirm account status changes',
+        batchDescription: 'Set {{count}} users to {{status}}.',
+        batchProtection:
+          'Your account and the last administrator are protected. Failed items remain selected for retry after refreshing their versions.',
+        batchCancel: 'Cancel',
+        batchApply: 'Apply changes',
+        batchFailure: 'Changes failed. Try again.',
+        batchSuccess: 'Succeeded',
+
         nav: 'Users',
         eyebrow: 'Identity and access',
         title: 'Users',

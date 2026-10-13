@@ -29,6 +29,7 @@ export function withMockDirectory(base: AuthService): AuthService {
         const session = {
           user: { id: user.id, name: user.name, email: user.email },
           expiresAt: Date.now() + MOCK_SESSION_LIFETIME_MS,
+          sessionId: `session-${crypto.randomUUID()}`,
         };
         await repository.saveSession(session);
         return session;

@@ -2,6 +2,17 @@ export const pluginI18nResources = {
   'zh-CN': {
     translation: {
       roles: {
+        type: '角色类型',
+        morePermissions: '，另有 {{count}} 项',
+        findMember: '搜索待添加用户',
+        addMember: '添加成员',
+        removeMember: '移除成员',
+        memberProtection: '不能修改自身角色，也不能移除用户唯一角色；最后管理员受到保护。',
+        memberReadonly: '管理成员需要角色分配权限。',
+        memberImpact: '仅增减当前角色，保留该用户其他角色；权限随成员变更生效。',
+        memberCancel: '取消',
+        memberApply: '确认变更',
+        memberFailure: '成员变更失败，请刷新后重试',
         nav: '角色管理',
         description: '按资源与操作授予权限，角色成员共同继承授权。',
         list: '角色目录',
@@ -38,6 +49,19 @@ export const pluginI18nResources = {
   en: {
     translation: {
       roles: {
+        type: 'Role type',
+        morePermissions: ', {{count}} more',
+        findMember: 'Find users to add',
+        addMember: 'Add member',
+        removeMember: 'Remove member',
+        memberProtection:
+          'Your roles, the last administrator and each user’s only role are protected.',
+        memberReadonly: 'Managing members requires role assignment permission.',
+        memberImpact:
+          'Only this role changes. Other roles remain assigned and access changes immediately.',
+        memberCancel: 'Cancel',
+        memberApply: 'Apply change',
+        memberFailure: 'Member change failed. Refresh and retry.',
         nav: 'Roles',
         description: 'Grant resource and action permissions inherited by role members.',
         list: 'Role directory',

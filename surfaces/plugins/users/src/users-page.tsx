@@ -5,7 +5,10 @@ import { Page, PageHeader, FilterBar } from '@community-go/surface-foundation/la
 import { Collection } from '@community-go/surface-foundation/collection';
 import { Action } from '@community-go/ui-adapter/action';
 import { DataTable, type DataColumn } from '@community-go/ui-adapter/data-display';
-import { SelectField } from '@community-go/ui-adapter/form-field';
+import { SelectField, CheckboxField } from '@community-go/ui-adapter/form-field';
+import { ConfirmDialog } from '@community-go/ui-adapter/overlays';
+import { useRef } from 'react';
+import type { BatchStatusResult } from '@community-go/surface/identity/runtime';
 import { SearchBox } from '@community-go/ui-adapter/search-box';
 import { StateSurface } from '@community-go/ui-adapter/state-surface';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
@@ -33,6 +36,12 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
   const navigation = usePluginNavigation();
   const preferences = usePreferencesPort<Preferences>().getSnapshot();
   const [filterError, setFilterError] = useState<IdentityError | null>(null);
+  const [selected, setSelected] = useState<readonly string[]>([]);
+  const [batchNames, setBatchNames] = useState<ReadonlyMap<string, string>>(new Map());
+  const [batchResult, setBatchResult] = useState<BatchStatusResult | null>(null);
+  const [batchTarget, setBatchTarget] = useState<'active' | 'disabled' | null>(null);
+  const [batchPending, setBatchPending] = useState(false);
+  const batchLock = useRef(false);
   const [search, setSearch] = useState(query?.q ?? '');
   const result = useIdentityQuery(`users:${JSON.stringify(query)}`, async (service) => {
     if (!query) throw new IdentityError('validation');
@@ -71,6 +80,29 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
   }
   const clear = () => navigation.navigate(route('users'));
   const data = result.data;
+  const selectedUsers = data?.page.items.filter((user) => selected.includes(user.id)) ?? [];
+  async function submitBatch() {
+    if (!batchTarget || batchLock.current || !selectedUsers.length) return;
+    batchLock.current = true;
+    setBatchPending(true);
+    setBatchNames(new Map(selectedUsers.map((user) => [user.id, user.name])));
+    try {
+      const response = await port.batchStatus({
+        status: batchTarget,
+        items: selectedUsers.map(({ id, version }) => ({ id, version })),
+      });
+      setBatchResult(response);
+      setSelected(response.items.filter((item) => !item.success).map((item) => item.id));
+      setBatchTarget(null);
+      result.reload();
+    } catch (error) {
+      setFilterError(error instanceof IdentityError ? error : new IdentityError('unavailable'));
+      throw error;
+    } finally {
+      batchLock.current = false;
+      setBatchPending(false);
+    }
+  }
   const roleLabel = (id: string) =>
     ['administrator', 'operator', 'viewer'].includes(id)
       ? t(`identityProduct.roleNames.${id}`)
@@ -238,12 +270,73 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
               </div>
             </FilterBar>
           }
+          toolbar={
+            data.access.permissions.includes('users.status') ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <CheckboxField
+                  label={t('users.selectPage')}
+                  checked={
+                    Boolean(data.page.items.length) &&
+                    selectedUsers.length === data.page.items.length
+                  }
+                  disabled={batchPending || !data.page.items.length}
+                  onCheckedChange={(checked) =>
+                    setSelected(checked ? data.page.items.map((user) => user.id) : [])
+                  }
+                />
+                <span role="status" className="text-sm text-ink-muted">
+                  {t('users.selected', { count: selectedUsers.length })}
+                </span>
+                <Action
+                  variant="secondary"
+                  disabled={!selectedUsers.length || batchPending}
+                  onPress={() => setBatchTarget('active')}
+                >
+                  {t('users.batchEnable')}
+                </Action>
+                <Action
+                  variant="secondary"
+                  disabled={!selectedUsers.length || batchPending}
+                  onPress={() => setBatchTarget('disabled')}
+                >
+                  {t('users.batchDisable')}
+                </Action>
+                {batchResult ? (
+                  <ul aria-live="polite" className="w-full text-sm">
+                    {batchResult.items.map((item) => (
+                      <li key={item.id}>
+                        {batchNames.get(item.id) ?? item.id} ·{' '}
+                        {item.success
+                          ? t('users.batchSuccess')
+                          : t(
+                              item.reason
+                                ? `identityProduct.reasons.${item.reason}`
+                                : `identityProduct.errors.${item.code}`,
+                            )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null
+          }
           content={
             <div aria-busy={result.loading || undefined}>
               <DataTable
                 label={t('users.collection')}
                 columns={columns}
                 rows={data.page.items}
+                {...(data.access.permissions.includes('users.status')
+                  ? {
+                      selection: {
+                        mode: 'multiple' as const,
+                        selectedIds: selected,
+                        onSelectionChange: (ids: readonly string[]) => {
+                          if (!batchPending) setSelected(ids);
+                        },
+                      },
+                    }
+                  : {})}
                 emptyContent={empty}
                 density={
                   preferences.dataDisplay.tableDensity === 'compact' ? 'compact' : 'comfortable'
@@ -274,6 +367,18 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
               >
                 {data.page.items.map((user) => (
                   <li key={user.id} className="grid gap-2 p-5">
+                    {data.access.permissions.includes('users.status') ? (
+                      <CheckboxField
+                        label={t('users.selectUser', { name: user.name })}
+                        checked={selected.includes(user.id)}
+                        disabled={batchPending}
+                        onCheckedChange={(checked) =>
+                          setSelected((prior) =>
+                            checked ? [...prior, user.id] : prior.filter((id) => id !== user.id),
+                          )
+                        }
+                      />
+                    ) : null}
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-semibold">{detailLink(user)}</span>
                       {status(user)}
@@ -331,6 +436,23 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
           }
         />
       )}
+      <ConfirmDialog
+        triggerLabel=""
+        title={t('users.batchConfirm')}
+        description={t('users.batchDescription', {
+          count: selectedUsers.length,
+          status: t(`identityProduct.${batchTarget ?? 'active'}`),
+        })}
+        impact={t('users.batchProtection')}
+        cancelLabel={t('users.batchCancel')}
+        confirmLabel={t('users.batchApply')}
+        failureMessage={t('users.batchFailure')}
+        isOpen={batchTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setBatchTarget(null);
+        }}
+        onConfirm={submitBatch}
+      />
     </Page>
   );
 }

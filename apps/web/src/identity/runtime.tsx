@@ -2,6 +2,8 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { createAppStore } from '@community-go/state-foundation';
 import {
+  AccountSecurityProvider,
+  type AccountSecurityPort,
   IdentityProvider,
   IdentityError,
   type IdentityPort,
@@ -86,6 +88,25 @@ export function IdentityRuntime({ children }: Readonly<{ children: ReactNode }>)
           if (access.user.id !== currentUserId()) throw new IdentityError('protocol');
           return access;
         }),
+      batchStatus: (input) => call((service) => service.batchStatus(input), true),
+      roleSummaries: () => call((service) => service.roleSummaries()),
+      roleMembers: (id, query) => call((service) => service.roleMembers(id, query)),
+      changeRoleMember: (roleId, userId, version, add) =>
+        call((service) => service.changeRoleMember(roleId, userId, version, add), true),
+      inboxPage: (query) =>
+        call(async (service) => {
+          const result = await service.inboxPage(query);
+          if (result.items.some((item) => item.ownerId !== currentUserId()))
+            throw new IdentityError('protocol');
+          return result;
+        }),
+      readNotification: (id) =>
+        call(async (service) => {
+          const item = await service.readNotification(id);
+          if (item.ownerId !== currentUserId()) throw new IdentityError('protocol');
+          return item;
+        }),
+      readAllNotifications: () => call((service) => service.readAllNotifications(), true, false),
       roles: () => call((service) => service.roles()),
       registrationSettings: () => call((service) => service.registrationSettings()),
       updateRegistrationSettings: (input) =>
@@ -119,7 +140,45 @@ export function IdentityRuntime({ children }: Readonly<{ children: ReactNode }>)
       setRoles: (id, version, roleIds) =>
         call((service) => service.setRoles(id, version, roleIds), true),
     };
-    return { port, invalidate };
+    const security: AccountSecurityPort = {
+      sessions: () => securityCall((service) => service.sessions()),
+      changePassword: (current, next) =>
+        securityCall((service) => service.changePassword(current, next), true),
+      revokeSession: (id) => securityCall((service) => service.revokeSession(id), false, true),
+      revokeOtherSessions: () =>
+        securityCall((service) => service.revokeOtherSessions(), false, true),
+    };
+    async function securityCall<T>(
+      operation: (service: AccountSecurityPort) => Promise<T>,
+      expire = false,
+      restore = false,
+    ) {
+      const owner = currentUserId();
+      if (!owner || !config) throw new IdentityError('unauthenticated');
+      const module = await import('../auth/account-security-service');
+      if (owner !== currentUserId()) throw new IdentityError('unauthenticated');
+      const service =
+        config.mode === 'mock'
+          ? module.createMockAccountSecurity(() => owner)
+          : module.createBackendAccountSecurity(config.apiBaseUrl);
+      try {
+        const value = await operation(service);
+        if (owner !== currentUserId()) throw new IdentityError('unauthenticated');
+        if (expire || restore) invalidate();
+        if (expire) authController.getState().expire();
+        else if (restore) await authController.getState().restore();
+        return value;
+      } catch (error) {
+        if (
+          error instanceof IdentityError &&
+          error.code === 'unauthenticated' &&
+          owner === currentUserId()
+        )
+          authController.getState().expire();
+        throw error;
+      }
+    }
+    return { port, security, invalidate };
   }, [authController]);
   useEffect(() => {
     runtime.invalidate();
@@ -135,5 +194,9 @@ export function IdentityRuntime({ children }: Readonly<{ children: ReactNode }>)
       window.removeEventListener('focus', runtime.invalidate);
     };
   }, [runtime]);
-  return <IdentityProvider port={runtime.port}>{children}</IdentityProvider>;
+  return (
+    <IdentityProvider port={runtime.port}>
+      <AccountSecurityProvider port={runtime.security}>{children}</AccountSecurityProvider>
+    </IdentityProvider>
+  );
 }

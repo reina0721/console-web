@@ -6,6 +6,7 @@ import { DescriptionList } from '@community-go/ui-adapter/description-list';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import { IdentityQueryState, IdentityModeNotice } from '../../../src/identity/query-state';
 import { UserForm } from '../../../src/identity/user-form';
+import { AccountSecurity } from './account-security';
 export function AccountPage() {
   const { t } = useFrontendTranslation();
   const port = useIdentityPort();
@@ -64,6 +65,7 @@ export function AccountPage() {
             roles={data.roles}
             access={data.access}
           />
+          <AccountSecurity />
         </>
       )}
     </Page>

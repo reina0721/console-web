@@ -8,7 +8,7 @@ import {
 } from '@community-go/i18n';
 import { Page, PageHeader, Section } from '@community-go/surface-foundation/layout';
 import { Action } from '@community-go/ui-adapter/action';
-import { SelectField } from '@community-go/ui-adapter/form-field';
+import { SelectField, CheckboxField } from '@community-go/ui-adapter/form-field';
 import { SearchBox } from '@community-go/ui-adapter/search-box';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { NOTIFICATION_CATEGORIES } from '@community-go/plugin-framework/notifications';
@@ -32,9 +32,11 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
     formatDate(locale, value, region.timeZone === 'auto' ? {} : { timeZone: region.timeZone }) +
     ' · ' +
     formatTimeOfDay(locale, region, value);
-  const inbox = useProductInbox();
-  const navigation = usePluginNavigation();
   const filters = query ?? defaultInboxQuery;
+  const inbox = useProductInbox({ query: { ...filters, pageSize: 20 }, ...(id ? { id } : {}) });
+  const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
+  const [localPage, setLocalPage] = useState(1);
+  const navigation = usePluginNavigation();
   const listLocation = {
     q: filters.q,
     category: filters.category,
@@ -49,15 +51,15 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
       ? null
       : (inbox.items.find((item) => item.id === id) ??
         inbox.items.find((item) => item.id === `product:${id}`));
-  const filtered = inbox.items.filter(
+  const localFiltered = inbox.local.filter(
     (item) =>
-      (filters.category === 'all' || filters.category === item.category) &&
+      (filters.category === 'all' || item.category === filters.category) &&
       (filters.read === 'all' || (filters.read === 'read' ? item.read : !item.read)) &&
       `${item.title} ${item.description ?? ''}`.toLowerCase().includes(filters.q.toLowerCase()),
   );
-  const pages = Math.max(1, Math.ceil(filtered.length / 20));
-  const page = Math.min(filters.page, pages);
-  const items = filtered.slice((page - 1) * 20, page * 20);
+  const pages = Math.max(1, Math.ceil(inbox.total / 20));
+  const page = filters.page;
+  const items = inbox.remote;
   let association = selected?.target
     ? route(selected.target.routeId, selected.target.params ?? {}, {
         query: selected.target.query ?? {},
@@ -120,9 +122,7 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
             <Action
               disabled={inbox.pending || inbox.unread === 0 || Boolean(inbox.error)}
               onPress={() => {
-                void inbox.markRead(
-                  inbox.items.filter((item) => !item.read).map((item) => item.id),
-                );
+                void inbox.markAllRead();
               }}
             >
               {t('management.markAll')}
@@ -199,7 +199,7 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
           </div>
         </Section>
       ) : (
-        <Section title={t('notifications.nav')}>
+        <Section title={t('notifications.messages')}>
           <div className="grid gap-4 p-5">
             <div className="grid gap-4 md:grid-cols-3">
               <form
@@ -260,11 +260,29 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
             <Action variant="quiet" onPress={() => navigation.navigate(route('notifications'))}>
               {t('identityProduct.clear')}
             </Action>
+            <CheckboxField
+              label={t('notifications.selectPage')}
+              checked={
+                Boolean(items.length) && items.every((item) => selectedIds.includes(item.id))
+              }
+              onCheckedChange={(checked) =>
+                setSelectedIds(checked ? items.map((item) => item.id) : [])
+              }
+              disabled={inbox.pending}
+            />
             <Action
               variant="secondary"
-              disabled={inbox.pending || !items.some((item) => !item.read)}
+              disabled={
+                inbox.pending || !items.some((item) => selectedIds.includes(item.id) && !item.read)
+              }
               onPress={() => {
-                void inbox.markRead(items.filter((item) => !item.read).map((item) => item.id));
+                void inbox
+                  .markRead(
+                    items
+                      .filter((item) => selectedIds.includes(item.id) && !item.read)
+                      .map((item) => item.id),
+                  )
+                  .then(() => setSelectedIds([]));
               }}
             >
               {t('notifications.batch')}
@@ -274,7 +292,20 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
             ) : (
               <ul data-reveal-items className="grid gap-3">
                 {items.map((item) => (
-                  <li key={item.id} className="grid gap-2 rounded-panel border border-border p-4">
+                  <li
+                    key={item.id}
+                    className="grid min-w-0 gap-2 rounded-panel border border-border p-4"
+                  >
+                    <CheckboxField
+                      label={t('notifications.selectItem', { name: item.title })}
+                      checked={selectedIds.includes(item.id)}
+                      onCheckedChange={(checked) =>
+                        setSelectedIds((prior) =>
+                          checked ? [...prior, item.id] : prior.filter((id) => id !== item.id),
+                        )
+                      }
+                      disabled={inbox.pending}
+                    />
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <RouteLink
                         target={route(
@@ -321,7 +352,7 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
                 {t('management.pagination', {
                   page: formatNumber(locale, page),
                   pages: formatNumber(locale, pages),
-                  total: formatNumber(locale, filtered.length),
+                  total: formatNumber(locale, inbox.total),
                 })}
               </p>
               <Action
@@ -335,6 +366,58 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
           </div>
         </Section>
       )}
+      {id === undefined && localFiltered.length ? (
+        <Section
+          title={t('notifications.localEvents')}
+          description={t('notifications.localEventsHint')}
+        >
+          <div className="grid min-w-0 gap-3 p-5">
+            <ul className="divide-y divide-border">
+              {localFiltered.slice((localPage - 1) * 20, localPage * 20).map((item) => (
+                <li key={item.id} className="grid min-w-0 gap-2 py-3">
+                  <RouteLink
+                    target={route(
+                      'notifications.detail',
+                      {},
+                      { query: { ...listLocation, id: item.id } },
+                    )}
+                  >
+                    {item.title}
+                  </RouteLink>
+                  <p className="text-sm text-ink-muted">{timestamp(item.createdAt)}</p>
+                  {!item.read ? (
+                    <Action
+                      variant="quiet"
+                      disabled={inbox.pending}
+                      onPress={() => {
+                        void inbox.markRead([item.id]);
+                      }}
+                    >
+                      {t('management.read')}
+                    </Action>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap gap-3">
+              <Action
+                variant="secondary"
+                disabled={localPage <= 1}
+                onPress={() => setLocalPage(localPage - 1)}
+              >
+                {t('management.previous')}
+              </Action>
+              <Action
+                variant="secondary"
+                disabled={localPage * 20 >= localFiltered.length}
+                onPress={() => setLocalPage(localPage + 1)}
+              >
+                {t('management.next')}
+              </Action>
+            </div>
+          </div>
+        </Section>
+      ) : null}
     </Page>
   );
 }

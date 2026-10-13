@@ -93,12 +93,40 @@ const accountSchema = z
   })
   .strict();
 const sessionSchema = z
-  .object({ user: authUserSchema, expiresAt: z.number().finite() })
+  .object({
+    user: authUserSchema,
+    expiresAt: z.number().finite(),
+    sessionId: z.string().min(1).optional(),
+  })
   .strict()
   .nullable();
 const legacySchema = z
   .object({ accounts: z.array(accountSchema), session: sessionSchema })
   .strict();
+const storedSecuritySessionSchema = z
+  .object({
+    id: z.string().min(1),
+    userId: z.string().min(1),
+    device: z.string().min(1),
+    createdAt: z.string().datetime(),
+    lastActiveAt: z.string().datetime(),
+    expiresAt: z.string().datetime(),
+  })
+  .strict();
+function legacySessions(session: z.infer<typeof sessionSchema>) {
+  return session
+    ? [
+        {
+          id: session.sessionId ?? `legacy-${session.user.id}`,
+          userId: session.user.id,
+          device: 'Browser',
+          createdAt: new Date().toISOString(),
+          lastActiveAt: new Date().toISOString(),
+          expiresAt: new Date(session.expiresAt).toISOString(),
+        },
+      ]
+    : [];
+}
 const databaseSchema = z
   .object({
     accounts: z.array(accountSchema),
@@ -109,6 +137,7 @@ const databaseSchema = z
     auditRecords: z.array(auditRecordSchema),
     notifications: z.array(productNotificationSchema),
     registrationSettings: registrationSettingsSchema,
+    securitySessions: z.array(storedSecuritySessionSchema),
   })
   .strict();
 export type MockDatabase = z.infer<typeof databaseSchema>;
@@ -125,8 +154,10 @@ function fromIdentity(user: AuthUser): DirectoryUser {
 function parseDatabase(value: unknown): MockDatabase {
   const parsed = databaseSchema.safeParse(value);
   if (!parsed.success) throw new AuthError('protocol');
-  const { users, accounts, roles } = parsed.data;
+  const { users, accounts, roles, securitySessions } = parsed.data;
   if (
+    new Set(securitySessions.map((item) => item.id)).size !== securitySessions.length ||
+    securitySessions.some((item) => !users.some((user) => user.id === item.userId)) ||
     new Set(roles.map((role) => role.id)).size !== roles.length ||
     new Set(users.map((user) => user.id)).size !== users.length ||
     new Set(users.map((user) => user.email)).size !== users.length ||
@@ -138,11 +169,19 @@ function parseDatabase(value: unknown): MockDatabase {
   return parsed.data;
 }
 function migrateLegacy(value: unknown, version: number): MockDatabase {
+  if (version === 4) {
+    const prior = databaseSchema.omit({ securitySessions: true }).safeParse(value);
+    if (!prior.success) throw new AuthError('protocol');
+    return parseDatabase({ ...prior.data, securitySessions: legacySessions(prior.data.session) });
+  }
   if (version === 3) {
-    const prior = databaseSchema.omit({ registrationSettings: true }).safeParse(value);
+    const prior = databaseSchema
+      .omit({ registrationSettings: true, securitySessions: true })
+      .safeParse(value);
     if (!prior.success) throw new AuthError('protocol');
     return parseDatabase({
       ...prior.data,
+      securitySessions: legacySessions(prior.data.session),
       registrationSettings: defaultRegistrationSettings,
       roles: prior.data.roles.map((role) =>
         role.id === 'administrator' && role.protected
@@ -167,6 +206,7 @@ function migrateLegacy(value: unknown, version: number): MockDatabase {
     if (!prior.success) throw new AuthError('protocol');
     return parseDatabase({
       ...prior.data,
+      securitySessions: legacySessions(prior.data.session),
       roles: [...mockRoles],
       auditRecords: [],
       notifications: [],
@@ -188,6 +228,7 @@ function migrateLegacy(value: unknown, version: number): MockDatabase {
   }
   return parseDatabase({
     ...legacy.data,
+    securitySessions: legacySessions(legacy.data.session),
     users,
     sequence: 0,
     roles: [...mockRoles],
@@ -208,10 +249,11 @@ async function ready() {
       auditRecords: [],
       notifications: [],
       registrationSettings: defaultRegistrationSettings,
+      securitySessions: [],
     }),
     {
       name: MOCK_DATABASE_KEY,
-      version: 4,
+      version: 5,
       skipHydration: true,
       storage: createLocalStorage(),
       partialize: ({
@@ -223,8 +265,10 @@ async function ready() {
         auditRecords,
         notifications,
         registrationSettings,
+        securitySessions,
       }) => ({
         registrationSettings,
+        securitySessions,
         roles,
         auditRecords,
         notifications,
@@ -327,14 +371,46 @@ export function createDatabaseAuthRepository() {
       });
     },
     readSession: async (): Promise<AuthSession | null> => {
-      const session = (await readMockDatabase()).session;
-      return session ? readSession(session) : null;
+      const database = await readMockDatabase();
+      const session = database.session;
+      if (!session) return null;
+      const id = session.sessionId ?? `legacy-${session.user.id}`;
+      const active = database.securitySessions.find(
+        (item) =>
+          item.id === id &&
+          item.userId === session.user.id &&
+          new Date(item.expiresAt).getTime() > Date.now(),
+      );
+      if (!active) return null;
+      if (Date.now() - new Date(active.lastActiveAt).getTime() > 60000)
+        await mutateMockDatabase((latest) => ({
+          database: {
+            ...latest,
+            securitySessions: latest.securitySessions.map((item) =>
+              item.id === id ? { ...item, lastActiveAt: new Date().toISOString() } : item,
+            ),
+          },
+          result: undefined,
+        }));
+      return readSession(session);
     },
     saveSession: async (session: AuthSession | null) => {
       await mutateMockDatabase((database) => ({
         database: {
           ...database,
           session,
+          securitySessions: session
+            ? [
+                ...database.securitySessions.filter(
+                  (item) => item.id !== (session.sessionId ?? `legacy-${session.user.id}`),
+                ),
+                ...legacySessions(session),
+              ]
+            : database.securitySessions.filter(
+                (item) =>
+                  item.id !==
+                  (database.session?.sessionId ?? `legacy-${database.session?.user.id}`),
+              ),
           users:
             session && !database.users.some((user) => user.id === session.user.id)
               ? [...database.users, fromIdentity(session.user)]

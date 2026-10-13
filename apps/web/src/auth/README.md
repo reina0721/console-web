@@ -23,8 +23,8 @@ NEXT_PUBLIC_AUTH_MODE=mock
 Mock 演示账户：`demo@community.test` / `CommunityDemo2026!`。可在 `/register` 创建
 演示账户；不要输入真实密码。注册记录只保存随机盐和 PBKDF2-SHA256 摘要（100000
 次迭代），不保存明文。模拟会话持续 30 分钟，刷新可恢复。客户端记录可任意修改，
-不是安全认证或服务器授权。账户持久化键为 `community-go.auth-mock`，当前 version 4；
-v1/v2/v3 原地迁移，保留账户、会话及已有业务记录。注册提交在同一业务写队列内
+不是安全认证或服务器授权。账户持久化键为 `community-go.auth-mock`，当前 version 5；
+v1/v2/v3/v4 原地迁移，保留账户、会话及已有业务记录。注册提交在同一业务写队列内
 检查当前开放策略并分配默认角色，页面不会提交 roleId 或 permissions。
 公开注册页只读取 `/auth/registration-policy` 的 enabled 状态；系统策略读写由
 `/system/registration` 与 settings.read/update 权限管理。完整字段、版本冲突与后端
@@ -73,7 +73,7 @@ API base 可用同源相对地址，或 HTTPS 地址。开发仅允许 localhost
 私有通知等命名空间记录，并重置 Host 内存 Store。身份 owner 持久化用于同账户刷新
 保留私有状态。设备主题/语言保留；Mock 账户记录保留。登录/退出、跨标签页会话变化
 和已登录身份切换采用新文档，清除旧 Plugin 的内存缓存；新身份切换期间不挂载后台。
-当前无 Profile 页面，账户菜单只展示统一姓名/邮箱和已有偏好、设置、退出能力。
+个人账户页提供资料、身份和账户安全；账户菜单姓名与邮箱使用统一会话来源。
 
 Mock 持久化变更由 Storage Event 同步；两种模式完成登录/注册/退出后通过
 `community-go.auth-session` BroadcastChannel 发出无身份资料的失效信号。
@@ -88,3 +88,9 @@ Mock 持久化变更由 Storage Event 同步；两种模式完成登录/注册/�
 运行独立 4174 Backend 配置，用受控 API 响应验证同一页面和实际 Backend adapter。
 它证明适配契约和失败关闭，**不证明真实后端认证已接入**。两个 project 均纳入
 `pnpm check`。视觉基线必须人工确认后限定更新。
+
+## 账户安全契约
+
+Surface 的 `AccountSecurityPort` 由 Web Host 注入，Plugin 不访问 Host 私有实现。密码修改要求当前密码与 12～128 字符的新密码，成功后撤销全部会话并重新登录；有效会话只暴露撤销用的 ID 与设备、活动、到期摘要，不暴露凭据。Mock v5 保留已有数据，并记录真实模拟登录产生的会话；客户端模拟不代表服务端安全保证。Backend 的 Cookie/CSRF 与严格响应校验沿用统一 transport。
+
+新接口为 `POST /auth/password`、`GET /auth/sessions`、`DELETE /auth/sessions/:id` 和 `POST /auth/sessions/revoke-others`；完整业务接口、Mock 与待联调责任见 [本轮实施](../../../../docs/changes/110-management-completion/README.md)。

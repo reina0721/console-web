@@ -8,7 +8,10 @@ import type { Preferences } from '@community-go/surface/preferences-model';
 import { IdentityError, useIdentityPort } from '@community-go/surface/identity/runtime';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import { IdentityModeNotice, IdentityQueryState } from '../../../src/identity/query-state';
-export function AuditDetailPage({ id }: Readonly<{ id: string | null }>) {
+export function AuditDetailPage({
+  id,
+  backQuery,
+}: Readonly<{ id: string | null; backQuery?: Readonly<Record<string, string>> }>) {
   const { t, locale } = useFrontendTranslation();
   const preferences = usePreferencesPort<Preferences>().getSnapshot();
   const port = useIdentityPort();
@@ -25,7 +28,11 @@ export function AuditDetailPage({ id }: Readonly<{ id: string | null }>) {
       <PageHeader
         title={t('audit.detail')}
         description={t('audit.readonly')}
-        actions={<RouteLink target={route('audit')}>{t('audit.back')}</RouteLink>}
+        actions={
+          <RouteLink target={route('audit', {}, { query: backQuery ?? {} })}>
+            {t('audit.back')}
+          </RouteLink>
+        }
       />
       <IdentityModeNotice mode={port.mode} />
       {result.error || !record ? (

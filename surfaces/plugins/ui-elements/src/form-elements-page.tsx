@@ -60,6 +60,7 @@ export function FormElementsPage({
   const { t } = useFrontendTranslation();
   const searchParams = useSearchParams();
   const overlay = searchParams.get('overlay');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [checked, setChecked] = useState(true);
   const [selected, setSelected] = useState('guided');
   const [searchValue, setSearchValue] = useState('UI');
@@ -240,6 +241,8 @@ export function FormElementsPage({
                 <div className="grid gap-3">
                   <DatePickerField
                     label={t('uiElements.datePicker')}
+                    value={selectedDate}
+                    onValueChange={setSelectedDate}
                     hint={t('uiElements.overlayHint')}
                     calendarLabel={t('uiElements.formDemo.calendarLabel')}
                     defaultOpen={overlay === 'date'}

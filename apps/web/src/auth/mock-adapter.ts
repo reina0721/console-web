@@ -31,7 +31,11 @@ export async function passwordDigest(password: string, salt: string): Promise<st
 /** Development demo only. Client-controlled records provide no server authorization. */
 export function createMockAuthService(repository: MockAuthRepository): AuthService {
   async function establish(user: AuthUser) {
-    const session = { user, expiresAt: Date.now() + MOCK_SESSION_LIFETIME_MS };
+    const session = {
+      user,
+      expiresAt: Date.now() + MOCK_SESSION_LIFETIME_MS,
+      sessionId: `session-${crypto.randomUUID()}`,
+    };
     await repository.saveSession(session);
     return session;
   }

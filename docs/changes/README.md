@@ -23,3 +23,5 @@
 - [109 UI/UX 优化](109-ui-ux-optimization/README.md)：承接108与107，实施及回归进行中。
 
 - [Community Console 产品补齐 M0](108-ui-ux-audit/product-readiness-m0.md)：2026-10-12 续审现役源码与授权演示站，盘点路由/实际能力/组件复用、业务缺口、信息架构兼容与 M1–M7 实施计划。用户已要求继续 M1，进度见 [产品实施账本](108-ui-ux-audit/product-implementation.md)。
+
+- [110 后台管理闭环与账户安全](110-management-completion/README.md)：首页仅最近访问，六页业务与账户安全完善；真实后端联调延后。

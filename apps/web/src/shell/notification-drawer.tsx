@@ -33,7 +33,7 @@ export function NotificationDrawer({
   const unreadReminder = useShellStore((state) => state.preferences.notifications.unreadReminder);
   const localeRegion = useShellStore((state) => state.preferences.localeRegion);
   const markAllRead = () => {
-    void inbox.markRead(items.filter((item) => !item.read).map((item) => item.id));
+    void inbox.markAllRead();
   };
   return (
     <DrawerSurface
@@ -47,19 +47,18 @@ export function NotificationDrawer({
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-ink-muted">
-            {unread > 0 ? t('shell.unreadCount', { count: unread }) : ''}
+            {t('shell.unreadCount', { count: unread })}
           </span>
-          {unread > 0 ? (
-            <Action
-              leadingIcon={<CheckCheck className="size-4" aria-hidden="true" />}
-              disabled={inbox.pending || Boolean(inbox.error)}
-              onPress={markAllRead}
-              size="sm"
-              variant="secondary"
-            >
-              {t('shell.markAllRead')}
-            </Action>
-          ) : null}
+          <Action
+            leadingIcon={<CheckCheck className="size-4" aria-hidden="true" />}
+            loading={inbox.pending}
+            disabled={Boolean(inbox.error)}
+            onPress={unread > 0 ? markAllRead : inbox.reload}
+            size="sm"
+            variant="secondary"
+          >
+            {t(unread > 0 ? 'shell.markAllRead' : 'identityProduct.refresh')}
+          </Action>
         </div>
         {inbox.error || inbox.failure ? (
           <p role="alert" className="text-sm text-danger">

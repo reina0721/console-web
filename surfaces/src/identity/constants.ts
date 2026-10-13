@@ -32,6 +32,8 @@ export const defaultUserQuery: UserQuery = {
 };
 
 export const auditOperations = [
+  'account.password',
+  'account.sessions',
   'users.create',
   'users.update',
   'users.status',

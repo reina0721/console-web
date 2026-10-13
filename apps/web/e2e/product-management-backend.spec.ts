@@ -21,7 +21,7 @@ test('Backend M2–M6 uses proposed REST/CSRF contracts, preserves conflict draf
   await expect(page.getByRole('textbox', { name: '姓名', exact: true })).toHaveValue(
     'Keep this draft',
   );
-  await page.getByRole('button', { name: '刷新', exact: true }).click();
+  await page.locator('form').first().getByRole('button', { name: '刷新', exact: true }).click();
   await expect(page.getByRole('textbox', { name: '姓名', exact: true })).toHaveValue(
     'Server profile',
   );
@@ -45,7 +45,7 @@ test('Backend M2–M6 uses proposed REST/CSRF contracts, preserves conflict draf
   await expect(page.getByRole('main')).toContainText('Backend Audit');
   await expect(page.getByRole('main')).toContainText('Backend Updated');
   expect(fixture.writes.map((item) => item.path)).toEqual(
-    expect.arrayContaining(['/users', '/me', '/roles', '/notifications/read']),
+    expect.arrayContaining(['/users', '/me', '/roles', '/notifications/read-all']),
   );
   expect(fixture.writes.every((item) => item.csrf === 'product-csrf')).toBe(true);
   expect(await page.evaluate(() => localStorage.getItem('community-go.auth-mock'))).toBeNull();
@@ -64,7 +64,7 @@ test('Backend M2–M6 uses proposed REST/CSRF contracts, preserves conflict draf
   await policyConfirmation.getByRole('button', { name: '取消', exact: true }).click();
   await expect(page.getByRole('main')).toContainText('数据发生冲突');
   await expect(registrationSwitch).not.toBeChecked();
-  await page.getByRole('button', { name: '刷新', exact: true }).click();
+  await page.locator('form').first().getByRole('button', { name: '刷新', exact: true }).click();
   await expect(registrationSwitch).toBeChecked();
   await registrationSwitch.press('Space');
   await page.getByRole('button', { name: '保存策略', exact: true }).click();

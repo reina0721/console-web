@@ -1,4 +1,7 @@
 import {
+  batchStatusInputSchema,
+  productInboxQuerySchema,
+  type BatchStatusResult,
   createUserSchema,
   registrationSettingsInputSchema,
   registrationRestrictedPermissions,
@@ -152,7 +155,7 @@ export function createMockIdentityService(currentUserId: () => string | null): I
   async function revise(
     id: string,
     version: number,
-    permission: AuditRecord['operation'],
+    permission: Extract<AuditRecord['operation'], IdentityPermission>,
     patch: Partial<Pick<DirectoryUser, 'name' | 'email' | 'status' | 'roleIds'>>,
     own = false,
   ) {
@@ -193,6 +196,163 @@ export function createMockIdentityService(currentUserId: () => string | null): I
     });
   }
   const operations: IdentityOperations = {
+    batchStatus: async (input) => {
+      const parsed = batchStatusInputSchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      return mutateMockDatabase((database) => {
+        const access = actor(database, currentUserId(), 'users.status');
+        let nextDatabase = database;
+        const items: BatchStatusResult['items'] = [];
+        for (const item of parsed.data.items) {
+          try {
+            const prior = findUser(nextDatabase, item.id);
+            checkVersion(prior, item.version);
+            const user = {
+              ...prior,
+              status: parsed.data.status,
+              version: prior.version + 1,
+              updatedAt: new Date().toISOString(),
+            };
+            protect(nextDatabase, prior, user, access.user.id);
+            nextDatabase = recordMutation(
+              replaceUser(nextDatabase, user),
+              access.user,
+              'users.status',
+              user.id,
+              user.name,
+            );
+            items.push({ id: item.id, success: true, user });
+          } catch (error) {
+            if (!(error instanceof IdentityError)) throw error;
+            nextDatabase = {
+              ...nextDatabase,
+              auditRecords: [
+                {
+                  id: `audit-${crypto.randomUUID()}`,
+                  actorId: access.user.id,
+                  actorName: access.user.name,
+                  objectId: item.id,
+                  objectName:
+                    nextDatabase.users.find((user) => user.id === item.id)?.name ??
+                    item.id.slice(0, 80),
+                  operation: 'users.status',
+                  createdAt: new Date().toISOString(),
+                  result: 'failure',
+                  errorCode: error.code,
+                },
+                ...nextDatabase.auditRecords,
+              ],
+            };
+            items.push({
+              id: item.id,
+              success: false,
+              code: error.code,
+              ...(error.reason === 'stale-version' ||
+              error.reason === 'protected-user' ||
+              error.reason === 'last-administrator'
+                ? { reason: error.reason }
+                : {}),
+            });
+          }
+        }
+        return { database: nextDatabase, result: { items } };
+      });
+    },
+    roleSummaries: async () => {
+      const database = await readMockDatabase();
+      actor(database, currentUserId(), 'roles.read');
+      return database.roles.map((role) => ({
+        ...role,
+        memberCount: database.users.filter((user) => user.roleIds.includes(role.id)).length,
+      }));
+    },
+    roleMembers: async (id, query) => {
+      if (!identifierSchema.safeParse(id).success) throw new IdentityError('validation');
+      await operations.readRole(id);
+      return operations.list({ ...query, roleId: id });
+    },
+    changeRoleMember: async (roleId, userId, version, add) => {
+      if (
+        !identifierSchema.safeParse(roleId).success ||
+        !identifierSchema.safeParse(userId).success
+      )
+        throw new IdentityError('validation');
+      return mutateMockDatabase((database) => {
+        const access = actor(database, currentUserId(), 'users.roles');
+        const role = database.roles.find((item) => item.id === roleId);
+        if (!role) throw new IdentityError('not-found');
+        if (add && role.permissions.some((permission) => !access.permissions.includes(permission)))
+          throw new IdentityError('forbidden');
+        const prior = findUser(database, userId);
+        checkVersion(prior, version);
+        const roleIds = add
+          ? [...new Set([...prior.roleIds, roleId])]
+          : prior.roleIds.filter((id) => id !== roleId);
+        checkRoles(database, roleIds);
+        const user = {
+          ...prior,
+          roleIds,
+          version: prior.version + 1,
+          updatedAt: new Date().toISOString(),
+        };
+        protect(database, prior, user, access.user.id);
+        return {
+          database: recordMutation(
+            replaceUser(database, user),
+            access.user,
+            'users.roles',
+            user.id,
+            user.name,
+          ),
+          result: user,
+        };
+      });
+    },
+    inboxPage: async (input) => {
+      const parsed = productInboxQuerySchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      const query = parsed.data;
+      const all = await operations.inbox();
+      const q = query.q.toLowerCase();
+      const items = all
+        .filter(
+          (item) =>
+            (!q ||
+              [item.objectName, item.objectId, item.operation].some((value) =>
+                value.toLowerCase().includes(q),
+              )) &&
+            (query.category === 'all' || query.category === item.category) &&
+            (query.read === 'all' || item.read === (query.read === 'read')),
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
+      return {
+        items: items.slice((query.page - 1) * query.pageSize, query.page * query.pageSize),
+        total: items.length,
+        unread: all.filter((item) => !item.read).length,
+        page: query.page,
+        pageSize: query.pageSize,
+      };
+    },
+    readNotification: async (id) => {
+      if (!identifierSchema.safeParse(id).success) throw new IdentityError('validation');
+      const item = (await operations.inbox()).find((item) => item.id === id);
+      if (!item) throw new IdentityError('not-found');
+      return item;
+    },
+    readAllNotifications: async () => {
+      await mutateMockDatabase((database) => {
+        const access = actor(database, currentUserId());
+        return {
+          database: {
+            ...database,
+            notifications: database.notifications.map((item) =>
+              item.ownerId === access.user.id ? { ...item, read: true } : item,
+            ),
+          },
+          result: undefined,
+        };
+      });
+    },
     registrationSettings: async () => {
       const database = await readMockDatabase();
       actor(database, currentUserId(), 'settings.read');
@@ -360,7 +520,17 @@ export function createMockIdentityService(currentUserId: () => string | null): I
               value.toLowerCase().includes(q),
             )) &&
           (query.operation === 'all' || item.operation === query.operation) &&
-          (query.result === 'all' || item.result === query.result),
+          (query.result === 'all' || item.result === query.result) &&
+          (!query.actor ||
+            [item.actorId, item.actorName].some((value) =>
+              value.toLowerCase().includes(query.actor?.toLowerCase() ?? ''),
+            )) &&
+          (!query.object ||
+            [item.objectId, item.objectName].some((value) =>
+              value.toLowerCase().includes(query.object?.toLowerCase() ?? ''),
+            )) &&
+          (!query.from || Date.parse(item.createdAt) >= Date.parse(query.from)) &&
+          (!query.to || Date.parse(item.createdAt) <= Date.parse(query.to)),
       );
       items.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
       const start = (query.page - 1) * query.pageSize;
@@ -561,6 +731,10 @@ export function createMockIdentityService(currentUserId: () => string | null): I
   }
   return {
     ...operations,
+    changeRoleMember: (roleId, userId, version, add) =>
+      audited('users.roles', userId, () =>
+        operations.changeRoleMember(roleId, userId, version, add),
+      ),
     updateRegistrationSettings: (input) =>
       audited('settings.update', 'registration-policy', () =>
         operations.updateRegistrationSettings(input),

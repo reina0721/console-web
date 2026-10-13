@@ -4,7 +4,7 @@ export type AuthUser = Readonly<{
   email: string;
 }>;
 
-export type AuthSession = Readonly<{ user: AuthUser; expiresAt: number }>;
+export type AuthSession = Readonly<{ user: AuthUser; expiresAt: number; sessionId?: string }>;
 export type LoginInput = Readonly<{ email: string; password: string }>;
 export type RegisterInput = LoginInput & Readonly<{ name: string }>;
 export type AuthErrorCode =
@@ -58,7 +58,13 @@ export function readSession(value: unknown): AuthSession {
     !user.email
   )
     throw new AuthError('protocol');
-  return { user: { id: user.id, name: user.name, email: user.email }, expiresAt: value.expiresAt };
+  return {
+    user: { id: user.id, name: user.name, email: user.email },
+    expiresAt: value.expiresAt,
+    ...('sessionId' in value && typeof value.sessionId === 'string'
+      ? { sessionId: value.sessionId }
+      : {}),
+  };
 }
 
 /** Only same-origin paths may be restored; never accept an external login redirect. */

@@ -60,6 +60,12 @@ function contractRequest(service: IdentityOperations): typeof fetch {
           ),
         });
       }
+      if (
+        path === '/roles' &&
+        method === 'GET' &&
+        url.searchParams.get('include') === 'memberCount'
+      )
+        return Response.json({ items: await service.roleSummaries() });
       if (path === '/roles' && method === 'GET')
         return Response.json({ items: await service.roles() });
       if (path === '/roles' && method === 'POST') {
@@ -80,6 +86,53 @@ function contractRequest(service: IdentityOperations): typeof fetch {
           });
         }
       }
+      if (path === '/users/batch-status' && method === 'POST') {
+        const { batchStatusInputSchema } = await import('@community-go/surface/identity');
+        return Response.json(await service.batchStatus(batchStatusInputSchema.parse(body)));
+      }
+      const memberMatch = /^\/roles\/([^/]+)\/members(?:\/([^/]+))?$/.exec(path);
+      if (memberMatch?.[1]) {
+        const roleId = memberMatch[1];
+        if (method === 'GET')
+          return Response.json(
+            await service.roleMembers(roleId, {
+              ...defaultUserQuery,
+              q: url.searchParams.get('q') ?? '',
+              page: Number(url.searchParams.get('page')),
+              pageSize: Number(url.searchParams.get('pageSize')) === 10 ? 10 : 20,
+            }),
+          );
+        const { z } = await import('zod');
+        const values = z.object({ userId: z.string().optional(), version: z.number() }).parse(body);
+        return Response.json({
+          user: await service.changeRoleMember(
+            roleId,
+            values.userId ?? memberMatch[2] ?? '',
+            values.version,
+            method === 'POST',
+          ),
+        });
+      }
+      if (path === '/notifications/read-all' && method === 'PATCH') {
+        await service.readAllNotifications();
+        return new Response(null, { status: 204 });
+      }
+      if (path.startsWith('/notifications/') && method === 'GET')
+        return Response.json({
+          item: await service.readNotification(path.slice('/notifications/'.length)),
+        });
+      if (path === '/notifications' && method === 'GET' && url.searchParams.has('page')) {
+        const { productInboxQuerySchema } = await import('@community-go/surface/identity');
+        return Response.json(
+          await service.inboxPage(
+            productInboxQuerySchema.parse({
+              ...Object.fromEntries(url.searchParams),
+              page: Number(url.searchParams.get('page')),
+              pageSize: Number(url.searchParams.get('pageSize')),
+            }),
+          ),
+        );
+      }
       if (path === '/notifications' && method === 'GET')
         return Response.json({ items: await service.inbox() });
       if (path === '/notifications/read' && method === 'PATCH') {
@@ -93,6 +146,10 @@ function contractRequest(service: IdentityOperations): typeof fetch {
           await service.audit(
             auditQuerySchema.parse({
               q: url.searchParams.get('q'),
+              actor: url.searchParams.get('actor') ?? '',
+              object: url.searchParams.get('object') ?? '',
+              from: url.searchParams.get('from') ?? '',
+              to: url.searchParams.get('to') ?? '',
               operation: url.searchParams.get('operation'),
               result: url.searchParams.get('result'),
               page: Number(url.searchParams.get('page')),
@@ -202,6 +259,80 @@ describe.each(['mock', 'backend'] as const)('%s identity contract', (mode) => {
       expiresAt: Date.now() + 60000,
     });
   }
+  it('returns partial batch results and preserves other roles during member changes', async () => {
+    const api = service();
+    const member = await api.read('mock-viewer');
+    const self = await api.me();
+    const batch = await api.batchStatus({
+      status: 'disabled',
+      items: [
+        { id: member.id, version: member.version },
+        { id: self.id, version: self.version },
+        { id: 'missing', version: 1 },
+      ],
+    });
+    expect(batch.items.map((item) => item.success)).toEqual([true, false, false]);
+    expect((await api.read(member.id)).status).toBe('disabled');
+    const refreshed = await api.read(member.id);
+    await api.changeRoleMember('operator', member.id, refreshed.version, true);
+    const joined = await api.read(member.id);
+    expect(joined.roleIds).toEqual(['viewer', 'operator']);
+    await expect(
+      api.changeRoleMember('operator', member.id, refreshed.version, false),
+    ).rejects.toMatchObject({ code: 'conflict' });
+    await api.changeRoleMember('operator', member.id, joined.version, false);
+    expect((await api.read(member.id)).roleIds).toEqual(['viewer']);
+    expect(
+      (await api.roleSummaries()).find((role) => role.id === 'viewer')?.memberCount,
+    ).toBeGreaterThan(0);
+    expect(
+      (await api.roleMembers('viewer', { ...defaultUserQuery, pageSize: 10 })).items.every((user) =>
+        user.roleIds.includes('viewer'),
+      ),
+    ).toBe(true);
+  });
+  it('paginates owned notifications and marks only existing notifications read', async () => {
+    const api = service();
+    const user = await api.read('mock-viewer');
+    for (let index = 0; index < 3; index++) {
+      const current = await api.read(user.id);
+      await api.setStatus(user.id, current.version, index % 2 ? 'active' : 'disabled');
+    }
+    const query = {
+      q: '',
+      category: 'all' as const,
+      read: 'all' as const,
+      page: 1,
+      pageSize: 10 as const,
+    };
+    const page = await api.inboxPage(query);
+    expect(page.total).toBeGreaterThanOrEqual(3);
+    expect(page.items.every((item) => item.ownerId === owner)).toBe(true);
+    const item = page.items[0];
+    if (!item) throw new Error('Missing notification');
+    expect((await api.readNotification(item.id)).id).toBe(item.id);
+    await api.readAllNotifications();
+    expect((await api.inboxPage(query)).unread).toBe(0);
+    const current = await api.read(user.id);
+    await api.setStatus(user.id, current.version, 'active');
+    expect((await api.inboxPage(query)).unread).toBe(1);
+  });
+  it('filters audit by actor, object and inclusive timestamps', async () => {
+    const api = service();
+    const user = await api.read('mock-viewer');
+    await api.setStatus(user.id, user.version, 'disabled');
+    const items = await api.audit({ ...defaultAuditQuery, actor: 'Rin', object: 'Morgan' });
+    expect(items.total).toBeGreaterThan(0);
+    expect((await api.audit({ ...defaultAuditQuery, actor: 'missing-actor' })).total).toBe(0);
+    const first = items.items[0];
+    if (!first) throw new Error('Missing audit fixture');
+    expect(
+      (await api.audit({ ...defaultAuditQuery, from: first.createdAt, to: first.createdAt })).total,
+    ).toBeGreaterThan(0);
+    await expect(
+      api.audit({ ...defaultAuditQuery, from: '2030-01-01T00:00:00Z', to: '2020-01-01T00:00:00Z' }),
+    ).rejects.toMatchObject({ code: 'validation' });
+  });
   it('applies registration policy at submission, preserves existing grants and audits conflicts', async () => {
     const api = service();
     const initial = await api.registrationSettings();
@@ -565,7 +696,8 @@ it('migrates v1 accounts/session in place and preserves corrupt/unknown versions
 });
 it('migrates v3 in place without replacing users, role grants, notifications or audit', async () => {
   const database = await readMockDatabase();
-  const { registrationSettings, ...prior } = database;
+  const { registrationSettings, securitySessions, ...prior } = database;
+  expect(securitySessions.length).toBeGreaterThan(0);
   const original = {
     ...prior,
     roles: prior.roles.map((role) => ({

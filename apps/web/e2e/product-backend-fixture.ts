@@ -1,5 +1,8 @@
 import type { BrowserContext } from '@playwright/test';
 import {
+  batchStatusInputSchema,
+  productInboxQuerySchema,
+  changePasswordSchema,
   permissionCodes,
   registrationSettingsInputSchema,
   createUserSchema,
@@ -59,6 +62,26 @@ export async function installProductBackend(context: BrowserContext) {
   const audit: AuditRecord[] = [];
   const writes: { path: string; method: string; csrf: string | undefined }[] = [];
   let nextId = 0;
+  let authenticated = true;
+  let password = 'BackendPassword2026!';
+  let sessions = [
+    {
+      id: 'backend-current',
+      device: 'Browser',
+      createdAt: date,
+      lastActiveAt: date,
+      expiresAt: '2030-10-01T00:00:00.000Z',
+      current: true,
+    },
+    {
+      id: 'backend-other',
+      device: 'Other browser',
+      createdAt: date,
+      lastActiveAt: date,
+      expiresAt: '2030-10-01T00:00:00.000Z',
+      current: false,
+    },
+  ];
   let conflict = false;
   let policyConflict = false;
   function record(operation: AuditRecord['operation'], objectId: string, objectName: string) {
@@ -97,6 +120,7 @@ export async function installProductBackend(context: BrowserContext) {
       writes.push({ path, method, csrf: request.headers()['x-csrf-token'] });
       if (request.headers()['x-csrf-token'] !== 'product-csrf') return error(403, 'forbidden');
     }
+    if (path === '/auth/session' && !authenticated) return error(401, 'unauthenticated');
     if (path === '/auth/session')
       return reply({
         user: { id: admin.id, name: admin.name, email: admin.email },
@@ -104,6 +128,46 @@ export async function installProductBackend(context: BrowserContext) {
       });
     if (path === '/auth/access') return reply({ user: admin, permissions: [...permissionCodes] });
     const body: unknown = method === 'GET' ? undefined : request.postDataJSON();
+    if (path === '/auth/sessions' && method === 'GET') return reply({ items: sessions });
+    if (path === '/auth/password' && method === 'POST') {
+      const parsed = changePasswordSchema.safeParse(body);
+      if (!parsed.success || parsed.data.currentPassword !== password)
+        return error(422, 'validation');
+      password = parsed.data.newPassword;
+      authenticated = false;
+      sessions = [];
+      return route.fulfill({ status: 204 });
+    }
+    if (path === '/auth/login' && method === 'POST') {
+      if (typeof body !== 'object' || body === null || !('email' in body) || !('password' in body))
+        return error(422, 'validation');
+      if (body.email !== admin.email || body.password !== password)
+        return error(401, 'credentials');
+      authenticated = true;
+      sessions = [
+        {
+          id: 'backend-current',
+          device: 'Browser',
+          createdAt: date,
+          lastActiveAt: date,
+          expiresAt: '2030-10-01T00:00:00.000Z',
+          current: true,
+        },
+      ];
+      return route.fulfill({ status: 204 });
+    }
+    if (path === '/auth/sessions/revoke-others' && method === 'POST') {
+      sessions = sessions.filter((item) => item.current);
+      return route.fulfill({ status: 204 });
+    }
+    if (path.startsWith('/auth/sessions/') && method === 'DELETE') {
+      const id = path.slice('/auth/sessions/'.length);
+      const session = sessions.find((item) => item.id === id);
+      if (!session) return error(404, 'not-found');
+      sessions = sessions.filter((item) => item.id !== id);
+      if (session.current) authenticated = false;
+      return route.fulfill({ status: 204 });
+    }
     if (path === '/auth/registration-policy')
       return reply({ enabled: registrationSettings.enabled });
     if (path === '/system/registration' && method === 'GET')
@@ -131,7 +195,16 @@ export async function installProductBackend(context: BrowserContext) {
       return reply({ settings: registrationSettings });
     }
     if (path === '/me' && method === 'GET') return reply({ user: admin });
-    if (path === '/roles' && method === 'GET') return reply({ items: roles });
+    if (path === '/roles' && method === 'GET')
+      return reply({
+        items:
+          url.searchParams.get('include') === 'memberCount'
+            ? roles.map((role) => ({
+                ...role,
+                memberCount: users.filter((user) => user.roleIds.includes(role.id)).length,
+              }))
+            : roles,
+      });
     if (path === '/roles' && method === 'POST') {
       const parsed = roleInputSchema.safeParse(body);
       if (!parsed.success) return error(422, 'validation');
@@ -189,6 +262,61 @@ export async function installProductBackend(context: BrowserContext) {
         pageSize: query.pageSize,
       });
     }
+    if (path === '/users/batch-status' && method === 'POST') {
+      const parsed = batchStatusInputSchema.safeParse(body);
+      if (!parsed.success) return error(422, 'validation');
+      return reply({
+        items: parsed.data.items.map((item) => {
+          const user = users.find((user) => user.id === item.id);
+          if (!user) return { id: item.id, success: false, code: 'not-found' };
+          if (user.id === admin.id && parsed.data.status === 'disabled')
+            return { id: item.id, success: false, code: 'conflict', reason: 'protected-user' };
+          if (user.version !== item.version)
+            return { id: item.id, success: false, code: 'conflict', reason: 'stale-version' };
+          user.status = parsed.data.status;
+          user.version += 1;
+          record('users.status', user.id, user.name);
+          return { id: item.id, success: true, user: { ...user } };
+        }),
+      });
+    }
+    const memberMatch = /^\/roles\/([^/]+)\/members(?:\/([^/]+))?$/.exec(path);
+    if (memberMatch?.[1]) {
+      const roleId = memberMatch[1];
+      if (!roles.some((role) => role.id === roleId)) return error(404, 'not-found');
+      if (method === 'GET') {
+        const page = Number(url.searchParams.get('page')),
+          pageSize = Number(url.searchParams.get('pageSize'));
+        const items = users.filter((user) => user.roleIds.includes(roleId));
+        return reply({
+          items: items.slice((page - 1) * pageSize, page * pageSize),
+          total: items.length,
+          page,
+          pageSize,
+        });
+      }
+      if (
+        typeof body !== 'object' ||
+        body === null ||
+        !('version' in body) ||
+        typeof body.version !== 'number'
+      )
+        return error(422, 'validation');
+      const targetId = 'userId' in body ? body.userId : memberMatch[2];
+      const user = users.find((user) => user.id === targetId);
+      if (!user) return error(404, 'not-found');
+      if (user.id === admin.id) return error(409, 'conflict', 'protected-user');
+      if (user.version !== body.version) return error(409, 'conflict', 'stale-version');
+      const roleIds =
+        method === 'POST'
+          ? [...new Set([...user.roleIds, roleId])]
+          : user.roleIds.filter((id) => id !== roleId);
+      if (!roleIds.length) return error(422, 'validation');
+      user.roleIds = roleIds;
+      user.version += 1;
+      record('users.roles', user.id, user.name);
+      return reply({ user });
+    }
     if (path === '/users' && method === 'POST') {
       const parsed = createUserSchema.safeParse(body);
       if (!parsed.success) return error(422, 'validation');
@@ -224,7 +352,40 @@ export async function installProductBackend(context: BrowserContext) {
       record(path === '/me' ? 'account.update' : 'users.update', user.id, user.name);
       return reply({ user });
     }
-    if (path === '/notifications' && method === 'GET') return reply({ items: notifications });
+    if (path === '/notifications' && method === 'GET') {
+      if (!url.searchParams.has('page')) return reply({ items: notifications });
+      const parsed = productInboxQuerySchema.safeParse({
+        ...Object.fromEntries(url.searchParams),
+        page: Number(url.searchParams.get('page')),
+        pageSize: Number(url.searchParams.get('pageSize')),
+      });
+      if (!parsed.success) return error(422, 'validation');
+      const query = parsed.data;
+      const items = notifications.filter(
+        (item) =>
+          (!query.q ||
+            `${item.objectName} ${item.operation}`.toLowerCase().includes(query.q.toLowerCase())) &&
+          (query.category === 'all' || item.category === query.category) &&
+          (query.read === 'all' || item.read === (query.read === 'read')),
+      );
+      return reply({
+        items: items.slice((query.page - 1) * query.pageSize, query.page * query.pageSize),
+        total: items.length,
+        unread: notifications.filter((item) => !item.read).length,
+        page: query.page,
+        pageSize: query.pageSize,
+      });
+    }
+    if (path === '/notifications/read-all' && method === 'PATCH') {
+      notifications.forEach((item) => {
+        item.read = true;
+      });
+      return route.fulfill({ status: 204 });
+    }
+    if (path.startsWith('/notifications/') && method === 'GET') {
+      const item = notifications.find((item) => item.id === path.slice('/notifications/'.length));
+      return item ? reply({ item }) : error(404, 'not-found');
+    }
     if (path === '/notifications/read' && method === 'PATCH') {
       const parsed = readNotificationsSchema.safeParse(body);
       if (!parsed.success) return error(422, 'validation');
@@ -238,6 +399,10 @@ export async function installProductBackend(context: BrowserContext) {
     if (path === '/audit-logs' && method === 'GET') {
       const parsed = auditQuerySchema.safeParse({
         q: url.searchParams.get('q'),
+        actor: url.searchParams.get('actor') ?? '',
+        object: url.searchParams.get('object') ?? '',
+        from: url.searchParams.get('from') ?? '',
+        to: url.searchParams.get('to') ?? '',
         operation: url.searchParams.get('operation'),
         result: url.searchParams.get('result'),
         page: Number(url.searchParams.get('page')),
@@ -250,7 +415,11 @@ export async function installProductBackend(context: BrowserContext) {
           (!query.q ||
             `${item.actorName} ${item.objectName}`.toLowerCase().includes(query.q.toLowerCase())) &&
           (query.operation === 'all' || item.operation === query.operation) &&
-          (query.result === 'all' || item.result === query.result),
+          (query.result === 'all' || item.result === query.result) &&
+          (!query.actor || item.actorName.includes(query.actor)) &&
+          (!query.object || item.objectName.includes(query.object)) &&
+          (!query.from || Date.parse(item.createdAt) >= Date.parse(query.from)) &&
+          (!query.to || Date.parse(item.createdAt) <= Date.parse(query.to)),
       );
       const start = (query.page - 1) * query.pageSize;
       return reply({

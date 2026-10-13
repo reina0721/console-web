@@ -11,7 +11,7 @@ async function resetAll(page: Page) {
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
 }
 
-test('收藏：详情页收藏 → 首页"收藏"区段展示并可跳转', async ({ page }) => {
+test('收藏能力保留在详情页，首页仅保留最近访问', async ({ page }) => {
   await resetAll(page);
   await page.goto('/reference-resources/detail?id=resource-alpha');
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
@@ -21,7 +21,7 @@ test('收藏：详情页收藏 → 首页"收藏"区段展示并可跳转', asyn
   // 首页显示收藏区段。
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
-  await expect(page.getByRole('heading', { name: '收藏' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '收藏', exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: '参考资源详情' })).toBeVisible();
 });
 

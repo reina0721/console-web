@@ -129,6 +129,7 @@ export type NavigationPreferences = Readonly<{
   /** 首页显示最近访问。 */
   showRecents: boolean;
   /** 进入根入口时自动恢复未完成工作。 */
+  /** Legacy persisted value retained for compatibility; automatic draft navigation is retired. */
   autoRestoreWorkspace: boolean;
 }>;
 

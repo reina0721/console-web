@@ -38,7 +38,7 @@ test('Product IA retains old links, search targets, page tabs and history', asyn
   ).toHaveAttribute('href', '/system-tools/icons');
 });
 
-test('Workbench resumes a real draft; save feedback and unread state share the header source', async ({
+test('Home contains only recents while drafts and notification actions remain available in their owners', async ({
   page,
 }) => {
   await page.goto('/settings/actions');
@@ -49,25 +49,26 @@ test('Workbench resumes a real draft; save feedback and unread state share the h
   await page.goto('/reference-resources/create');
   await page.getByLabel('名称', { exact: true }).fill('M1 工作台恢复验证');
   await page.goto('/');
-  const drafts = page.locator('#workbench-drafts');
-  await expect(drafts).toContainText('M1 工作台恢复验证');
-  await drafts.getByRole('link', { name: '继续编辑' }).click();
+  await expect(page.locator('#workbench-drafts')).toHaveCount(0);
+  await expect(page.locator('#workbench-favorites')).toHaveCount(0);
+  await expect(page.locator('#workbench-activity')).toHaveCount(0);
+  await expect(page.locator('#workbench-shortcuts')).toHaveCount(0);
+  await page.goto('/reference-resources/create');
   await expect(page.getByLabel('名称', { exact: true })).toHaveValue('M1 工作台恢复验证');
   await page.getByRole('button', { name: '创建', exact: true }).click();
   await expect(page).toHaveURL(/\/reference-resources(?:\?.*)?$/);
   await page.goto('/');
-  await expect(page.locator('#workbench-drafts')).toHaveCount(0);
-  const events = page.locator('#workbench-activity');
-  await expect(events).toContainText('参考资源已保存');
-  await events.getByRole('button', { name: '全部标为已读' }).click();
-  await expect(events).toContainText('0 条未读');
-  await page.getByRole('button', { name: '通知', exact: true }).click();
+  await page.getByRole('button', { name: /^通知(?:，|$)/ }).click();
   await expect(page.getByRole('dialog', { name: '通知中心' })).toContainText('参考资源已保存');
+  await page
+    .getByRole('dialog', { name: '通知中心' })
+    .getByRole('button', { name: '全部标为已读' })
+    .click();
   await expect(
     page.getByRole('dialog', { name: '通知中心' }).getByRole('button', { name: '全部标为已读' }),
   ).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: '通知', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: /^通知(?:，|$)/ })).toBeFocused();
 });
 
 test('English dark workbench is usable at mobile, tablet, desktop and wide widths', async ({

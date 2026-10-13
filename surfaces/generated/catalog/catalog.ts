@@ -448,8 +448,9 @@ export const generatedRouteCatalog: RouteCatalog = {
   ],
   aliases: [
     { groupId: 'management', labelKey: 'shellNavigationGroups.management', order: 0 },
-    { groupId: 'system', labelKey: 'shellNavigationGroups.system', order: 1 },
-    { groupId: 'development', labelKey: 'shellNavigationGroups.development', order: 2 },
+    { groupId: 'administration', labelKey: 'shellNavigationGroups.administration', order: 1 },
+    { groupId: 'system', labelKey: 'shellNavigationGroups.system', order: 2 },
+    { groupId: 'development', labelKey: 'shellNavigationGroups.development', order: 3 },
   ],
   contributions: [
     {
@@ -474,7 +475,7 @@ export const generatedRouteCatalog: RouteCatalog = {
           {
             navigationId: 'audit.root',
             labelKey: 'audit.nav',
-            groupId: 'management',
+            groupId: 'administration',
             order: 20,
             iconId: 'list',
             routeId: 'audit',
@@ -697,7 +698,7 @@ export const generatedRouteCatalog: RouteCatalog = {
           {
             navigationId: 'system-settings.root',
             labelKey: 'systemSettings.nav',
-            groupId: 'management',
+            groupId: 'administration',
             order: 40,
             iconId: 'settings',
             routeId: 'system-settings',

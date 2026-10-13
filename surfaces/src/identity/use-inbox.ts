@@ -7,10 +7,13 @@ import {
 } from '@community-go/plugin-framework/notifications';
 import { useIdentityQuery } from './use-query';
 import { useIdentityPort } from './context';
+import type { ProductInboxQuery } from './model';
 import { IdentityError } from './errors';
 
 /** One presentation collection for the shell and full inbox; backend records remain unpersisted. */
-export function useProductInbox() {
+export function useProductInbox(
+  options: Readonly<{ query?: ProductInboxQuery; id?: string }> = {},
+) {
   const port = useIdentityPort();
   const events = useNotificationsPort();
   const { t } = useFrontendTranslation();
@@ -19,10 +22,23 @@ export function useProductInbox() {
     () => events.list(),
     () => events.list(),
   );
-  const result = useIdentityQuery('inbox', async (service) => {
-    const [access, items] = await Promise.all([service.access(), service.inbox()]);
-    return { access, items };
-  });
+  const query = options.query ?? { q: '', category: 'all', read: 'all', page: 1, pageSize: 20 };
+  const result = useIdentityQuery(
+    `inbox:${JSON.stringify(query)}:${options.id ?? ''}`,
+    async (service) => {
+      const [access, page] = await Promise.all([service.access(), service.inboxPage(query)]);
+      const detail =
+        options.id && !local.some((item) => item.id === options.id)
+          ? await service.readNotification(options.id.replace(/^product:/, ''))
+          : null;
+      return {
+        access,
+        items: detail ? [detail] : page.items,
+        total: page.total,
+        unread: page.unread,
+      };
+    },
+  );
   const [failure, setFailure] = useState<IdentityError | null>(null);
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
@@ -86,7 +102,10 @@ export function useProductInbox() {
   }
   return {
     items,
-    unread: items.filter((item) => !item.read).length,
+    remote,
+    local,
+    total: result.data?.total ?? 0,
+    unread: (result.data?.unread ?? 0) + local.filter((item) => !item.read).length,
     loading: result.loading,
     error: result.error,
     failure,
@@ -96,5 +115,22 @@ export function useProductInbox() {
       result.reload();
     },
     markRead,
+    markAllRead: async () => {
+      if (pendingRef.current) return;
+      pendingRef.current = true;
+      setPending(true);
+      setFailure(null);
+      const localIds = local.filter((item) => !item.read).map((item) => item.id);
+      try {
+        await port.readAllNotifications();
+        localIds.forEach((id) => events.markRead(id));
+        result.reload();
+      } catch (error) {
+        setFailure(error instanceof IdentityError ? error : new IdentityError('unavailable'));
+      } finally {
+        pendingRef.current = false;
+        setPending(false);
+      }
+    },
   };
 }

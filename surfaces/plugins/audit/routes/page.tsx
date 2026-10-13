@@ -13,6 +13,10 @@ export default function AuditRoute() {
     const { auditQuerySchema } = await import('../../../src/identity/model');
     const query = auditQuerySchema.safeParse({
       q: params.get('q') ?? '',
+      actor: params.get('actor') ?? '',
+      object: params.get('object') ?? '',
+      from: params.get('from') ?? '',
+      to: params.get('to') ?? '',
       operation: params.get('operation') ?? 'all',
       result: params.get('result') ?? 'all',
       page: params.has('page') ? Number(params.get('page')) : defaultAuditQuery.page,

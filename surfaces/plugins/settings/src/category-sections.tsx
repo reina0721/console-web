@@ -392,14 +392,7 @@ export function NavigationSection({ ctx }: Readonly<{ ctx: Ctx }>) {
           t('settings.navigation.showRecents'),
           '',
         )}
-        {switchRow(
-          ctx,
-          'navigation',
-          'autoRestoreWorkspace',
-          nav.autoRestoreWorkspace,
-          t('settings.navigation.autoRestoreWorkspace'),
-          '',
-        )}
+
         <RadioGroupField
           presentation="inline"
           hint=""

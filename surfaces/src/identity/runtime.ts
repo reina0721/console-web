@@ -7,3 +7,5 @@ export { permissionCodes, auditOperations, defaultUserQuery, defaultAuditQuery }
 export { registrationRestrictedPermissions } from './constants';
 export { useProductAccess } from './use-access';
 export { useProductInbox } from './use-inbox';
+export { AccountSecurityProvider, useAccountSecurityPort } from './account-security';
+export type { AccountSecurityPort, AccountSession } from './account-security';

@@ -247,3 +247,7 @@ Flyout 有标题和完整子树，键盘内部焦点不会因指针离开关闭�
 声明可直接交互的导航控制边界，公开 outside-interaction 过滤避免吞掉第一次点击。
 普通外部关闭、Escape、Portal/Collision 与焦点返回仍由 HeroUI 负责。
 同源组合在 /ui-elements/overlays 的 Tooltip 预览与 App Shell 验证。
+
+## 受控日期值
+
+`DatePickerField` 的可选 `value` 使用 ISO Gregorian 日期字符串 `YYYY-MM-DD`，`null` 清空，省略保留原有非受控用法；`onValueChange` 返回同样语义字符串或 null。公开契约不暴露 HeroUI DateValue，Adapter 通过官方 `@internationalized/date` 解析并映射 HeroUI 的受控值，Selection、Keyboard、Focus 和 Popup 保持 vendor 管理。样式及未传 value 的消费者不改变。真实消费者为 UI Elements Forms 和审计日期筛选；URL 恢复与清空的证据见 [110 实施](changes/110-management-completion/README.md)。

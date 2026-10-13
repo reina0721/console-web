@@ -2,7 +2,13 @@ export const pluginI18nResources = {
   'zh-CN': {
     translation: {
       audit: {
+        filters: '筛选条件',
+        from: '开始日期',
+        to: '结束日期',
+        calendar: '选择日期',
+        utcHint: '按 UTC 日期范围查询，包含起止日期。',
         nav: '审计日志',
+        records: '操作记录',
         description: '只读记录管理操作的时间、主体、对象和结果。不会收集密码或表单内容。',
         search: '搜索操作主体或对象',
         operation: '操作类型',
@@ -24,7 +30,13 @@ export const pluginI18nResources = {
   en: {
     translation: {
       audit: {
+        filters: 'Filters',
+        from: 'Start date',
+        to: 'End date',
+        calendar: 'Choose a date',
+        utcHint: 'Inclusive date range in UTC.',
         nav: 'Audit logs',
+        records: 'Operation records',
         description:
           'Read-only management records include time, actor, object and result. Passwords and form contents are excluded.',
         search: 'Search actors or objects',

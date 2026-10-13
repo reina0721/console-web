@@ -119,7 +119,9 @@
         "apps/web/e2e/settings-product-review.spec.ts",
         "apps/web/e2e/data-display.spec.ts",
         "apps/web/e2e/ui-ux-109.spec.ts",
-        "docs/changes/109-ui-ux-optimization/README.md"
+        "docs/changes/109-ui-ux-optimization/README.md",
+        "apps/web/e2e/management-completion.spec.ts",
+        "apps/web/src/test/date-picker-contract.test.tsx"
       ]
     },
     "@community-go/state-foundation": {
@@ -225,7 +227,11 @@
         "surfaces/src/preferences-model.test.ts",
         "surfaces/src/identity/model.test.ts",
         "apps/web/src/test/identity-contract.test.ts",
-        "docs/changes/108-ui-ux-audit/product-implementation.md"
+        "docs/changes/108-ui-ux-audit/product-implementation.md",
+        "apps/web/src/test/account-security.test.ts",
+        "apps/web/e2e/management-completion.spec.ts",
+        "apps/web/e2e/management-completion-backend.spec.ts",
+        "docs/changes/110-management-completion/README.md"
       ]
     }
   }

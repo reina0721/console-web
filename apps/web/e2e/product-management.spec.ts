@@ -66,7 +66,7 @@ test('M2–M5 user, role grants, inbox and audit form a durable management workf
   await expect(page.getByRole('main')).toContainText('M25 Audit reviewer');
   await expect(page.getByRole('main')).toContainText('M25 Updated member');
   await page.getByRole('main').getByRole('link', { name: '修改用户角色', exact: true }).click();
-  await expect(page).toHaveURL(/\/audit-logs\/detail\?id=/, { timeout: 15000 });
+  await expect(page).toHaveURL(/\/audit-logs\/detail\?.*\bid=/, { timeout: 15000 });
   await expect(page.getByRole('main')).toContainText('mock-demo');
   await expect(page.getByRole('main')).toContainText(userId);
   await expect(

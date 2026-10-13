@@ -129,6 +129,10 @@
       "owner": "product state foundation (Store mechanics)",
       "allowed": ["apps/web", "surfaces"],
       "category": "client-state"
+    },
+    "@internationalized/date": {
+      "owner": "UI Adapter calendar value parsing for HeroUI date controls",
+      "allowed": ["packages/ui-adapter"]
     }
   }
 }

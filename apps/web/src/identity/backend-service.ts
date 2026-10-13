@@ -1,4 +1,10 @@
 import {
+  batchStatusInputSchema,
+  batchStatusResultSchema,
+  productInboxQuerySchema,
+  productInboxPageSchema,
+  notificationResponseSchema,
+  roleSummariesSchema,
   accessSchema,
   registrationSettingsInputSchema,
   registrationSettingsResponseSchema,
@@ -39,7 +45,11 @@ export function createBackendIdentityService(
   request: typeof fetch = fetch,
 ): IdentityOperations {
   const json = createJsonClient(apiBaseUrl, request);
-  async function call(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown) {
+  async function call(
+    path: string,
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
+    body?: unknown,
+  ) {
     try {
       return await json(path, { method, ...(body === undefined ? {} : { body }) });
     } catch (error) {
@@ -60,10 +70,121 @@ export function createBackendIdentityService(
     if (!identifierSchema.safeParse(id).success) throw new IdentityError('validation');
     return `/users/${encodeURIComponent(id)}`;
   }
-  async function userCall(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: unknown) {
+  async function userCall(
+    path: string,
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
+    body?: unknown,
+  ) {
     return parseIdentity(userResponseSchema, await call(path, method, body)).user;
   }
   return {
+    batchStatus: async (input) => {
+      const parsed = batchStatusInputSchema.safeParse(input);
+      if (!parsed.success) throw new IdentityError('validation');
+      const result = parseIdentity(
+        batchStatusResultSchema,
+        await call('/users/batch-status', 'POST', parsed.data),
+      );
+      if (
+        result.items.length !== input.items.length ||
+        new Set(result.items.map((item) => item.id)).size !== result.items.length ||
+        result.items.some((item) => {
+          const prior = input.items.find((entry) => entry.id === item.id);
+          return (
+            !prior ||
+            (item.success &&
+              (item.user.id !== item.id ||
+                item.user.version <= prior.version ||
+                item.user.status !== input.status))
+          );
+        })
+      )
+        throw new IdentityError('protocol');
+      return result;
+    },
+    roleSummaries: async () => {
+      const result = parseIdentity(roleSummariesSchema, await call('/roles?include=memberCount'));
+      if (new Set(result.items.map((item) => item.id)).size !== result.items.length)
+        throw new IdentityError('protocol');
+      return result.items;
+    },
+    roleMembers: async (id, query) => {
+      if (!identifierSchema.safeParse(id).success || !userQuerySchema.safeParse(query).success)
+        throw new IdentityError('validation');
+      const params = new URLSearchParams({
+        q: query.q,
+        status: query.status,
+        sort: query.sort,
+        direction: query.direction,
+        page: String(query.page),
+        pageSize: String(query.pageSize),
+      });
+      const result = parseIdentity(
+        userPageSchema,
+        await call(`/roles/${encodeURIComponent(id)}/members?${params}`),
+      );
+      if (
+        result.page !== query.page ||
+        result.pageSize !== query.pageSize ||
+        result.items.length > query.pageSize ||
+        result.total < result.items.length ||
+        new Set(result.items.map((item) => item.id)).size !== result.items.length ||
+        result.items.some((user) => !user.roleIds.includes(id))
+      )
+        throw new IdentityError('protocol');
+      return result;
+    },
+    changeRoleMember: async (roleId, userId, version, add) => {
+      if (
+        !identifierSchema.safeParse(roleId).success ||
+        !identifierSchema.safeParse(userId).success ||
+        !Number.isInteger(version) ||
+        version < 1
+      )
+        throw new IdentityError('validation');
+      const path = `/roles/${encodeURIComponent(roleId)}/members`;
+      const user = await userCall(
+        add ? path : `${path}/${encodeURIComponent(userId)}`,
+        add ? 'POST' : 'DELETE',
+        add ? { userId, version } : { version },
+      );
+      if (user.id !== userId || user.version <= version || user.roleIds.includes(roleId) !== add)
+        throw new IdentityError('protocol');
+      return user;
+    },
+    inboxPage: async (query) => {
+      if (!productInboxQuerySchema.safeParse(query).success) throw new IdentityError('validation');
+      const params = new URLSearchParams({
+        q: query.q,
+        category: query.category,
+        read: query.read,
+        page: String(query.page),
+        pageSize: String(query.pageSize),
+      });
+      const result = parseIdentity(productInboxPageSchema, await call(`/notifications?${params}`));
+      if (
+        result.page !== query.page ||
+        result.pageSize !== query.pageSize ||
+        result.items.length > query.pageSize ||
+        result.total < result.items.length ||
+        new Set(result.items.map((item) => item.id)).size !== result.items.length
+      )
+        throw new IdentityError('protocol');
+      return result;
+    },
+    readNotification: async (id) => {
+      if (!identifierSchema.safeParse(id).success) throw new IdentityError('validation');
+      const result = parseIdentity(
+        notificationResponseSchema,
+        await call(`/notifications/${encodeURIComponent(id)}`),
+      ).item;
+      if (result.id !== id) throw new IdentityError('protocol');
+      return result;
+    },
+    readAllNotifications: async () => {
+      if ((await call('/notifications/read-all', 'PATCH', {})) !== null)
+        throw new IdentityError('protocol');
+    },
     access: async () => parseIdentity(accessSchema, await call('/auth/access')),
     registrationSettings: async () =>
       parseIdentity(registrationSettingsResponseSchema, await call('/system/registration'))
@@ -120,6 +241,8 @@ export function createBackendIdentityService(
         page: String(query.page),
         pageSize: String(query.pageSize),
       });
+      for (const key of ['actor', 'object', 'from', 'to'] as const)
+        if (query[key]) params.set(key, query[key]);
       const page = parseIdentity(auditPageSchema, await call(`/audit-logs?${params}`));
       if (
         page.page !== query.page ||

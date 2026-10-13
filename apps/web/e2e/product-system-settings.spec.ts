@@ -48,7 +48,7 @@ test('Registration policy controls public signup and the resulting account role'
   await page.goto('/system-settings');
   await page.getByText('开放公开注册', { exact: true }).click();
   await page.getByRole('button', { name: /注册账号默认角色/ }).click();
-  await page.getByRole('option', { name: 'Operator', exact: true }).click();
+  await page.getByRole('option', { name: '操作员', exact: true }).click();
   await savePolicy();
   await logout();
   await page.goto('/register');
@@ -105,7 +105,7 @@ test('System policy retains keyboard, overlay and accessible layout across sizes
       });
       await roleTrigger.click();
       await expect(
-        page.getByRole('option', { name: 'Administrator', exact: true }),
+        page.getByRole('option', { name: english ? 'Administrator' : '管理员', exact: true }),
       ).toHaveAttribute('aria-disabled', 'true');
       await waitForVisualReadiness(page);
       expect(

@@ -13,7 +13,7 @@ export class ApiError extends Error {
 export function createJsonClient(apiBaseUrl: string, request: typeof fetch = fetch) {
   return async (
     path: string,
-    options: Readonly<{ method?: 'GET' | 'POST' | 'PATCH'; body?: unknown }> = {},
+    options: Readonly<{ method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown }> = {},
   ): Promise<unknown> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);

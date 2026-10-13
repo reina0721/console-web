@@ -4,7 +4,7 @@ export const navigationContribution = {
     {
       navigationId: 'system-settings.root',
       labelKey: 'systemSettings.nav',
-      groupId: 'management',
+      groupId: 'administration',
       iconId: 'settings',
       routeId: 'system-settings',
       order: 40,

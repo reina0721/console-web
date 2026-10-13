@@ -2,6 +2,10 @@ export const pluginI18nResources = {
   'zh-CN': {
     translation: {
       systemSettings: {
+        currentValue: '已保存状态',
+        open: '开放注册',
+        closed: '关闭注册',
+        updatedAt: '最后更新时间',
         nav: '系统配置',
         title: '注册策略',
         description: '管理新账号的注册入口与默认角色；已有账号保持原有授权。',
@@ -26,6 +30,10 @@ export const pluginI18nResources = {
   en: {
     translation: {
       systemSettings: {
+        currentValue: 'Saved state',
+        open: 'Registration open',
+        closed: 'Registration closed',
+        updatedAt: 'Last updated',
         nav: 'System configuration',
         title: 'Registration policy',
         description:
