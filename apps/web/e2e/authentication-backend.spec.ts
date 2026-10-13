@@ -60,7 +60,15 @@ test('Backend mode uses CSRF/session API for login, restore and logout without M
       throw new Error(`Unexpected authentication request: ${request.method()} ${path}`);
     }
   });
+  // The first Backend login route may still be compiling in the dev host. Observe
+  // its actual RSC response before measuring the client's redirect completion.
+  const loginRouteResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === '/login' && url.searchParams.has('_rsc');
+  });
   await page.goto('/settings');
+  await expect(page.getByRole('button', { name: '当前用户', exact: true })).toHaveCount(0);
+  expect((await loginRouteResponse).ok()).toBe(true);
   await expect(page).toHaveURL(/\/login\?returnTo=/);
   await expect(page.getByText('开发演示模式', { exact: true })).toHaveCount(0);
   await page.getByRole('textbox', { name: '邮箱', exact: true }).fill('backend@example.test');
