@@ -1,5 +1,20 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
+import { z } from 'zod';
+
+const legacyPreferenceFixture = z
+  .object({
+    state: z
+      .object({
+        preferences: z
+          .object({
+            navigation: z.object({ autoRestoreWorkspace: z.boolean() }).passthrough(),
+          })
+          .passthrough(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
 
 async function resetAll(page: Page) {
   await page.goto('/settings/navigation');
@@ -38,11 +53,14 @@ test('自动恢复未完成工作默认关：有草稿时进入首页不重定�
 test('旧自动恢复偏好保留兼容，但首页不跳转且草稿仍可手动恢复', async ({ page }) => {
   await resetAll(page);
   await enableAutosave(page);
-  await page.evaluate(() => {
-    const stored = JSON.parse(localStorage.getItem('community-go.shell') ?? '{}');
-    stored.state.preferences.navigation.autoRestoreWorkspace = true;
-    localStorage.setItem('community-go.shell', JSON.stringify(stored));
-  });
+  const raw: unknown = JSON.parse(
+    await page.evaluate(() => localStorage.getItem('community-go.shell') ?? '{}'),
+  );
+  const stored = legacyPreferenceFixture.parse(raw);
+  stored.state.preferences.navigation.autoRestoreWorkspace = true;
+  await page.evaluate((fixture) => {
+    localStorage.setItem('community-go.shell', JSON.stringify(fixture));
+  }, stored);
   await page.goto('/reference-resources/create');
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   await page.getByLabel('名称').fill('未完成的工作草稿');

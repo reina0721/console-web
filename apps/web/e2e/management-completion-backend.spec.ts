@@ -49,7 +49,6 @@ test('Backend account security revokes other sessions and changes password witho
   await page.getByLabel('当前密码', { exact: true }).fill('BackendPassword2026!');
   await page.getByLabel('新密码', { exact: true }).fill('BackendNewPassword2026!');
   await page.getByRole('button', { name: '修改密码', exact: true }).click();
-  await page.getByRole('alertdialog').getByRole('button', { name: '确认', exact: true }).click();
   await expect(page.getByRole('button', { name: '当前用户', exact: true })).toHaveCount(0);
   expect(fixture.writes).toContainEqual({
     path: '/auth/password',

@@ -30,11 +30,17 @@ export function UserForm({
   user,
   roles,
   access,
+  presentation = 'section',
+  saveLabel,
+  onSaved,
 }: Readonly<{
   mode: 'create' | 'edit' | 'profile';
   user?: DirectoryUser;
   roles: readonly DirectoryRole[];
   access: IdentityAccess;
+  presentation?: 'section' | 'embedded';
+  saveLabel?: string;
+  onSaved?: (user: DirectoryUser) => void;
 }>) {
   const port = useIdentityPort();
   const { t } = useFrontendTranslation();
@@ -129,6 +135,7 @@ export function UserForm({
       );
       notify({ title, tone: 'success' });
       if (mode === 'create') navigate(route('users.detail', {}, { query: { id: saved.id } }));
+      onSaved?.(saved);
     } catch (error) {
       setFailure(error instanceof IdentityError ? error : new IdentityError('unavailable'));
     }
@@ -138,7 +145,185 @@ export function UserForm({
     : form.hasError('email')
       ? t('identityProduct.invalidEmail')
       : undefined;
-  return (
+  const resetAction = (
+    <Action
+      variant="quiet"
+      disabled={busy}
+      onPress={() => {
+        form.reset(valuesFor(baseline));
+        change();
+        setFailure(null);
+      }}
+    >
+      {t('identityProduct.reset')}
+    </Action>
+  );
+  const saveAction = (
+    <Action type="submit" disabled={busy || !allowed} loading={form.isSubmitting}>
+      {saveLabel ?? t('identityProduct.save')}
+    </Action>
+  );
+  const content = (
+    <FoundationForm
+      form={form}
+      onSubmit={submit}
+      className={presentation === 'embedded' ? 'grid gap-5' : 'grid gap-5 p-5'}
+    >
+      {!allowed ? <p className="text-sm text-ink-muted">{t('identityProduct.readonly')}</p> : null}
+      <IdentityMutationError
+        error={failure}
+        reload={() => {
+          void reload();
+        }}
+      />
+      <div data-reveal-items className="grid gap-5 md:grid-cols-2">
+        <FoundationControlledField form={form} name="name">
+          {(field) => (
+            <TextField
+              label={t('identityProduct.name')}
+              name={field.name}
+              value={field.value}
+              onBlur={field.onBlur}
+              ref={(instance) => {
+                if (typeof field.ref === 'function') field.ref(instance);
+                else if (field.ref) field.ref.current = instance;
+              }}
+              disabled={busy || !allowed}
+              {...(form.hasError('name') ? { error: t('identityProduct.invalidName') } : {})}
+              onChange={(event) => {
+                change();
+                field.onChange(event.target.value);
+              }}
+            />
+          )}
+        </FoundationControlledField>
+        <FoundationControlledField form={form} name="email">
+          {(field) => (
+            <TextField
+              label={t('identityProduct.email')}
+              name={field.name}
+              purpose="email"
+              value={field.value}
+              onBlur={field.onBlur}
+              ref={(instance) => {
+                if (typeof field.ref === 'function') field.ref(instance);
+                else if (field.ref) field.ref.current = instance;
+              }}
+              disabled={busy || !allowed}
+              {...(emailError ? { error: emailError } : {})}
+              onChange={(event) => {
+                change();
+                field.onChange(event.target.value);
+              }}
+            />
+          )}
+        </FoundationControlledField>
+      </div>
+      {mode === 'create' ? (
+        <>
+          <FoundationControlledField form={form} name="password">
+            {(field) => (
+              <PasswordField
+                label={t('identityProduct.password')}
+                purpose="new"
+                hint={t('identityProduct.passwordHint')}
+                showLabel={t('identityProduct.showPassword')}
+                hideLabel={t('identityProduct.hidePassword')}
+                name={field.name}
+                value={field.value}
+                onBlur={field.onBlur}
+                ref={(instance) => {
+                  if (typeof field.ref === 'function') field.ref(instance);
+                  else if (field.ref) field.ref.current = instance;
+                }}
+                disabled={busy || !allowed}
+                {...(form.hasError('password')
+                  ? { error: t('identityProduct.invalidPassword') }
+                  : {})}
+                onChange={(event) => {
+                  change();
+                  field.onChange(event.target.value);
+                }}
+              />
+            )}
+          </FoundationControlledField>
+          <FoundationControlledField form={form} name="status">
+            {(field) => (
+              <SelectField
+                label={t('identityProduct.status')}
+                value={field.value}
+                options={[
+                  { value: 'active', label: t('identityProduct.active') },
+                  { value: 'disabled', label: t('identityProduct.disabled') },
+                ]}
+                disabled={busy || !allowed || !access.permissions.includes('users.status')}
+                onValueChange={(value) => {
+                  if (value === 'active' || value === 'disabled') {
+                    change();
+                    field.onChange(value);
+                  }
+                }}
+              />
+            )}
+          </FoundationControlledField>
+          <FoundationControlledField form={form} name="roleIds">
+            {(field) => (
+              <fieldset className="grid gap-3">
+                <legend className="mb-3 text-sm font-semibold text-ink">
+                  {t('identityProduct.roles')}
+                </legend>
+                {!access.permissions.includes('users.roles') ? (
+                  <p className="text-sm text-ink-muted">{t('identityProduct.roleLimit')}</p>
+                ) : null}
+                <div data-reveal-items className="grid gap-3 sm:grid-cols-3">
+                  {roles.map((role) => (
+                    <CheckboxField
+                      key={role.id}
+                      label={roleLabel(role)}
+                      checked={field.value.includes(role.id)}
+                      disabled={
+                        busy ||
+                        !allowed ||
+                        (!access.permissions.includes('users.roles') && role.id !== 'viewer')
+                      }
+                      onCheckedChange={(checked) => {
+                        change();
+                        field.onChange(
+                          checked
+                            ? [...field.value, role.id]
+                            : field.value.filter((id) => id !== role.id),
+                        );
+                      }}
+                    />
+                  ))}
+                </div>
+                {form.hasError('roleIds') ? (
+                  <p role="alert" className="text-sm text-danger">
+                    {t('identityProduct.invalidRoles')}
+                  </p>
+                ) : null}
+              </fieldset>
+            )}
+          </FoundationControlledField>
+        </>
+      ) : null}
+      {presentation === 'embedded' ? (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {resetAction}
+          {saveAction}
+        </div>
+      ) : (
+        <FormActions
+          summary={busy ? t('identityProduct.saving') : undefined}
+          secondary={resetAction}
+          primary={saveAction}
+        />
+      )}
+    </FoundationForm>
+  );
+  return presentation === 'embedded' ? (
+    content
+  ) : (
     <Section
       title={t(
         mode === 'profile'
@@ -148,169 +333,7 @@ export function UserForm({
             : 'identityProduct.editTitle',
       )}
     >
-      <FoundationForm form={form} onSubmit={submit} className="grid gap-5 p-5">
-        {!allowed ? (
-          <p className="text-sm text-ink-muted">{t('identityProduct.readonly')}</p>
-        ) : null}
-        <IdentityMutationError
-          error={failure}
-          reload={() => {
-            void reload();
-          }}
-        />
-        <div data-reveal-items className="grid gap-5 md:grid-cols-2">
-          <FoundationControlledField form={form} name="name">
-            {(field) => (
-              <TextField
-                label={t('identityProduct.name')}
-                name={field.name}
-                value={field.value}
-                onBlur={field.onBlur}
-                ref={(instance) => {
-                  if (typeof field.ref === 'function') field.ref(instance);
-                  else if (field.ref) field.ref.current = instance;
-                }}
-                disabled={busy || !allowed}
-                {...(form.hasError('name') ? { error: t('identityProduct.invalidName') } : {})}
-                onChange={(event) => {
-                  change();
-                  field.onChange(event.target.value);
-                }}
-              />
-            )}
-          </FoundationControlledField>
-          <FoundationControlledField form={form} name="email">
-            {(field) => (
-              <TextField
-                label={t('identityProduct.email')}
-                name={field.name}
-                purpose="email"
-                value={field.value}
-                onBlur={field.onBlur}
-                ref={(instance) => {
-                  if (typeof field.ref === 'function') field.ref(instance);
-                  else if (field.ref) field.ref.current = instance;
-                }}
-                disabled={busy || !allowed}
-                {...(emailError ? { error: emailError } : {})}
-                onChange={(event) => {
-                  change();
-                  field.onChange(event.target.value);
-                }}
-              />
-            )}
-          </FoundationControlledField>
-        </div>
-        {mode === 'create' ? (
-          <>
-            <FoundationControlledField form={form} name="password">
-              {(field) => (
-                <PasswordField
-                  label={t('identityProduct.password')}
-                  purpose="new"
-                  hint={t('identityProduct.passwordHint')}
-                  showLabel={t('identityProduct.showPassword')}
-                  hideLabel={t('identityProduct.hidePassword')}
-                  name={field.name}
-                  value={field.value}
-                  onBlur={field.onBlur}
-                  ref={(instance) => {
-                    if (typeof field.ref === 'function') field.ref(instance);
-                    else if (field.ref) field.ref.current = instance;
-                  }}
-                  disabled={busy || !allowed}
-                  {...(form.hasError('password')
-                    ? { error: t('identityProduct.invalidPassword') }
-                    : {})}
-                  onChange={(event) => {
-                    change();
-                    field.onChange(event.target.value);
-                  }}
-                />
-              )}
-            </FoundationControlledField>
-            <FoundationControlledField form={form} name="status">
-              {(field) => (
-                <SelectField
-                  label={t('identityProduct.status')}
-                  value={field.value}
-                  options={[
-                    { value: 'active', label: t('identityProduct.active') },
-                    { value: 'disabled', label: t('identityProduct.disabled') },
-                  ]}
-                  disabled={busy || !allowed || !access.permissions.includes('users.status')}
-                  onValueChange={(value) => {
-                    if (value === 'active' || value === 'disabled') {
-                      change();
-                      field.onChange(value);
-                    }
-                  }}
-                />
-              )}
-            </FoundationControlledField>
-            <FoundationControlledField form={form} name="roleIds">
-              {(field) => (
-                <fieldset className="grid gap-3">
-                  <legend className="mb-3 text-sm font-semibold text-ink">
-                    {t('identityProduct.roles')}
-                  </legend>
-                  {!access.permissions.includes('users.roles') ? (
-                    <p className="text-sm text-ink-muted">{t('identityProduct.roleLimit')}</p>
-                  ) : null}
-                  <div data-reveal-items className="grid gap-3 sm:grid-cols-3">
-                    {roles.map((role) => (
-                      <CheckboxField
-                        key={role.id}
-                        label={roleLabel(role)}
-                        checked={field.value.includes(role.id)}
-                        disabled={
-                          busy ||
-                          !allowed ||
-                          (!access.permissions.includes('users.roles') && role.id !== 'viewer')
-                        }
-                        onCheckedChange={(checked) => {
-                          change();
-                          field.onChange(
-                            checked
-                              ? [...field.value, role.id]
-                              : field.value.filter((id) => id !== role.id),
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
-                  {form.hasError('roleIds') ? (
-                    <p role="alert" className="text-sm text-danger">
-                      {t('identityProduct.invalidRoles')}
-                    </p>
-                  ) : null}
-                </fieldset>
-              )}
-            </FoundationControlledField>
-          </>
-        ) : null}
-        <FormActions
-          summary={busy ? t('identityProduct.saving') : undefined}
-          secondary={
-            <Action
-              variant="quiet"
-              disabled={busy}
-              onPress={() => {
-                form.reset(valuesFor(baseline));
-                change();
-                setFailure(null);
-              }}
-            >
-              {t('identityProduct.reset')}
-            </Action>
-          }
-          primary={
-            <Action type="submit" disabled={busy || !allowed} loading={form.isSubmitting}>
-              {t('identityProduct.save')}
-            </Action>
-          }
-        />
-      </FoundationForm>
+      {content}
     </Section>
   );
 }

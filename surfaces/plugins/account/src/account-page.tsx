@@ -37,34 +37,40 @@ export function AccountPage() {
         <IdentityQueryState error={query.error} retry={query.reload} />
       ) : (
         <>
-          <Section title={t('account.details')} description={t('account.roleDescription')}>
-            <div className="p-5">
-              <DescriptionList
-                label={t('account.details')}
-                columns={2}
-                items={[
-                  { id: 'id', term: t('account.id'), description: data.user.id },
-                  {
-                    id: 'status',
-                    term: t('identityProduct.status'),
-                    description: t(`identityProduct.${data.user.status}`),
-                  },
-                  {
-                    id: 'roles',
-                    term: t('identityProduct.roles'),
-                    description: data.user.roleIds.map(roleLabel).join(' / '),
-                  },
-                ]}
+          <Section appearance="outlined" title={t('account.profile')}>
+            <div className="grid gap-5 p-5">
+              <UserForm
+                key={data.user.id}
+                mode="profile"
+                presentation="embedded"
+                saveLabel={t('account.saveProfile')}
+                user={data.user}
+                roles={data.roles}
+                access={data.access}
+                onSaved={query.reload}
               />
+              <div className="grid gap-4 border-t border-border pt-5">
+                <p className="text-sm text-ink-muted">{t('account.roleDescription')}</p>
+                <DescriptionList
+                  label={t('account.details')}
+                  columns={2}
+                  items={[
+                    { id: 'id', term: t('account.id'), description: data.user.id },
+                    {
+                      id: 'status',
+                      term: t('identityProduct.status'),
+                      description: t(`identityProduct.${data.user.status}`),
+                    },
+                    {
+                      id: 'roles',
+                      term: t('identityProduct.roles'),
+                      description: data.user.roleIds.map(roleLabel).join(' / '),
+                    },
+                  ]}
+                />
+              </div>
             </div>
           </Section>
-          <UserForm
-            key={data.user.id}
-            mode="profile"
-            user={data.user}
-            roles={data.roles}
-            access={data.access}
-          />
           <AccountSecurity />
         </>
       )}

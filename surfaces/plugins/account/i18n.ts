@@ -2,6 +2,13 @@ export const pluginI18nResources = {
   'zh-CN': {
     translation: {
       account: {
+        saveProfile: '保存资料',
+        clearPassword: '清空',
+        passwordImpact: '修改成功将退出全部会话，请使用新密码重新登录。',
+        currentPasswordInvalid: '请检查当前密码是否正确。',
+        noOtherSessions: '没有其他有效会话，无需退出其他设备。',
+        signOutCurrent: '退出当前会话',
+        currentSessionImpact: '此操作将退出当前登录。需要重新登录后才能继续访问。',
         security: '账户安全',
         securityDescription: '管理登录密码与有效会话。',
         securitySaved: '账户安全设置已更新',
@@ -39,6 +46,15 @@ export const pluginI18nResources = {
   en: {
     translation: {
       account: {
+        saveProfile: 'Save profile',
+        clearPassword: 'Clear',
+        passwordImpact:
+          'Changing your password signs out all sessions. Sign in again with the new password.',
+        currentPasswordInvalid: 'Check that your current password is correct.',
+        noOtherSessions: 'There are no other active sessions to sign out.',
+        signOutCurrent: 'Sign out current session',
+        currentSessionImpact:
+          'This signs you out of the current session. Sign in again to continue.',
         security: 'Account security',
         securityDescription: 'Manage your password and active sign-in sessions.',
         securitySaved: 'Account security updated',

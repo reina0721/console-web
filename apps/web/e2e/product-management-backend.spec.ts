@@ -16,7 +16,7 @@ test('Backend M2–M6 uses proposed REST/CSRF contracts, preserves conflict draf
   await page.goto('/account');
   fixture.rejectNextProfileWrite();
   await page.getByRole('textbox', { name: '姓名', exact: true }).fill('Keep this draft');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '保存资料', exact: true }).click();
   await expect(page.getByRole('main')).toContainText('数据发生冲突');
   await expect(page.getByRole('textbox', { name: '姓名', exact: true })).toHaveValue(
     'Keep this draft',
@@ -26,7 +26,7 @@ test('Backend M2–M6 uses proposed REST/CSRF contracts, preserves conflict draf
     'Server profile',
   );
   await page.getByRole('textbox', { name: '姓名', exact: true }).fill('Backend Updated');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '保存资料', exact: true }).click();
   await expect(page.getByText('个人资料已保存', { exact: true })).toBeVisible();
   await page.goto('/roles/create');
   await page.getByRole('textbox', { name: '角色名称', exact: true }).fill('Backend Audit');

@@ -110,16 +110,15 @@ test('Account password changes reject bad credentials then revoke sessions and r
 }) => {
   test.setTimeout(90000);
   await page.goto('/account');
-  await expect(page.getByText('当前会话', { exact: false })).toBeVisible();
+  await expect(page.getByText('当前会话', { exact: true })).toBeVisible();
   await page.getByLabel('当前密码', { exact: true }).fill('IncorrectPassword!');
   await page.getByLabel('新密码', { exact: true }).fill('NewPassword2026!');
   await page.getByRole('button', { name: '修改密码', exact: true }).click();
-  await page.getByRole('alertdialog').getByRole('button', { name: '确认', exact: true }).click();
-  await expect(page.getByRole('alertdialog')).toContainText('操作失败');
-  await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.getByRole('main')).toContainText('请检查当前密码');
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(page.getByLabel('当前密码', { exact: true })).toBeFocused();
   await page.getByLabel('当前密码', { exact: true }).fill('CommunityDemo2026!');
   await page.getByRole('button', { name: '修改密码', exact: true }).click();
-  await page.getByRole('alertdialog').getByRole('button', { name: '确认', exact: true }).click();
   await expect(page.getByRole('button', { name: '当前用户', exact: true })).toHaveCount(0);
   await page.goto('/login');
   await page.getByRole('textbox', { name: '邮箱', exact: true }).fill('demo@community.test');
@@ -127,7 +126,7 @@ test('Account password changes reject bad credentials then revoke sessions and r
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('button', { name: '当前用户', exact: true })).toBeVisible();
   await page.goto('/account');
-  await page.getByRole('button', { name: '撤销会话', exact: true }).click();
+  await page.getByRole('button', { name: '退出当前会话', exact: true }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: '确认', exact: true }).click();
   await expect(page.getByRole('button', { name: '当前用户', exact: true })).toHaveCount(0);
 });

@@ -1,5 +1,7 @@
 # Frontend 变更记录
 
+- [111 个人账户常驻表单与轻量内联操作](111-account-summary-editors/README.md)：常驻资料／密码表单、轻量操作行、独立会话区段及整批验证。
+
 本目录保存当前 `frontend/` 项目的任务级研究、需求、设计、实施与验证证据（历史账本），
 不构成当前架构 authority。当前如何做以 [Frontend 文档手册](../README.md)、
 [UI Element System](../ui-element-system.md)、[UI 视觉校准基线](../ui-visual-calibration.md)、

@@ -92,7 +92,7 @@ test('M2–M5 user, role grants, inbox and audit form a durable management workf
   await expect(page.getByRole('main')).toContainText('没有操作权限');
   await page.goto('/account');
   await page.getByRole('textbox', { name: '姓名', exact: true }).fill('M25 Personal profile');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '保存资料', exact: true }).click();
   await expect(page.getByText('个人资料已保存', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('textbox', { name: '姓名', exact: true })).toHaveValue(
