@@ -100,7 +100,7 @@ export function SectionBody({ children }: Readonly<{ children: ReactNode }>) {
 
 export type SectionProps = Readonly<{
   id?: string;
-  title: string;
+  title: ReactNode;
   description?: string;
   action?: ReactNode;
   children: ReactNode;

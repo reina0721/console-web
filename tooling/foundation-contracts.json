@@ -208,6 +208,7 @@
         "./identity",
         "./icon-presentation",
         "./icon-components",
+        "./action-icons",
         "./generated/catalog",
         "./generated/composition",
         "./plugin-routes/*",

@@ -6,7 +6,7 @@ export const navigationContribution = {
       labelKey: 'roles.nav',
       groupId: 'management',
       order: 10,
-      iconId: 'identity',
+      iconId: 'roles',
       routeId: 'roles',
     },
   ],

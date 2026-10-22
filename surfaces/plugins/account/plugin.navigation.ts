@@ -6,7 +6,7 @@ export const navigationContribution = {
       labelKey: 'account.nav',
       groupId: 'system',
       order: -10,
-      iconId: 'identity',
+      iconId: 'account',
       routeId: 'account',
     },
   ],

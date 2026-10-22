@@ -7,8 +7,10 @@
 
 import {
   Accessibility,
+  Bell,
   Boxes,
   Circle,
+  CircleUserRound,
   Component,
   Contact,
   Globe,
@@ -21,11 +23,14 @@ import {
   MousePointerClick,
   Palette,
   PanelsTopLeft,
+  ScrollText,
   Settings2,
   Shapes,
+  ShieldCheck,
   Orbit,
   Table2,
   TableProperties,
+  Users,
   Waypoints,
   Workflow,
   type LucideIcon,
@@ -57,6 +62,12 @@ export const navigationIconComponents: Readonly<Record<NavigationIconId, LucideI
   globe: Globe,
   accessibility: Accessibility,
   keyboard: Keyboard,
+  // 业务管理插件独立导航语义
+  users: Users,
+  roles: ShieldCheck,
+  audit: ScrollText,
+  account: CircleUserRound,
+  notifications: Bell,
 };
 
 /** 语义 iconId → Icon Component；未命中 → 统一 fallback（Circle）。 */

@@ -1,5 +1,5 @@
 'use client';
-import { formatDate, formatTimeOfDay } from '@community-go/i18n';
+import { formatDate } from '@community-go/i18n';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ import { Page, PageHeader, Section } from '@community-go/surface-foundation/layo
 import { FormActions } from '@community-go/surface-foundation/form-actions';
 import { SelectField, SwitchField } from '@community-go/ui-adapter/form-field';
 import { Action } from '@community-go/ui-adapter/action';
+import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { ConfirmDialog } from '@community-go/ui-adapter/overlays';
 import { useFeedback } from '@community-go/ui-adapter/feedback-context';
 import { useRegisterDirtySource } from '@community-go/plugin-framework/leave-confirm';
@@ -106,32 +107,32 @@ function SettingsForm({
     }
   }
   return (
-    <Section title={t('systemSettings.title')} description={t('systemSettings.description')}>
+    <Section
+      title={t('systemSettings.title')}
+      description={t('systemSettings.description')}
+      action={
+        <div className="flex items-center gap-2">
+          <StatusPill tone={baseline.enabled ? 'success' : 'neutral'}>
+            {t(baseline.enabled ? 'systemSettings.open' : 'systemSettings.closed')}
+          </StatusPill>
+          <span className="text-xs tabular-nums text-ink-muted">
+            {formatDate(
+              locale,
+              baseline.updatedAt,
+              region.timeZone === 'auto' ? {} : { timeZone: region.timeZone },
+            )}
+          </span>
+        </div>
+      }
+    >
       <FoundationForm
         form={form}
-        className="grid gap-5 p-5"
+        className="grid gap-6 p-5 sm:p-6"
         onSubmit={(values) => {
           setFailure(null);
           setConfirmation(values);
         }}
       >
-        <dl className="grid gap-2 text-sm text-ink-muted">
-          <div className="flex flex-wrap gap-3">
-            <dt>{t('systemSettings.currentValue')}</dt>
-            <dd>{t(baseline.enabled ? 'systemSettings.open' : 'systemSettings.closed')}</dd>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <dt>{t('systemSettings.updatedAt')}</dt>
-            <dd>
-              {formatDate(
-                locale,
-                baseline.updatedAt,
-                region.timeZone === 'auto' ? {} : { timeZone: region.timeZone },
-              )}{' '}
-              · {formatTimeOfDay(locale, region, baseline.updatedAt)}
-            </dd>
-          </div>
-        </dl>
         {!allowed ? <p className="text-sm text-ink-muted">{t('systemSettings.readonly')}</p> : null}
         <IdentityMutationError
           error={failure}
@@ -141,18 +142,20 @@ function SettingsForm({
         />
         <FoundationControlledField form={form} name="enabled">
           {(field) => (
-            <SwitchField
-              label={t('systemSettings.enabled')}
-              description={t('systemSettings.enabledHint')}
-              checked={field.value}
-              onCheckedChange={field.onChange}
-              disabled={!allowed || pending}
-            />
+            <div className="max-w-xl">
+              <SwitchField
+                label={t('systemSettings.enabled')}
+                description={t('systemSettings.enabledHint')}
+                checked={field.value}
+                onCheckedChange={field.onChange}
+                disabled={!allowed || pending}
+              />
+            </div>
           )}
         </FoundationControlledField>
         <FoundationControlledField form={form} name="defaultRoleId">
           {(field) => (
-            <div className="grid min-w-0 gap-3">
+            <div className="grid max-w-xl min-w-0 gap-3">
               <SelectField
                 label={t('systemSettings.role')}
                 hint={t('systemSettings.roleHint')}
@@ -172,17 +175,22 @@ function SettingsForm({
                 }))}
                 {...(form.hasError('defaultRoleId') ? { error: t('systemSettings.invalid') } : {})}
               />
-              <div className="text-sm text-ink-muted">
-                <p>{t('systemSettings.permissions')}</p>
-                <ul className="mt-2 grid gap-2">
+              <div className="rounded-control border border-border/60 bg-surface-muted/30 p-3 text-xs text-ink-muted">
+                <p className="font-semibold text-ink">{t('systemSettings.permissions')}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   {roles
                     .find((role) => role.id === field.value)
                     ?.permissions.map((permission) => (
-                      <li key={permission}>{t(`management.permissions.${permission}`)}</li>
+                      <span
+                        key={permission}
+                        className="rounded bg-surface px-2 py-0.5 border border-border/80 text-ink-muted"
+                      >
+                        {t(`management.permissions.${permission}`)}
+                      </span>
                     ))}
-                </ul>
+                </div>
                 {!roles.find((role) => role.id === field.value)?.permissions.length ? (
-                  <p>{t('systemSettings.noPermissions')}</p>
+                  <p className="mt-1">{t('systemSettings.noPermissions')}</p>
                 ) : null}
               </div>
             </div>

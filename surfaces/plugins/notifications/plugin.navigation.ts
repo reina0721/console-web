@@ -6,7 +6,7 @@ export const navigationContribution = {
       labelKey: 'notifications.nav',
       groupId: 'system',
       order: -5,
-      iconId: 'feedback',
+      iconId: 'notifications',
       routeId: 'notifications',
     },
   ],

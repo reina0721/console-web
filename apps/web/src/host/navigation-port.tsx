@@ -34,40 +34,101 @@ export type HostNavigationPortProps = Readonly<{
 export function HostNavigationPortProvider({ resolveHref, children }: HostNavigationPortProps) {
   const router = useRouter();
 
-  const renderLink = (props: PluginPortLinkProps) => (
-    <Link
-      className={props.className}
-      href={props.href}
-      transitionTypes={[pageTransitionTypes.forward]}
-      {...(props.ariaLabel ? { 'aria-label': props.ariaLabel } : {})}
-      {...(props.title ? { title: props.title } : {})}
-      onClick={(event) => {
-        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
-          return;
-        event.preventDefault();
+  const renderLink = (props: PluginPortLinkProps) => {
+    let classes = props.className;
+    if (props.presentation === 'action') {
+      const variant = props.variant ?? 'primary';
+      const size = props.size ?? 'md';
+      const sizeClasses =
+        size === 'lg'
+          ? 'h-control-lg gap-2.5 px-5 text-base'
+          : size === 'sm'
+            ? 'h-control-sm gap-1.5 px-3 text-sm'
+            : 'h-control gap-2 px-4 text-sm';
+      const variantClasses =
+        variant === 'secondary'
+          ? 'border border-border bg-surface text-ink shadow-sm hover:bg-surface-muted'
+          : variant === 'quiet'
+            ? 'bg-transparent text-ink-muted hover:bg-surface-muted hover:text-ink'
+            : variant === 'danger'
+              ? 'bg-danger text-on-danger shadow-sm hover:brightness-95'
+              : 'bg-brand text-on-brand shadow-sm hover:bg-brand-strong';
+      classes = [
+        'inline-flex items-center justify-center rounded-control font-semibold outline-none transition-colors select-none',
+        sizeClasses,
+        variantClasses,
+        props.className,
+      ]
+        .filter(Boolean)
+        .join(' ');
+    }
 
-        void proceedAfterLeaveConfirm(props.href, 'plugin navigation').then((proceed) => {
-          if (!proceed) {
-            if (props.href === location.pathname + location.search + location.hash) {
-              props.onNavigate?.();
-              focusRouteAnchor(props.href);
-            }
+    const content =
+      props.presentation === 'action' && (props.leadingIcon || props.trailingIcon) ? (
+        <>
+          {props.leadingIcon ? (
+            <span
+              aria-hidden="true"
+              className="grid size-icon-sm shrink-0 place-items-center text-current [&>svg]:m-0"
+            >
+              {props.leadingIcon}
+            </span>
+          ) : null}
+          <span>{props.children}</span>
+          {props.trailingIcon ? (
+            <span
+              aria-hidden="true"
+              className="grid size-icon-sm shrink-0 place-items-center text-current [&>svg]:m-0"
+            >
+              {props.trailingIcon}
+            </span>
+          ) : null}
+        </>
+      ) : (
+        props.children
+      );
+
+    return (
+      <Link
+        className={classes}
+        href={props.href}
+        transitionTypes={[pageTransitionTypes.forward]}
+        {...(props.ariaLabel ? { 'aria-label': props.ariaLabel } : {})}
+        {...(props.title ? { title: props.title } : {})}
+        onClick={(event) => {
+          if (
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          )
             return;
-          }
-          props.onNavigate?.();
-          focusRouteAnchor(props.href, resolveScrollOption() === undefined);
-          markForwardRouteIntent();
-          void router.push(props.href, {
-            transitionTypes: [pageTransitionTypes.forward],
-            ...resolveScrollOption(),
-            ...(props.target.fragment ? { scroll: false } : {}),
+          event.preventDefault();
+
+          void proceedAfterLeaveConfirm(props.href, 'plugin navigation').then((proceed) => {
+            if (!proceed) {
+              if (props.href === location.pathname + location.search + location.hash) {
+                props.onNavigate?.();
+                focusRouteAnchor(props.href);
+              }
+              return;
+            }
+            props.onNavigate?.();
+            focusRouteAnchor(props.href, resolveScrollOption() === undefined);
+            markForwardRouteIntent();
+            void router.push(props.href, {
+              transitionTypes: [pageTransitionTypes.forward],
+              ...resolveScrollOption(),
+              ...(props.target.fragment ? { scroll: false } : {}),
+            });
           });
-        });
-      }}
-    >
-      {props.children}
-    </Link>
-  );
+        }}
+      >
+        {content}
+      </Link>
+    );
+  };
 
   return (
     <PluginNavigationProvider

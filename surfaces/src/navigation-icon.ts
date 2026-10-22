@@ -47,6 +47,12 @@ export const navigationIconVocabulary = [
   'globe',
   'accessibility',
   'keyboard',
+  // 业务管理插件独立导航语义
+  'users',
+  'roles',
+  'audit',
+  'account',
+  'notifications',
 ] as const;
 
 /** 合法 semantic icon id。 */

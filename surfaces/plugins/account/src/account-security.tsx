@@ -8,10 +8,12 @@ import {
 } from '@community-go/form-foundation';
 import { Section } from '@community-go/surface-foundation/layout';
 import { Action } from '@community-go/ui-adapter/action';
+import { IconAction } from '@community-go/ui-adapter/icon-action';
 import { PasswordField } from '@community-go/ui-adapter/form-field';
 import { ConfirmDialog } from '@community-go/ui-adapter/overlays';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { useFeedback } from '@community-go/ui-adapter/feedback-context';
+import { LogOut, Monitor, RefreshCw } from '../../../src/action-icons';
 import {
   useAccountSecurityPort,
   IdentityError,
@@ -200,19 +202,22 @@ export function AccountSecurity() {
         appearance="outlined"
         title={t('account.sessions')}
         action={
-          <div className="flex flex-wrap items-center gap-3">
-            <Action
-              variant="secondary"
+          <div className="flex flex-wrap items-center gap-2">
+            <IconAction
+              label={t('identityProduct.refresh')}
+              tooltip
               disabled={pending || form.isSubmitting}
               onPress={() => setRevision((value) => value + 1)}
             >
-              {t('identityProduct.refresh')}
-            </Action>
+              <RefreshCw className="size-4" />
+            </IconAction>
             <Action
               variant="secondary"
+              size="sm"
               disabled={
                 pending || form.isSubmitting || !sessions?.some((session) => !session.current)
               }
+              leadingIcon={<LogOut className="size-3.5" />}
               onPress={() => setConfirmation('others')}
             >
               {t('account.revokeOthers')}
@@ -220,7 +225,7 @@ export function AccountSecurity() {
           </div>
         }
       >
-        <div className="grid min-w-0 gap-4 p-5">
+        <div className="grid min-w-0 gap-4 p-5 sm:p-6">
           <IdentityMutationError error={error} />
           {sessions && !sessions.some((session) => !session.current) ? (
             <p className="text-sm text-ink-muted">{t('account.noOtherSessions')}</p>
@@ -230,32 +235,42 @@ export function AccountSecurity() {
           ) : (
             <ul data-reveal-items className="divide-y divide-border">
               {sessions.map((session) => (
-                <li key={session.id} className="grid min-w-0 gap-2 py-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="font-semibold">{session.device}</span>
-                    {session.current ? (
-                      <StatusPill tone="success">{t('account.currentSession')}</StatusPill>
-                    ) : null}
+                <li
+                  key={session.id}
+                  className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0 flex-1 grid gap-1">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="size-4 text-ink-muted shrink-0" />
+                      <span className="font-semibold text-ink">{session.device}</span>
+                      {session.current ? (
+                        <StatusPill tone="success">{t('account.currentSession')}</StatusPill>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted tabular-nums">
+                      <span>
+                        {t('account.lastActive')}: {timestamp(session.lastActiveAt ?? '')}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {t('account.created')}: {timestamp(session.createdAt ?? '')}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {t('account.expires')}: {timestamp(session.expiresAt ?? '')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 shrink-0 sm:mt-0">
                     <Action
                       variant="quiet"
+                      size="sm"
                       disabled={pending || form.isSubmitting}
                       onPress={() => setConfirmation(session)}
                     >
                       {t(session.current ? 'account.signOutCurrent' : 'account.revoke')}
                     </Action>
                   </div>
-                  <dl className="grid gap-3 text-sm text-ink-muted md:grid-cols-3">
-                    {[
-                      ['lastActive', session.lastActiveAt],
-                      ['created', session.createdAt],
-                      ['expires', session.expiresAt],
-                    ].map(([key, value]) => (
-                      <div key={key} className="flex flex-wrap justify-between gap-2 md:grid">
-                        <dt>{t(`account.${key}`)}</dt>
-                        <dd>{timestamp(value ?? '')}</dd>
-                      </div>
-                    ))}
-                  </dl>
                 </li>
               ))}
             </ul>

@@ -7,7 +7,15 @@ import {
   formatNumber,
 } from '@community-go/i18n';
 import { Page, PageHeader, Section } from '@community-go/surface-foundation/layout';
+import {
+  BulkActionBar,
+  Collection,
+  CollectionPagination,
+  CollectionQuery,
+} from '@community-go/surface-foundation/collection';
 import { Action } from '@community-go/ui-adapter/action';
+import { IconAction } from '@community-go/ui-adapter/icon-action';
+import { PaginationControl } from '@community-go/ui-adapter/navigation';
 import { SelectField, CheckboxField } from '@community-go/ui-adapter/form-field';
 import { SearchBox } from '@community-go/ui-adapter/search-box';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
@@ -15,6 +23,7 @@ import { NOTIFICATION_CATEGORIES } from '@community-go/plugin-framework/notifica
 import { route, RouteLink, usePluginNavigation } from '@community-go/plugin-framework/plugin';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
+import { CheckCheck, RefreshCw, X } from '../../../src/action-icons';
 import { IdentityError, useIdentityPort } from '@community-go/surface/identity/runtime';
 import { useProductInbox } from '../../../src/identity/use-inbox';
 import { useIdentityQuery } from '../../../src/identity/use-query';
@@ -23,6 +32,7 @@ import {
   IdentityModeNotice,
   IdentityMutationError,
   IdentityQueryState,
+  IdentityEmptyState,
 } from '../../../src/identity/query-state';
 export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQuery | null }>) {
   const { t, locale } = useFrontendTranslation();
@@ -45,7 +55,6 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
   };
   const [filterError, setFilterError] = useState<IdentityError | null>(null);
   const [search, setSearch] = useState(filters.q);
-  const [filterFailure, setFilterFailure] = useState(false);
   const selected =
     id === undefined
       ? null
@@ -91,7 +100,7 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
       const { inboxQuerySchema } = await import('./query');
       const parsed = inboxQuerySchema.safeParse({ ...filters, ...patch });
       if (!parsed.success) {
-        setFilterFailure(true);
+        setFilterError(new IdentityError('validation'));
         return;
       }
       const next = parsed.data;
@@ -120,7 +129,9 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
         actions={
           id === undefined ? (
             <Action
+              variant="secondary"
               disabled={inbox.pending || inbox.unread === 0 || Boolean(inbox.error)}
+              leadingIcon={<CheckCheck className="size-4" />}
               onPress={() => {
                 void inbox.markAllRead();
               }}
@@ -136,17 +147,6 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
       />
       <IdentityModeNotice mode={port.mode} />
       <IdentityMutationError error={inbox.failure ?? filterError} />
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-ink-muted">{t('shell.unreadCount', { count: inbox.unread })}</p>
-        <Action variant="quiet" disabled={inbox.loading || inbox.pending} onPress={inbox.reload}>
-          {t('identityProduct.refresh')}
-        </Action>
-        {inbox.loading ? (
-          <span role="status" className="text-sm text-ink-muted">
-            {t('identityProduct.loading')}
-          </span>
-        ) : null}
-      </div>
       {inbox.error ||
       unavailable ||
       query === null ||
@@ -199,172 +199,243 @@ export function InboxPage({ id, query }: Readonly<{ id?: string; query?: InboxQu
           </div>
         </Section>
       ) : (
-        <Section title={t('notifications.messages')}>
-          <div className="grid gap-4 p-5">
-            <div className="grid gap-4 md:grid-cols-3">
-              <form
-                className="grid gap-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  apply({ q: search, page: 1 });
-                }}
-              >
-                <SearchBox
-                  label={t('notifications.search')}
-                  placeholder={t('notifications.search')}
-                  value={search}
-                  onValueChange={(value) => {
-                    setSearch(value);
-                    setFilterFailure(false);
-                  }}
-                />
-                <Action type="submit" variant="secondary">
-                  {t('identityProduct.search')}
-                </Action>
-              </form>
-              <SelectField
-                label={t('notifications.category')}
-                value={filters.category}
-                onValueChange={(value) => {
-                  const category = NOTIFICATION_CATEGORIES.find((item) => item === value);
-                  if (value === 'all') void apply({ category: 'all', page: 1 });
-                  else if (category) void apply({ category, page: 1 });
-                }}
-                options={[
-                  { value: 'all', label: t('management.all') },
-                  ...NOTIFICATION_CATEGORIES.map((value) => ({
-                    value,
-                    label: t(`shell.notificationCategory.${value}`),
-                  })),
-                ]}
-              />
-              <SelectField
-                label={t('notifications.state')}
-                value={filters.read}
-                onValueChange={(value) => {
-                  if (value === 'all' || value === 'read' || value === 'unread')
-                    void apply({ read: value, page: 1 });
-                }}
-                options={[
-                  { value: 'all', label: t('management.all') },
-                  { value: 'unread', label: t('management.unread') },
-                  { value: 'read', label: t('management.isRead') },
-                ]}
-              />
-            </div>
-            {filterFailure ? (
-              <p role="alert" className="text-sm text-danger">
-                {t('notifications.invalidSearch')}
-              </p>
-            ) : null}
-            <Action variant="quiet" onPress={() => navigation.navigate(route('notifications'))}>
-              {t('identityProduct.clear')}
-            </Action>
-            <CheckboxField
-              label={t('notifications.selectPage')}
-              checked={
-                Boolean(items.length) && items.every((item) => selectedIds.includes(item.id))
-              }
-              onCheckedChange={(checked) =>
-                setSelectedIds(checked ? items.map((item) => item.id) : [])
-              }
-              disabled={inbox.pending}
-            />
-            <Action
-              variant="secondary"
-              disabled={
-                inbox.pending || !items.some((item) => selectedIds.includes(item.id) && !item.read)
-              }
-              onPress={() => {
-                void inbox
-                  .markRead(
-                    items
-                      .filter((item) => selectedIds.includes(item.id) && !item.read)
-                      .map((item) => item.id),
-                  )
-                  .then(() => setSelectedIds([]));
-              }}
+        <Collection
+          title={t('notifications.messages')}
+          count={t('shell.unreadCount', { count: inbox.unread })}
+          tools={
+            <IconAction
+              label={t('identityProduct.refresh')}
+              tooltip
+              loading={inbox.loading || inbox.pending}
+              onPress={inbox.reload}
             >
-              {t('notifications.batch')}
-            </Action>
-            {items.length === 0 ? (
-              <p className="py-8 text-center text-sm text-ink-muted">{t('management.empty')}</p>
+              <RefreshCw className="size-4" />
+            </IconAction>
+          }
+          query={
+            <CollectionQuery
+              search={
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    apply({ q: search, page: 1 });
+                  }}
+                >
+                  <SearchBox
+                    label={t('notifications.search')}
+                    placeholder={t('notifications.search')}
+                    value={search}
+                    onValueChange={(value) => {
+                      setSearch(value);
+                      if (!value && filters.q) {
+                        apply({ q: '', page: 1 });
+                      }
+                    }}
+                  />
+                </form>
+              }
+              filters={
+                <>
+                  <SelectField
+                    presentation="toolbar"
+                    label={t('notifications.category')}
+                    value={filters.category}
+                    onValueChange={(value) => {
+                      const category = NOTIFICATION_CATEGORIES.find((item) => item === value);
+                      if (value === 'all') void apply({ category: 'all', page: 1 });
+                      else if (category) void apply({ category, page: 1 });
+                    }}
+                    options={[
+                      { value: 'all', label: t('management.all') },
+                      ...NOTIFICATION_CATEGORIES.map((value) => ({
+                        value,
+                        label: t(`shell.notificationCategory.${value}`),
+                      })),
+                    ]}
+                  />
+                  <SelectField
+                    presentation="toolbar"
+                    label={t('notifications.state')}
+                    value={filters.read}
+                    onValueChange={(value) => {
+                      if (value === 'all' || value === 'read' || value === 'unread')
+                        void apply({ read: value, page: 1 });
+                    }}
+                    options={[
+                      { value: 'all', label: t('management.all') },
+                      { value: 'unread', label: t('management.unread') },
+                      { value: 'read', label: t('management.isRead') },
+                    ]}
+                  />
+                </>
+              }
+              reset={
+                filters.q || filters.category !== 'all' || filters.read !== 'all' ? (
+                  <Action
+                    variant="quiet"
+                    size="sm"
+                    leadingIcon={<X className="size-3.5" />}
+                    onPress={() => navigation.navigate(route('notifications'))}
+                  >
+                    {t('identityProduct.clear')}
+                  </Action>
+                ) : null
+              }
+            />
+          }
+          bulk={
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-muted/30 px-4 py-2">
+              <div className="flex items-center gap-3">
+                <CheckboxField
+                  label={t('notifications.selectPage')}
+                  checked={Boolean(items.length) && selectedIds.length === items.length}
+                  disabled={inbox.pending || !items.length}
+                  onCheckedChange={(checked) =>
+                    setSelectedIds(checked ? items.map((item) => item.id) : [])
+                  }
+                />
+                {selectedIds.length ? (
+                  <span className="text-xs font-medium text-ink-muted">
+                    {t('pagePatterns.content.selected', { count: selectedIds.length })}
+                  </span>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedIds.length ? (
+                  <Action size="sm" variant="quiet" onPress={() => setSelectedIds([])}>
+                    {t('identityProduct.clear')}
+                  </Action>
+                ) : null}
+                <Action
+                  size="sm"
+                  variant="secondary"
+                  disabled={
+                    !selectedIds.length ||
+                    inbox.pending ||
+                    !items.some((item) => selectedIds.includes(item.id) && !item.read)
+                  }
+                  onPress={() => {
+                    void inbox
+                      .markRead(
+                        items
+                          .filter((item) => selectedIds.includes(item.id) && !item.read)
+                          .map((item) => item.id),
+                      )
+                      .then(() => setSelectedIds([]));
+                  }}
+                >
+                  {t('notifications.batch')}
+                </Action>
+              </div>
+            </div>
+          }
+          content={
+            items.length === 0 ? (
+              <div className="p-6">
+                <IdentityEmptyState
+                  title={t('management.empty')}
+                  description={t('notifications.description')}
+                  clearLabel={
+                    filters.q || filters.category !== 'all' || filters.read !== 'all'
+                      ? t('identityProduct.clear')
+                      : undefined
+                  }
+                  onClear={
+                    filters.q || filters.category !== 'all' || filters.read !== 'all'
+                      ? () => navigation.navigate(route('notifications'))
+                      : undefined
+                  }
+                />
+              </div>
             ) : (
-              <ul data-reveal-items className="grid gap-3">
+              <ul data-reveal-items className="divide-y divide-border">
                 {items.map((item) => (
                   <li
                     key={item.id}
-                    className="grid min-w-0 gap-2 rounded-panel border border-border p-4"
+                    className="flex items-start gap-3 p-4 transition-colors hover:bg-surface-muted/30"
                   >
-                    <CheckboxField
-                      label={t('notifications.selectItem', { name: item.title })}
-                      checked={selectedIds.includes(item.id)}
-                      onCheckedChange={(checked) =>
-                        setSelectedIds((prior) =>
-                          checked ? [...prior, item.id] : prior.filter((id) => id !== item.id),
-                        )
-                      }
-                      disabled={inbox.pending}
-                    />
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <RouteLink
-                        target={route(
-                          'notifications.detail',
-                          {},
-                          { query: { ...listLocation, id: item.id } },
-                        )}
-                      >
-                        {item.title}
-                      </RouteLink>
-                      <StatusPill tone={item.category === 'failure' ? 'danger' : 'neutral'}>
-                        {t(`shell.notificationCategory.${item.category}`)}
-                      </StatusPill>
-                    </div>
-                    <p className="text-sm text-ink-muted">
-                      {timestamp(item.createdAt)}
-                      {!item.read ? ` · ${t('management.unread')}` : ''}
-                    </p>
-                    {!item.read ? (
-                      <Action
-                        variant="quiet"
-                        size="sm"
+                    <div className="pt-0.5">
+                      <CheckboxField
+                        label={t('notifications.selectItem', { name: item.title })}
+                        checked={selectedIds.includes(item.id)}
+                        onCheckedChange={(checked) =>
+                          setSelectedIds((prior) =>
+                            checked ? [...prior, item.id] : prior.filter((i) => i !== item.id),
+                          )
+                        }
                         disabled={inbox.pending}
-                        onPress={() => {
-                          void inbox.markRead([item.id]);
-                        }}
-                      >
-                        {t('management.read')}
-                      </Action>
-                    ) : null}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 grid gap-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {!item.read ? (
+                            <span
+                              className="size-2 shrink-0 rounded-full bg-brand"
+                              aria-hidden="true"
+                            />
+                          ) : null}
+                          <RouteLink
+                            className={item.read ? 'text-ink-muted' : 'font-semibold text-ink'}
+                            target={route(
+                              'notifications.detail',
+                              {},
+                              { query: { ...listLocation, id: item.id } },
+                            )}
+                          >
+                            {item.title}
+                          </RouteLink>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <StatusPill tone={item.category === 'failure' ? 'danger' : 'neutral'}>
+                            {t(`shell.notificationCategory.${item.category}`)}
+                          </StatusPill>
+                          {!item.read ? (
+                            <Action
+                              variant="quiet"
+                              size="sm"
+                              disabled={inbox.pending}
+                              onPress={() => {
+                                void inbox.markRead([item.id]);
+                              }}
+                            >
+                              {t('management.read')}
+                            </Action>
+                          ) : null}
+                        </div>
+                      </div>
+                      <p className="text-xs tabular-nums text-ink-muted">
+                        {timestamp(item.createdAt)}
+                        {!item.read ? ` · ${t('management.unread')}` : ''}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
-            )}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Action
-                variant="secondary"
-                disabled={page <= 1}
-                onPress={() => apply({ page: page - 1 })}
-              >
-                {t('management.previous')}
-              </Action>
-              <p className="text-sm text-ink-muted">
-                {t('management.pagination', {
-                  page: formatNumber(locale, page),
-                  pages: formatNumber(locale, pages),
-                  total: formatNumber(locale, inbox.total),
-                })}
-              </p>
-              <Action
-                variant="secondary"
-                disabled={page >= pages}
-                onPress={() => apply({ page: page + 1 })}
-              >
-                {t('management.next')}
-              </Action>
-            </div>
-          </div>
-        </Section>
+            )
+          }
+          pagination={
+            <CollectionPagination
+              summary={t('management.pagination', {
+                page: formatNumber(locale, page),
+                pages: formatNumber(locale, pages),
+                total: formatNumber(locale, inbox.total),
+              })}
+              pager={
+                <PaginationControl
+                  label={t('notifications.messages')}
+                  page={page}
+                  totalPages={pages}
+                  disabled={inbox.loading || inbox.pending}
+                  previousLabel={t('management.previous')}
+                  nextLabel={t('management.next')}
+                  getPageLabel={(p) => formatNumber(locale, p)}
+                  onPageChange={(p) => apply({ page: p })}
+                />
+              }
+            />
+          }
+        />
       )}
       {id === undefined && localFiltered.length ? (
         <Section

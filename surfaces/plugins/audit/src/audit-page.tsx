@@ -7,16 +7,23 @@ import {
   formatNumber,
 } from '@community-go/i18n';
 import { Page, PageHeader } from '@community-go/surface-foundation/layout';
-import { Collection } from '@community-go/surface-foundation/collection';
+import {
+  Collection,
+  CollectionPagination,
+  CollectionQuery,
+} from '@community-go/surface-foundation/collection';
 import type { DataColumn } from '@community-go/ui-adapter/data-display';
 import { SearchBox } from '@community-go/ui-adapter/search-box';
 import { SelectField, TextField } from '@community-go/ui-adapter/form-field';
 import { BusyIndicator } from '@community-go/ui-adapter/busy-indicator';
 import { Action } from '@community-go/ui-adapter/action';
+import { IconAction } from '@community-go/ui-adapter/icon-action';
+import { PaginationControl } from '@community-go/ui-adapter/navigation';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { route, RouteLink, usePluginNavigation } from '@community-go/plugin-framework/plugin';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
+import { Filter, RefreshCw, X } from '../../../src/action-icons';
 import {
   IdentityError,
   auditOperations,
@@ -30,6 +37,7 @@ import {
   IdentityModeNotice,
   IdentityQueryState,
   IdentityMutationError,
+  IdentityEmptyState,
 } from '../../../src/identity/query-state';
 const DatePickerField = lazy(() =>
   import('@community-go/ui-adapter/date-picker-field').then((module) => ({
@@ -108,17 +116,19 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
     { id: 'result', label: t('audit.result'), render: status },
   ];
   const pages = Math.max(1, Math.ceil((result.data?.total ?? 0) / filters.pageSize));
+  const hasFilterActive = Boolean(
+    filters.q ||
+    filters.actor ||
+    filters.object ||
+    filters.from ||
+    filters.to ||
+    filters.operation !== 'all' ||
+    filters.result !== 'all',
+  );
+
   return (
     <Page>
-      <PageHeader
-        title={t('audit.nav')}
-        description={t('audit.description')}
-        actions={
-          <Action variant="secondary" onPress={result.reload}>
-            {t('identityProduct.refresh')}
-          </Action>
-        }
-      />
+      <PageHeader title={t('audit.nav')} description={t('audit.description')} />
       <IdentityModeNotice mode={port.mode} />
       <IdentityMutationError error={failure} />
       {result.error || !result.data ? (
@@ -126,58 +136,44 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
       ) : (
         <Collection
           title={t('audit.records')}
+          count={formatNumber(locale, result.data.total)}
           description={t('audit.readonly')}
-          filters={
-            <form
-              className="grid min-w-0 gap-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                apply({ q: search, actor, object, from, to, page: 1 });
-              }}
+          tools={
+            <IconAction
+              label={t('identityProduct.refresh')}
+              tooltip
+              loading={result.loading}
+              onPress={result.reload}
             >
-              <SearchBox
-                label={t('audit.search')}
-                placeholder={t('audit.search')}
-                value={search}
-                onValueChange={setSearch}
-              />
-              <details
-                className="min-w-0"
-                onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
-              >
-                <summary className="cursor-pointer text-sm font-semibold text-ink">
-                  {t('audit.filters')}
-                </summary>
-                <div className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  <TextField
-                    label={t('audit.actor')}
-                    value={actor}
-                    onChange={(event) => setActor(event.target.value)}
+              <RefreshCw className="size-4" />
+            </IconAction>
+          }
+          query={
+            <CollectionQuery
+              search={
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    apply({ q: search, page: 1 });
+                  }}
+                >
+                  <SearchBox
+                    label={t('audit.search')}
+                    placeholder={t('audit.search')}
+                    value={search}
+                    onValueChange={(val) => {
+                      setSearch(val);
+                      if (!val && filters.q) {
+                        apply({ q: '', page: 1 });
+                      }
+                    }}
                   />
-                  <TextField
-                    label={t('audit.object')}
-                    value={object}
-                    onChange={(event) => setObject(event.target.value)}
-                  />
-                  {filtersOpen ? (
-                    <Suspense fallback={<BusyIndicator label={t('identityProduct.loading')} />}>
-                      <DatePickerField
-                        label={t('audit.from')}
-                        value={from ? from.slice(0, 10) : null}
-                        calendarLabel={t('audit.calendar')}
-                        hint={from ? timestamp(from) : t('audit.utcHint')}
-                        onValueChange={(value) => setFrom(value ? value + 'T00:00:00.000Z' : '')}
-                      />
-                      <DatePickerField
-                        label={t('audit.to')}
-                        value={to ? to.slice(0, 10) : null}
-                        calendarLabel={t('audit.calendar')}
-                        hint={to ? timestamp(to) : t('audit.utcHint')}
-                        onValueChange={(value) => setTo(value ? value + 'T23:59:59.999Z' : '')}
-                      />
-                    </Suspense>
-                  ) : null}
+                </form>
+              }
+              filters={
+                <>
                   <SelectField
+                    presentation="toolbar"
                     label={t('audit.operation')}
                     value={filters.operation}
                     options={[
@@ -194,6 +190,7 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
                     }}
                   />
                   <SelectField
+                    presentation="toolbar"
                     label={t('audit.result')}
                     value={filters.result}
                     options={['all', 'success', 'failure'].map((value) => ({
@@ -205,15 +202,77 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
                         apply({ result: value, page: 1 });
                     }}
                   />
-                </div>
-              </details>
-              <div className="flex flex-wrap gap-3">
-                <Action type="submit">{t('identityProduct.search')}</Action>
-                <Action variant="quiet" onPress={() => navigation.navigate(route('audit'))}>
-                  {t('identityProduct.clear')}
-                </Action>
-              </div>
-            </form>
+                </>
+              }
+              advanced={
+                <details
+                  className="min-w-0"
+                  open={filtersOpen}
+                  onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
+                >
+                  <summary className="cursor-pointer text-sm font-semibold text-ink inline-flex items-center gap-1.5 py-1">
+                    <Filter className="size-3.5 text-ink-muted" />
+                    <span>{t('audit.filters')}</span>
+                  </summary>
+                  <form
+                    className="mt-3 grid gap-3 rounded-panel border border-border bg-surface p-4 text-sm"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      apply({ q: search, actor, object, from, to, page: 1 });
+                    }}
+                  >
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      <TextField
+                        label={t('audit.actor')}
+                        value={actor}
+                        onChange={(event) => setActor(event.target.value)}
+                      />
+                      <TextField
+                        label={t('audit.object')}
+                        value={object}
+                        onChange={(event) => setObject(event.target.value)}
+                      />
+                      <Suspense fallback={<BusyIndicator label={t('identityProduct.loading')} />}>
+                        <DatePickerField
+                          label={t('audit.from')}
+                          value={from ? from.slice(0, 10) : null}
+                          calendarLabel={t('audit.calendar')}
+                          hint={from ? timestamp(from) : t('audit.utcHint')}
+                          onValueChange={(value) => setFrom(value ? value + 'T00:00:00.000Z' : '')}
+                        />
+                        <DatePickerField
+                          label={t('audit.to')}
+                          value={to ? to.slice(0, 10) : null}
+                          calendarLabel={t('audit.calendar')}
+                          hint={to ? timestamp(to) : t('audit.utcHint')}
+                          onValueChange={(value) => setTo(value ? value + 'T23:59:59.999Z' : '')}
+                        />
+                      </Suspense>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                      <Action
+                        variant="quiet"
+                        size="sm"
+                        onPress={() => {
+                          setSearch('');
+                          setActor('');
+                          setObject('');
+                          setFrom('');
+                          setTo('');
+                          setFiltersOpen(false);
+                          navigation.navigate(route('audit'));
+                        }}
+                      >
+                        {t('identityProduct.clear')}
+                      </Action>
+                      <Action type="submit" size="sm">
+                        {t('identityProduct.search')}
+                      </Action>
+                    </div>
+                  </form>
+                </details>
+              }
+            />
           }
           content={
             <Suspense fallback={<BusyIndicator label={t('identityProduct.loading')} />}>
@@ -223,8 +282,10 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
           narrowContent={
             <ul data-reveal-items className="divide-y divide-border">
               {result.data.items.map((record) => (
-                <li key={record.id} className="grid min-w-0 gap-3 p-5">
-                  <p className="text-xs text-ink-muted">{timestamp(record.createdAt)}</p>
+                <li key={record.id} className="grid min-w-0 gap-2.5 p-4">
+                  <p className="text-xs tabular-nums text-ink-muted">
+                    {timestamp(record.createdAt)}
+                  </p>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     {operation(record)}
                     {status(record)}
@@ -236,34 +297,32 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
                 </li>
               ))}
               {!result.data.items.length ? (
-                <li className="p-5 text-ink-muted">{t('audit.empty')}</li>
+                <li className="p-6">
+                  <IdentityEmptyState title={t('audit.empty')} description={t('audit.readonly')} />
+                </li>
               ) : null}
             </ul>
           }
           pagination={
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Action
-                variant="secondary"
-                disabled={filters.page <= 1 || result.loading}
-                onPress={() => apply({ page: filters.page - 1 })}
-              >
-                {t('management.previous')}
-              </Action>
-              <p className="text-sm text-ink-muted">
-                {t('management.pagination', {
-                  page: formatNumber(locale, filters.page),
-                  pages: formatNumber(locale, pages),
-                  total: formatNumber(locale, result.data.total),
-                })}
-              </p>
-              <Action
-                variant="secondary"
-                disabled={filters.page >= pages || result.loading}
-                onPress={() => apply({ page: filters.page + 1 })}
-              >
-                {t('management.next')}
-              </Action>
-            </div>
+            <CollectionPagination
+              summary={t('management.pagination', {
+                page: formatNumber(locale, filters.page),
+                pages: formatNumber(locale, pages),
+                total: formatNumber(locale, result.data.total),
+              })}
+              pager={
+                <PaginationControl
+                  label={t('audit.records')}
+                  page={filters.page}
+                  totalPages={pages}
+                  disabled={result.loading}
+                  previousLabel={t('management.previous')}
+                  nextLabel={t('management.next')}
+                  getPageLabel={(p) => formatNumber(locale, p)}
+                  onPageChange={(p) => apply({ page: p })}
+                />
+              }
+            />
           }
         />
       )}

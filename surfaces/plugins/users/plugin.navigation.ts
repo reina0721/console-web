@@ -6,7 +6,7 @@ export const navigationContribution = {
       labelKey: 'users.nav',
       groupId: 'management',
       order: 0,
-      iconId: 'identity',
+      iconId: 'users',
       routeId: 'users',
     },
   ],

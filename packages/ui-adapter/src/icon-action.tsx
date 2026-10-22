@@ -15,6 +15,8 @@ export type IconActionProps = Readonly<{
   loading?: boolean;
   size?: 'sm' | 'md';
   tone?: 'neutral' | 'danger';
+  tooltip?: boolean | string;
+  tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
 }> &
   IconActionBehavior;
 
@@ -59,11 +61,15 @@ export function IconAction({
   loading = false,
   size = 'md',
   tone = 'neutral',
+  tooltip = false,
 }: IconActionProps) {
+  const tooltipText = typeof tooltip === 'string' ? tooltip : tooltip ? label : undefined;
+
   return (
     <HeroButton
       aria-busy={loading || undefined}
       aria-label={label}
+      title={tooltipText}
       className={iconActionStyles({ active, size, tone })}
       isDisabled={disabled}
       isIconOnly

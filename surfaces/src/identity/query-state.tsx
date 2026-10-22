@@ -54,7 +54,34 @@ export function IdentityQueryState({
 }
 export function IdentityModeNotice({ mode }: Readonly<{ mode: 'mock' | 'backend' }>) {
   const { t } = useFrontendTranslation();
-  return <p className="text-xs leading-5 text-ink-muted">{t(`identityProduct.${mode}`)}</p>;
+  return (
+    <div className="flex items-center gap-2 rounded-control border border-border/60 bg-surface-muted/40 px-3 py-1.5 text-xs text-ink-muted">
+      <span className="size-1.5 rounded-full bg-brand" />
+      <span>{t(`identityProduct.${mode}`)}</span>
+    </div>
+  );
+}
+
+export function IdentityEmptyState({
+  title,
+  description,
+  onClear,
+  clearLabel,
+}: Readonly<{
+  title: string;
+  description: string;
+  onClear?: (() => void) | undefined;
+  clearLabel?: string | undefined;
+}>) {
+  return (
+    <StateSurface
+      state="empty"
+      icon={<NavigationIcon iconId="identity" />}
+      title={title}
+      description={description}
+      {...(onClear && clearLabel ? { actionLabel: clearLabel, onAction: onClear } : {})}
+    />
+  );
 }
 export function IdentityMutationError({
   error,

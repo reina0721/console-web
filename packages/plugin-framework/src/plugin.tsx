@@ -52,6 +52,11 @@ export type PluginPortLinkProps = Readonly<{
   ariaLabel?: string;
   title?: string;
   onNavigate?: () => void;
+  presentation?: 'inline' | 'action';
+  variant?: 'primary' | 'secondary' | 'quiet' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
 }>;
 
 /** Plugin 使用的 Link props：只接收 target，不手写 href。 */
@@ -62,6 +67,11 @@ export type PluginLinkProps = Readonly<{
   ariaLabel?: string;
   title?: string;
   onNavigate?: () => void;
+  presentation?: 'inline' | 'action';
+  variant?: 'primary' | 'secondary' | 'quiet' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
 }>;
 
 export const PluginNavigationContext = createContext<PluginNavigationPort | null>(null);
@@ -135,6 +145,11 @@ export function RouteLink({
   ariaLabel,
   title,
   onNavigate,
+  presentation,
+  variant,
+  size,
+  leadingIcon,
+  trailingIcon,
 }: Readonly<PluginLinkProps>) {
   const port = usePluginNavigationPort();
   const href = port.resolveHref(target);
@@ -148,6 +163,11 @@ export function RouteLink({
         ...(ariaLabel ? { ariaLabel } : {}),
         ...(title ? { title } : {}),
         ...(onNavigate ? { onNavigate } : {}),
+        ...(presentation ? { presentation } : {}),
+        ...(variant ? { variant } : {}),
+        ...(size ? { size } : {}),
+        ...(leadingIcon ? { leadingIcon } : {}),
+        ...(trailingIcon ? { trailingIcon } : {}),
       })}
     </>
   );

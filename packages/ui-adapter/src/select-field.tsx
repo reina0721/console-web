@@ -22,6 +22,7 @@ export type SelectFieldProps = FieldTextProps &
     disabled?: boolean;
     defaultOpen?: boolean;
     onValueChange?: (value: string) => void;
+    presentation?: 'field' | 'toolbar';
   }>;
 
 export function SelectField({
@@ -36,14 +37,18 @@ export function SelectField({
   defaultOpen = false,
   onValueChange,
   name,
+  presentation = 'field',
 }: SelectFieldProps) {
   const disabledKeys = options.filter((option) => option.disabled).map((option) => option.value);
+  const isToolbar = presentation === 'toolbar';
+
   return (
     <Select
-      className="ui-field"
+      aria-label={label}
+      className={isToolbar ? 'inline-flex shrink-0' : 'ui-field'}
       defaultOpen={defaultOpen}
       disabledKeys={disabledKeys}
-      fullWidth
+      fullWidth={!isToolbar}
       isDisabled={disabled}
       isInvalid={Boolean(error)}
       onChange={(key) => {
@@ -54,14 +59,27 @@ export function SelectField({
       {...(placeholder ? { placeholder } : {})}
       {...(value !== undefined ? { value } : {})}
     >
-      <Label className="ui-field-label">{label}</Label>
-      <Select.Trigger className="ui-field-control flex items-center justify-between gap-3">
-        <Select.Value className="min-w-0 flex-1 truncate text-left" />
-        <Select.Indicator className="size-4 shrink-0 text-ink-muted" />
+      {isToolbar ? (
+        <Label className="sr-only">{label}</Label>
+      ) : (
+        <Label className="ui-field-label">{label}</Label>
+      )}
+      <Select.Trigger
+        className={
+          isToolbar
+            ? 'flex h-control-sm min-w-32 items-center justify-between gap-2 rounded-control border border-border bg-surface px-3 text-sm text-ink outline-none transition-colors hover:bg-surface-muted focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus'
+            : 'ui-field-control flex items-center justify-between gap-3'
+        }
+      >
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left text-sm">
+          {isToolbar ? <span className="shrink-0 text-ink-muted">{label}:</span> : null}
+          <Select.Value className="truncate font-medium text-ink" />
+        </span>
+        <Select.Indicator className="size-3.5 shrink-0 text-ink-muted" />
       </Select.Trigger>
-      {error ? (
+      {error && !isToolbar ? (
         <FieldError className="ui-field-error">{error}</FieldError>
-      ) : hint ? (
+      ) : hint && !isToolbar ? (
         <Description className="ui-field-hint">{hint}</Description>
       ) : null}
       <Select.Popover className="ui-overlay-surface ui-anchored-overlay-match-trigger">
