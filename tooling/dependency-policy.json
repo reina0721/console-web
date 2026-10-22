@@ -1,5 +1,9 @@
 {
   "dependencies": {
+    "@community-go/config": {
+      "owner": "global configuration",
+      "allowed": ["apps/web"]
+    },
     "@community-go/surface-foundation": {
       "owner": "Surface UX Foundation",
       "allowed": ["apps/web", "surfaces"]
@@ -112,7 +116,7 @@
     },
     "zod": {
       "owner": "runtime schema validation",
-      "allowed": ["apps/web", "packages/schemas", "surfaces"],
+      "allowed": ["apps/web", "packages/schemas", "packages/config", "surfaces"],
       "category": "schema"
     },
     "zustand": {

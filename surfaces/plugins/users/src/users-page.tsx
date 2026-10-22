@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { formatDate, formatNumber, useFrontendTranslation } from '@community-go/i18n';
 import { Page, PageHeader } from '@community-go/surface-foundation/layout';
 import {
-  BulkActionBar,
   Collection,
   CollectionPagination,
   CollectionQuery,

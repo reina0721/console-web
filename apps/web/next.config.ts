@@ -1,28 +1,21 @@
 import type { NextConfig } from 'next';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
 
-/**
- * Host Deployment Mode（三档递增，属 Host 构建/部署配置，不属于 Plugin Contract）：
- * - static：output:"export"，只允许构建期确定的静态 URL；
- * - static-enumerated：仍 output:"export"，动态 page 靠 Next 原生 generateStaticParams 枚举；
- * - server：真实 Next Runtime Server（不设 output:"export"），动态/request-time 按 Next 原生开放。
- * 缺省 = static。配置来自 apps/web/.env（Next 原生加载）。
- */
-function resolveDeploymentMode(): 'static' | 'static-enumerated' | 'server' {
-  const raw = process.env.WEB_DEPLOYMENT_MODE ?? '';
-  if (raw === 'static-enumerated' || raw === 'server' || raw === 'static') return raw;
-  return 'static';
-}
+import { loadWebConfig } from '@community-go/config/node';
 
-const deploymentMode = resolveDeploymentMode();
+const config = loadWebConfig({ cwd: import.meta.dirname });
+const deploymentMode = config.deploymentMode;
 
 export default function nextConfig(phase: string): NextConfig {
   return {
+    // 允许通过 127.0.0.1、localhost 访问 0.0.0.0 监听的开发服务器
+    allowedDevOrigins: ['127.0.0.1', 'localhost'],
     // Playwright 的 dev server 使用独立目录，避免 production build 覆盖正在运行的开发缓存。
-    distDir: process.env.NEXT_DIST_DIR ?? (phase === PHASE_DEVELOPMENT_SERVER ? '.next' : 'dist'),
+    distDir: config.distDir ?? (phase === PHASE_DEVELOPMENT_SERVER ? '.next' : 'dist'),
     // server Mode 不设 output（真实 Next Runtime Server）；static / static-enumerated 用静态导出。
     ...(deploymentMode === 'server' ? {} : { output: 'export' as const }),
     transpilePackages: [
+      '@community-go/config',
       '@community-go/core',
       '@community-go/design-system',
       '@community-go/surface-foundation',

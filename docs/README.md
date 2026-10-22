@@ -43,6 +43,7 @@ Application = Product Surface × Runtime Host
 | [Surface Foundation](surface-foundation.md)                    | `surface-foundation` 的 Layout/Shell/Pattern/Collection/Detail/Form/State 能力   |
 | [Plugin Framework 与 Surface File Routes](plugin-framework.md) | Framework 契约、Registry、Surface 私有边界、File Route、Codegen、Host Capability |
 | [Web Authentication](../apps/web/src/auth/README.md)           | Web 布局隔离、模式配置、统一会话、账户边界与待联调 API                           |
+| [Global Configuration](config-foundation.md)                   | 全局配置架构：@community-go/config、WEB_HOST / WEB_PORT 环境变量与 .env 管理     |
 | [Foundation 扩展治理](foundation-extension-governance.md)      | 业务请求扩展 Foundation 的顺序与完整环节                                         |
 | [UI Element System](ui-element-system.md)                      | UI Element 分类、Form Control、Anchored Overlay、Composition 契约                |
 | [UI 视觉校准基线](ui-visual-calibration.md)                    | TailAdmin 外部校准基线、矩阵与复核触发器                                         |
@@ -57,7 +58,7 @@ Universal Element、Universal Motion、Page Pattern、Page Archetype 与 Surface
 
 ```powershell
 pnpm install
-pnpm dev          # http://127.0.0.1:4173
+pnpm dev          # 默认监听 0.0.0.0:4173（访问 http://127.0.0.1:4173，可用 WEB_HOST 自定义）
 pnpm check        # 完整门禁（含 docs:check）
 pnpm docs:check   # 文档结构门禁（入口、链接、索引、必备 authority）
 ```

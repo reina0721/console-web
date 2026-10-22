@@ -23,7 +23,7 @@ import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { route, RouteLink, usePluginNavigation } from '@community-go/plugin-framework/plugin';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
-import { Filter, RefreshCw, X } from '../../../src/action-icons';
+import { Filter, RefreshCw } from '../../../src/action-icons';
 import {
   IdentityError,
   auditOperations,
@@ -116,15 +116,6 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
     { id: 'result', label: t('audit.result'), render: status },
   ];
   const pages = Math.max(1, Math.ceil((result.data?.total ?? 0) / filters.pageSize));
-  const hasFilterActive = Boolean(
-    filters.q ||
-    filters.actor ||
-    filters.object ||
-    filters.from ||
-    filters.to ||
-    filters.operation !== 'all' ||
-    filters.result !== 'all',
-  );
 
   return (
     <Page>

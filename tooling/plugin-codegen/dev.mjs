@@ -16,6 +16,8 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { loadConfig } from '@community-go/config/node';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const frontendRoot = resolve(here, '..', '..');
@@ -80,13 +82,15 @@ function shutdown(exitCode = 0) {
 run('plugin-codegen watch', process.execPath, [watchCli]);
 // 2. Schema runtime watch（Design System Schema → tokens.css/motion.css）。
 run('schema-codegen watch', process.execPath, [schemaWatchCli]);
+
+const config = loadConfig({ cwd: webRoot });
+const host = config.web.host;
+const port = String(config.web.port);
+
 // 3. Next dev server（Web Host）。
-run(
-  'next dev',
-  process.execPath,
-  [resolveNextBin(), 'dev', '--hostname', '127.0.0.1', '--port', '4173'],
-  { cwd: webRoot },
-);
+run('next dev', process.execPath, [resolveNextBin(), 'dev', '--hostname', host, '--port', port], {
+  cwd: webRoot,
+});
 
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));

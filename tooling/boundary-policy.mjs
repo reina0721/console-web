@@ -157,6 +157,23 @@ export function findImportPolicyViolations({ localPath, specifier, workspace }) 
   ) {
     violations.push(['State foundation', 'testing subpath 禁止被 production 代码 import']);
   }
+  if (
+    specifier === '@community-go/config/node' ||
+    specifier.startsWith('@community-go/config/node')
+  ) {
+    const isNodeAllowed =
+      isTestingSource ||
+      localPath.startsWith('tooling/') ||
+      localPath === 'playwright.config.ts' ||
+      localPath === 'apps/web/next.config.ts' ||
+      localPath.startsWith('packages/config/');
+    if (!isNodeAllowed) {
+      violations.push([
+        'Config foundation',
+        '@community-go/config/node 只能在 Node 构建与工具链中消费，禁止在应用运行时/浏览器代码中导入',
+      ]);
+    }
+  }
   if (specifier === '@community-go/ui-adapter') {
     violations.push(['UI adapter imports', '必须使用 UI Adapter 语义子路径，禁止根 Barrel 导入']);
   }

@@ -8,6 +8,19 @@
       "authorityRoutes": ["/foundations"],
       "evidence": ["packages/core/src/navigation.test.ts"]
     },
+    "@community-go/config": {
+      "layer": "universal",
+      "owner": "global configuration",
+      "maturity": "experimental",
+      "exports": [".", "./node"],
+      "authorityRoutes": ["/foundations"],
+      "evidence": [
+        "packages/config/src/index.ts",
+        "packages/config/src/node/index.ts",
+        "packages/config/src/config.test.ts",
+        "docs/config-foundation.md"
+      ]
+    },
     "@community-go/design-system": {
       "layer": "universal",
       "owner": "semantic token and motion primitives",

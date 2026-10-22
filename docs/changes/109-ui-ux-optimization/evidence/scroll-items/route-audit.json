@@ -1,9 +1,9 @@
 [
   {
     "route": "/",
-    "height": 1010,
+    "height": 720,
     "overflow": false,
-    "units": 16,
+    "units": 3,
     "nested": false,
     "hidden": false
   },
@@ -33,9 +33,9 @@
   },
   {
     "route": "/system-tools/icons",
-    "height": 720,
+    "height": 808,
     "overflow": false,
-    "units": 22,
+    "units": 27,
     "nested": false,
     "hidden": false
   },
@@ -81,9 +81,9 @@
   },
   {
     "route": "/settings/navigation",
-    "height": 1530,
+    "height": 1470,
     "overflow": false,
-    "units": 16,
+    "units": 15,
     "nested": false,
     "hidden": false
   },

@@ -8,7 +8,6 @@ import {
 } from '@community-go/i18n';
 import { Page, PageHeader, Section } from '@community-go/surface-foundation/layout';
 import {
-  BulkActionBar,
   Collection,
   CollectionPagination,
   CollectionQuery,

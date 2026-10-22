@@ -47,6 +47,8 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import prettier from 'prettier';
 
+import { loadConfig } from '@community-go/config/node';
+
 const frontendRoot = resolve(import.meta.dirname, '..', '..');
 const surfaceRoot = join(frontendRoot, 'surfaces');
 const pluginsRoot = join(surfaceRoot, 'plugins');
@@ -55,39 +57,17 @@ const hostAppRoot = join(frontendRoot, 'apps', 'web', 'src', 'app');
 const surfacePackageName = '@community-go/surface';
 const navigationGroupsPath = join(pluginsRoot, 'navigation-groups.ts');
 const surfaceIconVocabularyPath = join(surfaceRoot, 'src', 'navigation-icon.ts');
-/** Host 配置 .env 位置（apps/web：Mode 属 Host，Next 也在此目录原生加载 .env）。 */
-const hostEnvPath = join(frontendRoot, 'apps', 'web', '.env');
 
 /* ------------------------------------------------------------------ */
-/* Host Deployment Mode（构建期配置，轻量 .env 加载，零依赖）              */
+/* Host Deployment Mode（构建期配置，由 @community-go/config 统一解析） */
 /* ------------------------------------------------------------------ */
 
 /**
  * 从 apps/web/.env 加载配置进 process.env（若尚未设置）。
- *
- * codegen 是独立 Node CLI（不在 Next 进程内），Node 不会自动读 .env；这里做最小
- * 自解析：只读 apps/web/.env（Host 配置的单一来源，Next 也在此目录原生加载），
- * 跳过注释与空行，支持 KEY=VALUE（值不去引号、不展开）。
- * 已存在的 process.env 优先（不覆盖），保证显式环境变量/CI 可覆盖 .env。
+ * 委托至 @community-go/config/node 的 loadConfig() 保证单一事实来源。
  */
 export function loadHostEnv() {
-  if (!existsSync(hostEnvPath)) return;
-  let content;
-  try {
-    content = readFileSync(hostEnvPath, 'utf8');
-  } catch {
-    return;
-  }
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (line === '' || line.startsWith('#')) continue;
-    const eq = line.indexOf('=');
-    if (eq <= 0) continue;
-    const key = line.slice(0, eq).trim();
-    const value = line.slice(eq + 1).trim();
-    if (!key || process.env[key] !== undefined) continue;
-    process.env[key] = value;
-  }
+  loadConfig();
 }
 
 /**
@@ -96,12 +76,11 @@ export function loadHostEnv() {
  * - static-enumerated：仍 output:"export"，允许 [param] 动态段，动态 page 须自带
  *   generateStaticParams（Next build 是最终 authority）；
  * - server：真实 Next Runtime Server，动态/request-time 按 Next 原生规则开放。
- * 缺省 = static。
+ * 缺省 = static。由 @community-go/config 统一校验与解析。
  */
 export function getDeploymentMode() {
-  const raw = process.env.WEB_DEPLOYMENT_MODE ?? '';
-  if (raw === 'static-enumerated' || raw === 'server' || raw === 'static') return raw;
-  return 'static';
+  const config = loadConfig();
+  return config.web.deploymentMode;
 }
 
 loadHostEnv();

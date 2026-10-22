@@ -8,6 +8,7 @@
     "packages/types": { "layer": "universal" },
     "packages/ui-adapter": { "layer": "universal" },
     "packages/state-foundation": { "layer": "universal" },
+    "packages/config": { "layer": "universal" },
     "packages/surface-foundation": { "layer": "surface", "kind": "foundation" },
     "packages/plugin-framework": { "layer": "surface", "kind": "framework" },
     "surfaces": { "layer": "surface", "kind": "surface" },

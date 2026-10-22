@@ -236,4 +236,22 @@ assert.deepEqual(
   'UI Adapter 内导入 HeroUI 应通过',
 );
 
-console.log(`Boundary fixtures passed: ${negativeFixtures.length + 4} cases.`);
+assert(
+  findImportPolicyViolations({
+    localPath: 'apps/web/src/app/example.tsx',
+    specifier: '@community-go/config/node',
+    workspace: 'apps/web',
+  }).some(([rule]) => rule === 'Config foundation'),
+  'Feature 代码 import @community-go/config/node 必须失败',
+);
+assert.deepEqual(
+  findImportPolicyViolations({
+    localPath: 'apps/web/next.config.ts',
+    specifier: '@community-go/config/node',
+    workspace: 'apps/web',
+  }),
+  [],
+  'apps/web/next.config.ts import @community-go/config/node 应通过',
+);
+
+console.log(`Boundary fixtures passed: ${negativeFixtures.length + 6} cases.`);

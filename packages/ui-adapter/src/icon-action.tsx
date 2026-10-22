@@ -69,12 +69,12 @@ export function IconAction({
     <HeroButton
       aria-busy={loading || undefined}
       aria-label={label}
-      title={tooltipText}
       className={iconActionStyles({ active, size, tone })}
       isDisabled={disabled}
       isIconOnly
       isPending={loading}
       variant="ghost"
+      {...(tooltipText ? { title: tooltipText } : {})}
       {...(controls ? { 'aria-controls': controls } : {})}
       {...(expanded === undefined ? {} : { 'aria-expanded': expanded })}
       {...(onPress ? { onPress } : {})}

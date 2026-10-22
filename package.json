@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.22.0",
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=22.18.0"
   },
   "scripts": {
     "dev": "node tooling/plugin-codegen/dev.mjs",
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@community-go/config": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "@types/node": "^24.10.1",

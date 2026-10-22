@@ -37,7 +37,7 @@ pnpm dev
 pnpm check
 ```
 
-本地入口为 `http://127.0.0.1:4173`。验证 authority 分层如下：
+本地入口为 `http://127.0.0.1:4173`（默认监听 `0.0.0.0:4173`，可通过 `WEB_HOST` / `WEB_PORT` 环境变量或 `apps/web/.env` 自定义）。验证 authority 分层如下：
 
 - `/ui-elements/*`：46 个 Universal UI Element 的 Variant、状态、DOM、键盘与 Overlay 验收。
 - `/motion`：Async readiness、Viewport Reveal、Content Swap、Disclosure 与 development Motion Inspector。

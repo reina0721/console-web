@@ -4,12 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1 --port 4173",
+    "dev": "node ../../tooling/run-next-dev.mjs",
     "build": "next build",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@community-go/config": "workspace:*",
     "@community-go/surface-foundation": "workspace:*",
     "@community-go/plugin-framework": "workspace:*",
     "@community-go/surface": "workspace:*",

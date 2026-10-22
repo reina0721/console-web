@@ -1,5 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import { getProbeUrl, loadConfig } from '@community-go/config/node';
+
+const config = loadConfig();
+const primaryHost = config.web.host;
+const primaryPort = config.web.port;
+const primaryProbeUrl = getProbeUrl(primaryHost, primaryPort);
+
+const secondaryPort = primaryPort + 1;
+const secondaryProbeUrl = getProbeUrl(primaryHost, secondaryPort);
+
 export default defineConfig({
   testDir: './apps/web/e2e',
   fullyParallel: false,
@@ -17,7 +27,7 @@ export default defineConfig({
   },
   use: {
     ...devices['Desktop Chrome'],
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: primaryProbeUrl,
     colorScheme: 'light',
     locale: 'zh-CN',
     screenshot: 'only-on-failure',
@@ -28,7 +38,7 @@ export default defineConfig({
       cookies: [],
       origins: [
         {
-          origin: 'http://127.0.0.1:4173',
+          origin: primaryProbeUrl,
           localStorage: [
             {
               name: 'community-go.auth-mock',
@@ -56,18 +66,18 @@ export default defineConfig({
     {
       command: 'pnpm --filter @community-go/web dev',
       env: { NEXT_DIST_DIR: '.next', NEXT_PUBLIC_AUTH_MODE: 'mock' },
-      url: 'http://127.0.0.1:4173',
+      url: primaryProbeUrl,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
-      command: 'pnpm --filter @community-go/web exec next dev --hostname 127.0.0.1 --port 4174',
+      command: `pnpm --filter @community-go/web exec next dev --hostname ${primaryHost} --port ${secondaryPort}`,
       env: {
         NEXT_DIST_DIR: '.next/backend-contract',
         NEXT_PUBLIC_AUTH_MODE: 'backend',
         NEXT_PUBLIC_AUTH_API_BASE_URL: '/api',
       },
-      url: 'http://127.0.0.1:4174',
+      url: secondaryProbeUrl,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
@@ -83,7 +93,7 @@ export default defineConfig({
       testMatch: '**/*-backend.spec.ts',
       use: {
         browserName: 'chromium',
-        baseURL: 'http://127.0.0.1:4174',
+        baseURL: secondaryProbeUrl,
         storageState: { cookies: [], origins: [] },
       },
     },
