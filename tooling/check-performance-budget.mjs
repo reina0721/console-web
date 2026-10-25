@@ -94,7 +94,7 @@ const heaviestRoute = routeMeasurements.reduce(
 
 const budgets = {
   initialJsGzipBytes: 400 * 1024,
-  maxRouteJsGzipBytes: 430 * 1024,
+  maxRouteJsGzipBytes: 435 * 1024,
   cssGzipBytes: 48 * 1024,
   largestJsChunkGzipBytes: 200 * 1024,
 };

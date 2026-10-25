@@ -53,6 +53,7 @@ export const navigationIconVocabulary = [
   'audit',
   'account',
   'notifications',
+  'api',
 ] as const;
 
 /** 合法 semantic icon id。 */

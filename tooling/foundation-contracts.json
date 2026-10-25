@@ -222,6 +222,7 @@
         "./icon-presentation",
         "./icon-components",
         "./action-icons",
+        "./api-workbench",
         "./generated/catalog",
         "./generated/composition",
         "./plugin-routes/*",
@@ -229,6 +230,7 @@
       ],
       "authorityRoutes": [
         "/reference-resources",
+        "/api-workbench",
         "/users",
         "/account",
         "/roles",

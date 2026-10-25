@@ -5,6 +5,7 @@ import type { RouteCatalog } from '@community-go/plugin-framework';
 export const generatedRouteCatalog: RouteCatalog = {
   plugins: [
     { pluginId: 'account', mount: '/account' },
+    { pluginId: 'api-workbench', mount: '/api-workbench' },
     { pluginId: 'audit', mount: '/audit-logs' },
     { pluginId: 'foundations', mount: '/foundations' },
     { pluginId: 'motion', mount: '/motion' },
@@ -27,6 +28,14 @@ export const generatedRouteCatalog: RouteCatalog = {
       path: '',
       segments: [],
       pattern: '/account',
+      paramNames: [],
+    },
+    {
+      routeId: 'api-workbench',
+      pluginId: 'api-workbench',
+      path: '',
+      segments: [],
+      pattern: '/api-workbench',
       paramNames: [],
     },
     {
@@ -464,6 +473,21 @@ export const generatedRouteCatalog: RouteCatalog = {
             order: -10,
             iconId: 'account',
             routeId: 'account',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'api-workbench',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'api-workbench.root',
+            labelKey: 'apiWorkbench.nav.title',
+            groupId: 'development',
+            order: 45,
+            iconId: 'api',
+            routeId: 'api-workbench',
           },
         ],
       },

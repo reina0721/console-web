@@ -142,13 +142,29 @@ export function FormElementsPage({
               <ComponentPreview
                 name="TextAreaField"
                 description={t('uiElements.catalog.textAreaDescription')}
-                states={['Default', 'Hint / error', 'Disabled', 'Rows', 'Resize', 'Long content']}
+                states={[
+                  'Default',
+                  'Hint / error',
+                  'Disabled',
+                  'Rows',
+                  'Resize',
+                  'Long content',
+                  'Code',
+                ]}
               >
-                <TextAreaField
-                  label={t('uiElements.textArea')}
-                  hint={t('uiElements.fieldHint')}
-                  defaultValue={description}
-                />
+                <div className="grid gap-3">
+                  <TextAreaField
+                    label={t('uiElements.textArea')}
+                    hint={t('uiElements.fieldHint')}
+                    defaultValue={description}
+                  />
+                  <TextAreaField
+                    content="code"
+                    label={`${t('uiElements.textArea')} (Code / JSON)`}
+                    defaultValue={'{\n  "status": 200,\n  "data": { "ok": true }\n}'}
+                    rows={3}
+                  />
+                </div>
               </ComponentPreview>
               <ComponentPreview
                 name="SearchBox"

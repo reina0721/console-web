@@ -1,5 +1,6 @@
 # Frontend 变更记录
 
+- [112 接口调试工作台（API Workbench）](112-api-workbench/README.md)：开发中心接口调试系统（类似 ToAPI），涵盖参数/请求头/认证/伪装/Body/提取器/前后置脚本断言/集合批跑 Runner/定时任务与 IndexedDB 持久化。
 - [111 个人账户常驻表单与轻量内联操作](111-account-summary-editors/README.md)：常驻资料／密码表单、轻量操作行、独立会话区段及整批验证。
 
 本目录保存当前 `frontend/` 项目的任务级研究、需求、设计、实施与验证证据（历史账本），

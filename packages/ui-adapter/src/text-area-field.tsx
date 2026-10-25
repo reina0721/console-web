@@ -14,6 +14,7 @@ export type TextAreaFieldProps = FieldTextProps &
     placeholder?: string;
     disabled?: boolean;
     rows?: number;
+    content?: 'text' | 'code';
     onChange?: (event: ChangeEvent<HTMLTextAreaElement>) => void;
     onBlur?: (event: FocusEvent<HTMLTextAreaElement>) => void;
   }>;
@@ -24,6 +25,7 @@ export function TextAreaField({
   error,
   disabled = false,
   rows = 4,
+  content = 'text',
   name,
   value,
   defaultValue,
@@ -39,7 +41,14 @@ export function TextAreaField({
       {...(defaultValue !== undefined ? { defaultValue } : {})}
     >
       <Label className="ui-field-label">{label}</Label>
-      <TextArea className="ui-field-control resize-y py-3" rows={rows} {...inputProps} />
+      <TextArea
+        className={`ui-field-control resize-y py-3 ${content === 'code' ? 'font-mono text-xs' : ''}`}
+        rows={rows}
+        spellCheck={content === 'code' ? false : undefined}
+        autoCapitalize={content === 'code' ? 'none' : undefined}
+        autoCorrect={content === 'code' ? 'off' : undefined}
+        {...inputProps}
+      />
       {error ? (
         <FieldError className="ui-field-error">{error}</FieldError>
       ) : hint ? (

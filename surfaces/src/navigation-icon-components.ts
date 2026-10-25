@@ -32,6 +32,7 @@ import {
   TableProperties,
   Users,
   Waypoints,
+  Webhook,
   Workflow,
   type LucideIcon,
 } from 'lucide-react';
@@ -68,6 +69,7 @@ export const navigationIconComponents: Readonly<Record<NavigationIconId, LucideI
   audit: ScrollText,
   account: CircleUserRound,
   notifications: Bell,
+  api: Webhook,
 };
 
 /** 语义 iconId → Icon Component；未命中 → 统一 fallback（Circle）。 */

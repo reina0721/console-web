@@ -10,6 +10,7 @@
     "./icon-presentation": "./src/navigation-icon-presentation.tsx",
     "./icon-components": "./src/navigation-icon-components.ts",
     "./action-icons": "./src/action-icons.ts",
+    "./api-workbench": "./src/api-workbench/index.ts",
     "./generated/composition": "./generated/composition/composition.ts",
     "./generated/catalog": "./generated/catalog/catalog.ts",
     "./plugin-routes/*": "./generated/plugin-routes/*.ts",
