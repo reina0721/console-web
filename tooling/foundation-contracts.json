@@ -116,7 +116,8 @@
         "./status-pill",
         "./step-navigation",
         "./tree",
-        "./toggle-group"
+        "./toggle-group",
+        "./container-layout"
       ],
       "authorityRoutes": ["/ui-elements", "/motion"],
       "evidence": [
@@ -134,7 +135,9 @@
         "apps/web/e2e/ui-ux-109.spec.ts",
         "docs/changes/109-ui-ux-optimization/README.md",
         "apps/web/e2e/management-completion.spec.ts",
-        "apps/web/src/test/date-picker-contract.test.tsx"
+        "apps/web/src/test/date-picker-contract.test.tsx",
+        "apps/web/src/test/container-layout.test.tsx",
+        "apps/web/e2e/api-workbench.spec.ts"
       ]
     },
     "@community-go/state-foundation": {
@@ -247,7 +250,10 @@
         "apps/web/src/test/account-security.test.ts",
         "apps/web/e2e/management-completion.spec.ts",
         "apps/web/e2e/management-completion-backend.spec.ts",
-        "docs/changes/110-management-completion/README.md"
+        "docs/changes/110-management-completion/README.md",
+        "surfaces/plugins/api-workbench/src/model/workbench-ux.test.ts",
+        "apps/web/e2e/api-workbench.spec.ts",
+        "surfaces/src/api-workbench/README.md"
       ]
     }
   }

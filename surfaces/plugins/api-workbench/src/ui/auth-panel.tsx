@@ -2,7 +2,12 @@
 
 import { useFrontendTranslation } from '@community-go/i18n';
 import type { RequestAuth } from '@community-go/surface/api-workbench';
-import { SelectField, type SelectOption, TextField } from '@community-go/ui-adapter/form-field';
+import {
+  SelectField,
+  type SelectOption,
+  TextField,
+  PasswordField,
+} from '@community-go/ui-adapter/form-field';
 
 export type AuthPanelProps = Readonly<{
   auth: RequestAuth;
@@ -32,7 +37,7 @@ export function AuthPanel({ auth, onChange }: AuthPanelProps) {
   };
 
   return (
-    <div className="grid max-w-lg gap-4">
+    <div className="@container/editor grid min-w-0 gap-4">
       <SelectField
         label={t('apiWorkbench.auth.type')}
         options={authOptions}
@@ -50,13 +55,16 @@ export function AuthPanel({ auth, onChange }: AuthPanelProps) {
       )}
 
       {auth.type === 'basic' && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 @lg/editor:grid-cols-2">
           <TextField
             label={t('apiWorkbench.auth.username')}
             value={auth.username}
             onChange={(e) => onChange({ ...auth, username: e.target.value })}
           />
-          <TextField
+          <PasswordField
+            purpose="current"
+            showLabel={t('apiWorkbench.common.showPassword')}
+            hideLabel={t('apiWorkbench.common.hidePassword')}
             label={t('apiWorkbench.auth.password')}
             value={auth.password}
             onChange={(e) => onChange({ ...auth, password: e.target.value })}
@@ -66,7 +74,7 @@ export function AuthPanel({ auth, onChange }: AuthPanelProps) {
 
       {auth.type === 'api-key' && (
         <div className="grid gap-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 @lg/editor:grid-cols-2">
             <TextField
               label={t('apiWorkbench.auth.key')}
               placeholder="X-API-Key"

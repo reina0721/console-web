@@ -1,3 +1,10 @@
+/* Preserve Tailwind's existing container scale for Browser Adapter measurement,
+   including when responsive utilities inline their threshold and prune the variable. */
+@theme static {
+  --container-4xl: 56rem;
+  --container-7xl: 80rem;
+}
+
 @theme {
   /* @ds-region:theme-properties:start */
   --font-sans: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;

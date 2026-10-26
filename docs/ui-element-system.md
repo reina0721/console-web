@@ -251,3 +251,7 @@ Flyout 有标题和完整子树，键盘内部焦点不会因指针离开关闭�
 ## 受控日期值
 
 `DatePickerField` 的可选 `value` 使用 ISO Gregorian 日期字符串 `YYYY-MM-DD`，`null` 清空，省略保留原有非受控用法；`onValueChange` 返回同样语义字符串或 null。公开契约不暴露 HeroUI DateValue，Adapter 通过官方 `@internationalized/date` 解析并映射 HeroUI 的受控值，Selection、Keyboard、Focus 和 Popup 保持 vendor 管理。样式及未传 value 的消费者不改变。真实消费者为 UI Elements Forms 和审计日期筛选；URL 恢复与清空的证据见 [110 实施](changes/110-management-completion/README.md)。
+
+## 容器编排 Browser Adapter
+
+`@community-go/ui-adapter/container-layout` 的 `useContainerBreakpoint` 只在内容需要改变编排时提供容器阈值与 ref（4xl/7xl，读取 Design System 保留的 Tailwind 原有命名尺度）。ResizeObserver、所属文档字号换算与卸载清理留在 Browser Adapter；普通视觉响应式继续使用 Tailwind 容器 utility。它不提供第二套路由、浮层、选择或 Motion 状态机，也不更改已有 Element 默认值。当前消费为 API Workbench 单套编辑器的窄屏/主从编排，证据见 [容器测试](../apps/web/src/test/container-layout.test.tsx) 和 [113 多端验收](changes/113-api-workbench-ui-ux/README.md)。

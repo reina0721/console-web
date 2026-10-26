@@ -1,88 +1,116 @@
 'use client';
-
+import { useState } from 'react';
 import { useFrontendTranslation } from '@community-go/i18n';
 import type { RequestBody } from '@community-go/surface/api-workbench';
 import { Action } from '@community-go/ui-adapter/action';
-import { SelectField, type SelectOption, TextAreaField } from '@community-go/ui-adapter/form-field';
+import { ConfirmDialog } from '@community-go/ui-adapter/overlays';
+import { SelectField, TextAreaField } from '@community-go/ui-adapter/form-field';
 import { KeyValueEditor } from './key-value-editor';
-
-export type BodyPanelProps = Readonly<{
-  body: RequestBody;
-  onChange: (body: RequestBody) => void;
-}>;
-
+export type BodyPanelProps = Readonly<{ body: RequestBody; onChange: (body: RequestBody) => void }>;
+const bodyTypes: readonly RequestBody['type'][] = [
+  'none',
+  'json',
+  'text',
+  'xml',
+  'form-urlencoded',
+  'form-data',
+];
+const isText = (type: RequestBody['type']) => type === 'json' || type === 'text' || type === 'xml';
+const isForm = (type: RequestBody['type']) => type === 'form-urlencoded' || type === 'form-data';
 export function BodyPanel({ body, onChange }: BodyPanelProps) {
   const { t } = useFrontendTranslation();
-
-  const bodyOptions: readonly SelectOption[] = [
-    { value: 'none', label: t('apiWorkbench.body.none') },
-    { value: 'json', label: t('apiWorkbench.body.json') },
-    { value: 'text', label: t('apiWorkbench.body.text') },
-    { value: 'xml', label: t('apiWorkbench.body.xml') },
-    { value: 'form-urlencoded', label: t('apiWorkbench.body.formUrlencoded') },
-    { value: 'form-data', label: t('apiWorkbench.body.formData') },
-  ];
-
-  const handleTypeChange = (typeId: string) => {
-    if (typeId === 'json' || typeId === 'text' || typeId === 'xml') {
-      const priorContent =
-        body.type === 'json' || body.type === 'text' || body.type === 'xml' ? body.content : '';
-      onChange({ type: typeId, content: priorContent });
-    } else if (typeId === 'form-urlencoded' || typeId === 'form-data') {
-      const priorEntries =
-        body.type === 'form-urlencoded' || body.type === 'form-data' ? body.entries : [];
-      onChange({ type: typeId, entries: priorEntries });
-    } else {
-      onChange({ type: 'none' });
-    }
+  const [invalid, setInvalid] = useState(false);
+  const [pendingType, setPendingType] = useState<RequestBody['type'] | null>(null);
+  const applyType = (type: RequestBody['type']) => {
+    setInvalid(false);
+    if (type === 'json' || type === 'text' || type === 'xml')
+      onChange({ type, content: 'content' in body ? body.content : '' });
+    else if (type === 'form-urlencoded' || type === 'form-data')
+      onChange({ type, entries: 'entries' in body ? body.entries : [] });
+    else onChange({ type: 'none' });
   };
-
-  const handlePrettify = () => {
-    if (body.type === 'json' && body.content) {
-      try {
-        const parsed: unknown = JSON.parse(body.content);
-        onChange({ ...body, content: JSON.stringify(parsed, null, 2) });
-      } catch {
-        // invalid JSON
-      }
-    }
-  };
-
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-60">
-          <SelectField
-            label={t('apiWorkbench.body.type')}
-            options={bodyOptions}
-            value={body.type}
-            onValueChange={(id: string) => handleTypeChange(id)}
-          />
-        </div>
+    <div className="@container/editor grid min-w-0 gap-4">
+      <div className="grid min-w-0 gap-3 @lg/editor:grid-cols-2 items-end">
+        <SelectField
+          label={t('apiWorkbench.body.type')}
+          value={body.type}
+          options={bodyTypes.map((type) => ({
+            value: type,
+            label: t(
+              `apiWorkbench.body.${type === 'form-urlencoded' ? 'formUrlencoded' : type === 'form-data' ? 'formData' : type}`,
+            ),
+          }))}
+          onValueChange={(value) => {
+            const next = bodyTypes.find((type) => type === value);
+            if (!next || next === body.type) return;
+            const hasContent =
+              ('content' in body && body.content.trim().length > 0) ||
+              ('entries' in body && body.entries.length > 0);
+            if (
+              hasContent &&
+              !((isText(next) && isText(body.type)) || (isForm(next) && isForm(body.type)))
+            )
+              setPendingType(next);
+            else applyType(next);
+          }}
+        />
         {body.type === 'json' && (
-          <Action variant="secondary" onPress={handlePrettify}>
-            {t('apiWorkbench.body.prettify')}
-          </Action>
+          <div>
+            <Action
+              variant="secondary"
+              onPress={() => {
+                try {
+                  const parsed: unknown = JSON.parse(body.content);
+                  onChange({ ...body, content: JSON.stringify(parsed, null, 2) });
+                  setInvalid(false);
+                } catch {
+                  setInvalid(true);
+                }
+              }}
+            >
+              {t('apiWorkbench.body.prettify')}
+            </Action>
+          </div>
         )}
       </div>
-
-      {(body.type === 'json' || body.type === 'text' || body.type === 'xml') && (
+      {'content' in body && (
         <TextAreaField
           label={t('apiWorkbench.body.content')}
           content="code"
-          rows={10}
-          placeholder={body.type === 'json' ? '{\n  "key": "value"\n}' : 'Request body payload...'}
+          rows={12}
+          placeholder={t('apiWorkbench.body.placeholder')}
           value={body.content}
-          onChange={(e) => onChange({ ...body, content: e.target.value })}
+          {...(invalid ? { error: t('apiWorkbench.body.invalidJson') } : {})}
+          onChange={(event) => {
+            setInvalid(false);
+            onChange({ ...body, content: event.target.value });
+          }}
         />
       )}
-
-      {(body.type === 'form-urlencoded' || body.type === 'form-data') && (
+      {'entries' in body && (
         <KeyValueEditor
           entries={body.entries}
           onChange={(entries) => onChange({ ...body, entries })}
         />
       )}
+      <ConfirmDialog
+        isOpen={pendingType !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingType(null);
+        }}
+        triggerLabel={t('apiWorkbench.body.changeTitle')}
+        title={t('apiWorkbench.body.changeTitle')}
+        description={t('apiWorkbench.body.changeDescription')}
+        impact={t('apiWorkbench.common.deleteOneImpact')}
+        cancelLabel={t('apiWorkbench.common.cancel')}
+        confirmLabel={t('apiWorkbench.body.changeConfirm')}
+        failureMessage={t('apiWorkbench.common.failed')}
+        onConfirm={() => {
+          if (pendingType) applyType(pendingType);
+          setPendingType(null);
+        }}
+      />
     </div>
   );
 }

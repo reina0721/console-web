@@ -11,33 +11,36 @@ import {
 
 export function ApiWorkbenchRuntime({ children }: Readonly<{ children: ReactNode }>) {
   const [port] = useState<ApiWorkbenchPort>(() => {
+    let service: ApiWorkbenchPort | null = null;
     let servicePromise: Promise<ApiWorkbenchPort> | null = null;
     const getService = () => {
       if (!servicePromise) {
-        servicePromise = (async () => {
-          try {
-            const { readAuthConfig } = await import('../auth/config');
-            const config = readAuthConfig();
-            if (config.mode === 'backend' && config.apiBaseUrl) {
-              const { createBackendApiWorkbenchService } = await import('./backend-service');
-              return createBackendApiWorkbenchService(config.apiBaseUrl);
-            }
-          } catch {
-            // Fallback to mock
-          }
-          const { createMockApiWorkbenchService } = await import('./mock-service');
-          return createMockApiWorkbenchService();
-        })();
+        servicePromise = import('./resolve-service')
+          .then(({ resolveService }) => resolveService())
+          .then((resolved) => {
+            service = resolved;
+            return resolved;
+          });
       }
       return servicePromise;
     };
 
     return {
-      capabilities: {
-        mode: 'mock',
-        disguise: false,
-        corsFree: false,
-        persistentTasks: false,
+      get capabilities() {
+        return (
+          service?.capabilities ?? {
+            mode: 'mock',
+            disguise: false,
+            corsFree: false,
+            persistentTasks: false,
+          }
+        );
+      },
+      transfer: {
+        selectWorkspace: async () => (await getService()).transfer.selectWorkspace(),
+        exportWorkspace: async (snapshot) =>
+          (await getService()).transfer.exportWorkspace(snapshot),
+        copyResponse: async (body) => (await getService()).transfer.copyResponse(body),
       },
       workspace: {
         load: async (): Promise<WorkspaceSnapshot> => (await getService()).workspace.load(),

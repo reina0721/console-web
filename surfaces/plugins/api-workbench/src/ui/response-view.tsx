@@ -1,129 +1,133 @@
 'use client';
-
 import { useState } from 'react';
 import { useFrontendTranslation } from '@community-go/i18n';
-import type {
-  ExecutedResponse,
-  ExecutionFailure,
-  RequestHistoryItem,
-  ScriptExecutionResult,
+import {
+  useApiWorkbenchPort,
+  type ExecutedResponse,
+  type ExecutionFailure,
+  type HttpMethod,
+  type RequestHistoryItem,
+  type ScriptExecutionResult,
 } from '@community-go/surface/api-workbench';
 import { Action } from '@community-go/ui-adapter/action';
-import { IconAction } from '@community-go/ui-adapter/icon-action';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { TabsView, type TabsViewItem } from '@community-go/ui-adapter/data-display';
 import { AlertBanner } from '@community-go/ui-adapter/feedback';
-import { CheckCheck, Copy, RefreshCw, Trash2 } from 'lucide-react';
-import { useWorkbenchStore, type ResponseSubtab } from '../../stores/workbench';
-
+import { useFeedback } from '@community-go/ui-adapter/feedback-context';
+import { DisclosurePanel } from '@community-go/ui-adapter/disclosure';
+import { DestructiveConfirmDialog } from '@community-go/ui-adapter/overlays';
+import { StateSurface } from '@community-go/ui-adapter/state-surface';
+import { Copy, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { useWorkbenchStore } from '../../stores/workbench';
+import { useWorkbenchFormat } from './use-workbench-format';
 export type ResponseViewProps = Readonly<{
   response: ExecutedResponse | null;
   failure: ExecutionFailure | null;
   scriptResult: ScriptExecutionResult | null;
+  isExecuting: boolean;
   history: readonly RequestHistoryItem[];
-  onClearHistory: () => void;
-  onSelectHistoryUrl?: (method: string, url: string) => void;
+  onClearHistory: () => Promise<void>;
+  onSelectHistoryUrl: (method: HttpMethod, url: string) => void;
 }>;
-
+const tone = (status: number) =>
+  status < 300 ? 'success' : status < 400 ? 'info' : status < 500 ? 'warning' : 'danger';
 export function ResponseView({
   response,
   failure,
   scriptResult,
+  isExecuting,
   history,
   onClearHistory,
   onSelectHistoryUrl,
 }: ResponseViewProps) {
   const { t } = useFrontendTranslation();
-  const [copied, setCopied] = useState(false);
-  const activeSubtab = useWorkbenchStore((s) => s.activeResponseSubtab);
-  const setActiveSubtab = useWorkbenchStore((s) => s.setActiveResponseSubtab);
-
-  const handleCopy = async () => {
-    if (!response?.body) return;
-    try {
-      await navigator.clipboard.writeText(response.body);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
-  };
-
-  const formatBytes = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  };
-
-  const getStatusTone = (status: number) => {
-    if (status >= 200 && status < 300) return 'success';
-    if (status >= 300 && status < 400) return 'info';
-    if (status >= 400 && status < 500) return 'warning';
-    return 'danger';
-  };
-
-  let prettyBody = '';
+  const format = useWorkbenchFormat();
+  const port = useApiWorkbenchPort();
+  const feedback = useFeedback();
+  const subtab = useWorkbenchStore((s) => s.activeResponseSubtab);
+  const setSubtab = useWorkbenchStore((s) => s.setActiveResponseSubtab);
+  const [clearOpen, setClearOpen] = useState(false);
+  let prettyBody = response?.body ?? '';
   if (response?.body) {
     try {
       prettyBody = JSON.stringify(JSON.parse(response.body), null, 2);
     } catch {
-      prettyBody = response.body;
+      /* Non-JSON bodies retain their source text. */
     }
   }
-
-  const subtabItems: readonly TabsViewItem[] = [
-    {
-      id: 'pretty',
-      label: t('apiWorkbench.response.pretty'),
-      content: (
-        <div className="relative mt-2">
-          {response && (
-            <div className="absolute right-2 top-2 z-10">
-              <IconAction
-                label={copied ? t('apiWorkbench.response.copied') : t('apiWorkbench.response.copy')}
-                onPress={() => void handleCopy()}
-                size="sm"
-              >
-                {copied ? (
-                  <CheckCheck className="size-4 text-success" />
-                ) : (
-                  <Copy className="size-4 text-ink-muted" />
-                )}
-              </IconAction>
-            </div>
+  const renderBody = (pretty: boolean) => {
+    if (!response)
+      return failure ? null : (
+        <StateSurface
+          compact
+          state={scriptResult?.skipped ? 'warning' : 'empty'}
+          icon={<Send className="size-5" />}
+          title={t(
+            scriptResult?.skipped ? 'apiWorkbench.response.skipped' : 'apiWorkbench.response.idle',
           )}
-          <pre className="max-h-80 overflow-auto rounded-panel border border-border bg-surface-muted p-3 font-mono text-xs leading-relaxed text-ink">
-            {prettyBody || '// Empty response body'}
-          </pre>
+          description={t(
+            scriptResult?.skipped
+              ? 'apiWorkbench.response.skippedHint'
+              : 'apiWorkbench.response.noResponse',
+          )}
+        />
+      );
+    if (!response.body)
+      return (
+        <StateSurface
+          compact
+          state="empty"
+          icon={<Send className="size-5" />}
+          title={t('apiWorkbench.response.emptyBody')}
+          description={t('apiWorkbench.response.emptyBodyHint')}
+        />
+      );
+    return (
+      <div className="grid min-w-0 gap-3">
+        <div className="flex justify-end">
+          <Action
+            variant="quiet"
+            size="sm"
+            leadingIcon={<Copy className="size-4" />}
+            onPress={() => {
+              void port.transfer
+                .copyResponse(response.body)
+                .then(() =>
+                  feedback.notify({ title: t('apiWorkbench.feedback.copied'), tone: 'success' }),
+                )
+                .catch(() =>
+                  feedback.notify({ title: t('apiWorkbench.feedback.copyFailed'), tone: 'danger' }),
+                );
+            }}
+          >
+            {t('apiWorkbench.response.copy')}
+          </Action>
         </div>
-      ),
-    },
-    {
-      id: 'raw',
-      label: t('apiWorkbench.response.raw'),
-      content: (
-        <div className="mt-2">
-          <pre className="max-h-80 overflow-auto rounded-panel border border-border bg-surface-muted p-3 font-mono text-xs leading-relaxed text-ink">
-            {response?.body || '// Empty response body'}
-          </pre>
-        </div>
-      ),
-    },
+        <pre className="max-h-80 min-w-0 overflow-auto rounded-control border border-border bg-surface-inset p-4 font-mono text-sm leading-6 text-ink">
+          <code>{pretty ? prettyBody : response.body}</code>
+        </pre>
+      </div>
+    );
+  };
+  const items: readonly TabsViewItem[] = [
+    { id: 'pretty', label: t('apiWorkbench.response.pretty'), content: renderBody(true) },
+    { id: 'raw', label: t('apiWorkbench.response.raw'), content: renderBody(false) },
     {
       id: 'headers',
       label: t('apiWorkbench.response.headers'),
       content: (
-        <div className="mt-2 max-h-80 overflow-auto rounded-panel border border-border">
-          {response?.headers && response.headers.length > 0 ? (
-            <div className="divide-y divide-border text-xs">
-              {response.headers.map(([key, val], idx) => (
-                <div key={idx} className="flex gap-4 p-2.5 hover:bg-surface-muted">
-                  <span className="w-40 shrink-0 font-mono font-medium text-ink-muted">{key}</span>
-                  <span className="min-w-0 flex-1 break-all font-mono text-ink">{val}</span>
+        <div className="min-w-0">
+          {response?.headers.length ? (
+            <dl className="grid min-w-0 divide-y divide-border">
+              {response.headers.map(([key, value], index) => (
+                <div key={index} className="grid min-w-0 gap-1 py-3 @lg/editor:grid-cols-2">
+                  <dt className="break-all font-mono text-xs text-ink-muted">{key}</dt>
+                  <dd className="break-all font-mono text-sm text-ink">{value}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
           ) : (
-            <p className="p-4 text-center text-xs text-ink-muted">暂无响应头信息</p>
+            <p className="py-6 text-sm text-ink-muted">{t('apiWorkbench.response.noHeaders')}</p>
           )}
         </div>
       ),
@@ -132,123 +136,154 @@ export function ResponseView({
       id: 'history',
       label: t('apiWorkbench.response.history'),
       content: (
-        <div className="mt-2 grid gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-muted">最近 50 条请求记录</span>
-            {history.length > 0 && (
-              <Action variant="secondary" size="sm" onPress={onClearHistory}>
-                <Trash2 className="mr-1 size-3 text-danger" />
+        <div className="grid min-w-0 gap-3">
+          <p className="text-xs leading-5 text-ink-muted">
+            {t('apiWorkbench.response.historyHint')}
+          </p>
+          {history.length > 0 && (
+            <div>
+              <Action
+                variant="quiet"
+                size="sm"
+                leadingIcon={<Trash2 className="size-4" />}
+                onPress={() => setClearOpen(true)}
+              >
                 {t('apiWorkbench.response.clearHistory')}
               </Action>
-            )}
-          </div>
-          {history.length === 0 ? (
-            <p className="py-8 text-center text-xs text-ink-muted">
-              {t('apiWorkbench.response.noHistory')}
-            </p>
-          ) : (
-            <div className="max-h-80 divide-y divide-border overflow-auto rounded-panel border border-border">
-              {history.map((item) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  onClick={() => onSelectHistoryUrl?.(item.method, item.url)}
-                  className="flex w-full items-center justify-between gap-3 p-2.5 text-left text-xs transition-colors hover:bg-surface-muted/60"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <StatusPill tone={getStatusTone(item.status)}>{item.status}</StatusPill>
-                    <span className="font-mono font-bold text-ink">{item.method}</span>
-                    <span className="truncate font-mono text-ink-muted">{item.url}</span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2 text-ink-muted">
-                    <span>{item.durationMs}ms</span>
-                    <span>{formatBytes(item.sizeBytes)}</span>
-                  </div>
-                </button>
-              ))}
             </div>
           )}
+          {history.length === 0 && (
+            <p className="py-6 text-sm text-ink-muted">{t('apiWorkbench.response.noHistory')}</p>
+          )}
+          <div className="max-h-80 min-w-0 divide-y divide-border overflow-y-auto">
+            {history.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                onClick={() => onSelectHistoryUrl(item.method, item.url)}
+                className="grid w-full min-w-0 gap-2 rounded-control p-3 text-left outline-none transition-colors hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                <span className="flex flex-wrap items-center gap-2">
+                  <StatusPill tone={tone(item.status)}>{format.count(item.status)}</StatusPill>
+                  <span className="font-mono text-xs text-ink">{item.method}</span>
+                  <span className="text-xs text-ink-muted">
+                    {format.duration(item.durationMs)} · {format.bytes(item.sizeBytes)}
+                  </span>
+                </span>
+                <span className="min-w-0 break-all font-mono text-xs text-ink">{item.url}</span>
+                <span className="text-xs text-ink-muted">{format.timestamp(item.timestamp)}</span>
+              </button>
+            ))}
+          </div>
         </div>
       ),
     },
   ];
-
+  if (isExecuting)
+    return (
+      <StateSurface
+        compact
+        state="pending"
+        announcement="polite"
+        icon={<RefreshCw className="size-5" />}
+        title={t('apiWorkbench.response.pending')}
+        description={t('apiWorkbench.response.pendingHint')}
+      />
+    );
   return (
-    <div className="grid gap-3">
-      {/* Response Status Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
-        {response ? (
-          <div className="flex items-center gap-2">
-            <StatusPill tone={getStatusTone(response.status)}>
-              {response.status} {response.statusText}
+    <div className="@container/editor grid min-w-0 gap-4">
+      {response && (
+        <div
+          className="flex flex-wrap items-center gap-3 border-b border-border pb-3"
+          role="status"
+        >
+          <StatusPill tone={tone(response.status)}>
+            {format.count(response.status)} {response.statusText}
+          </StatusPill>
+          <span className="text-xs text-ink-muted">
+            {t('apiWorkbench.response.duration')}: {format.duration(response.durationMs)}
+          </span>
+          <span className="text-xs text-ink-muted">
+            {t('apiWorkbench.response.size')}: {format.bytes(response.sizeBytes)}
+          </span>
+        </div>
+      )}
+      {failure && (
+        <AlertBanner
+          tone="danger"
+          announcement="urgent"
+          icon={<RefreshCw className="size-5" />}
+          title={t('apiWorkbench.response.failed')}
+          description={
+            failure.details ??
+            failure.message ??
+            t(
+              failure.kind === 'cors'
+                ? 'apiWorkbench.response.corsNotice'
+                : 'apiWorkbench.response.networkHint',
+            )
+          }
+        />
+      )}
+      {Boolean(scriptResult?.tests.length) && (
+        <div className="grid min-w-0 gap-3">
+          <div className="flex flex-wrap gap-2">
+            <StatusPill tone="success">
+              {format.count(scriptResult?.tests.filter((test) => test.passed).length ?? 0)}{' '}
+              {t('apiWorkbench.response.testsPassed')}
             </StatusPill>
-            <span className="text-xs text-ink-muted">{response.durationMs}ms</span>
-            <span className="text-xs text-ink-muted">{formatBytes(response.sizeBytes)}</span>
-          </div>
-        ) : failure ? (
-          <div className="flex items-center gap-2">
-            <StatusPill tone="danger">{t('apiWorkbench.response.failed')}</StatusPill>
-            <span className="text-xs text-danger font-medium">{failure.kind.toUpperCase()}</span>
-          </div>
-        ) : (
-          <span className="text-xs text-ink-muted">{t('apiWorkbench.response.noResponse')}</span>
-        )}
-
-        {/* Assertion test badges if executed */}
-        {scriptResult?.tests && scriptResult.tests.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            {scriptResult.tests.filter((t) => t.passed).length > 0 && (
-              <StatusPill tone="success">
-                {scriptResult.tests.filter((t) => t.passed).length}{' '}
-                {t('apiWorkbench.response.testsPassed')}
-              </StatusPill>
-            )}
-            {scriptResult.tests.filter((t) => !t.passed).length > 0 && (
+            {Boolean(scriptResult?.tests.some((test) => !test.passed)) && (
               <StatusPill tone="danger">
-                {scriptResult.tests.filter((t) => !t.passed).length}{' '}
+                {format.count(scriptResult?.tests.filter((test) => !test.passed).length ?? 0)}{' '}
                 {t('apiWorkbench.response.testsFailed')}
               </StatusPill>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Failure Banner */}
-      {failure && (
-        <AlertBanner
-          tone="danger"
-          icon={<RefreshCw className="size-5 shrink-0 text-danger" />}
-          title={failure.message ?? t('apiWorkbench.response.failed')}
-          description={
-            failure.details ??
-            (failure.kind === 'cors'
-              ? t('apiWorkbench.response.corsNotice')
-              : '网络请求未能建立，请检查 URL 是否正确。')
-          }
-        />
-      )}
-
-      {/* Assertion details list */}
-      {scriptResult?.tests && scriptResult.tests.length > 0 && (
-        <div className="grid gap-1.5 rounded-panel border border-border bg-surface-muted p-2 text-xs">
-          {scriptResult.tests.map((test, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <span className={test.passed ? 'text-success' : 'text-danger font-bold'}>
-                {test.passed ? '✓' : '✗'}
-              </span>
-              <span className="text-ink">{test.title}</span>
-              {test.error && <span className="text-danger truncate">({test.error})</span>}
-            </div>
-          ))}
+          <DisclosurePanel title={t('apiWorkbench.response.assertions')}>
+            <ul className="grid gap-2">
+              {scriptResult?.tests.map((test, index) => (
+                <li
+                  key={index}
+                  className={test.passed ? 'break-words text-ink' : 'break-words text-danger'}
+                >
+                  {test.passed ? '✓' : '✗'} {test.title}
+                  {test.error ? ` — ${test.error}` : ''}
+                </li>
+              ))}
+            </ul>
+          </DisclosurePanel>
         </div>
       )}
-
-      {/* Response Subtabs */}
+      {Boolean(scriptResult?.logs.length) && (
+        <DisclosurePanel title={t('apiWorkbench.response.logs')}>
+          <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-xs">
+            {scriptResult?.logs.join('\n')}
+          </pre>
+        </DisclosurePanel>
+      )}
       <TabsView
         label={t('apiWorkbench.views.response')}
-        items={subtabItems}
-        selectedId={activeSubtab}
-        onSelectionChange={(id: string) => setActiveSubtab(id as ResponseSubtab)}
+        items={items}
+        selectedId={subtab}
+        onSelectionChange={(id) => {
+          if (id === 'pretty' || id === 'raw' || id === 'headers' || id === 'history')
+            setSubtab(id);
+        }}
+      />
+      <DestructiveConfirmDialog
+        triggerLabel={t('apiWorkbench.response.clearHistory')}
+        title={t('apiWorkbench.response.clearTitle')}
+        description={t('apiWorkbench.response.clearDescription')}
+        impact={t('apiWorkbench.common.deleteOneImpact')}
+        cancelLabel={t('apiWorkbench.common.cancel')}
+        confirmLabel={t('apiWorkbench.response.clearHistory')}
+        failureMessage={t('apiWorkbench.feedback.saveFailed')}
+        isOpen={clearOpen}
+        onOpenChange={setClearOpen}
+        onConfirm={async () => {
+          await onClearHistory();
+          setClearOpen(false);
+        }}
       />
     </div>
   );

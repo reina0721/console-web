@@ -1,14 +1,10 @@
 import { createAppStore } from '@community-go/state-foundation';
 import type {
-  ApiCollection,
-  ApiEnvironment,
-  ApiProject,
   ApiRequestDefinition,
   ExecutedResponse,
   ExecutionFailure,
-  KeyValueEntry,
-  RequestHistoryItem,
   ScriptExecutionResult,
+  TaskDefinition,
   WorkspaceSnapshot,
 } from '@community-go/surface/api-workbench';
 import type { RunnerBatchResult } from '../src/model/runner';
@@ -17,9 +13,16 @@ export type RightTab = 'response' | 'runner' | 'tasks';
 export type RequestTab =
   'params' | 'headers' | 'auth' | 'disguise' | 'body' | 'extractors' | 'scripts';
 export type ResponseSubtab = 'pretty' | 'raw' | 'headers' | 'history';
+export type WorkspaceView = 'request' | RightTab;
+
+const sameRequest = (left: ApiRequestDefinition, right: ApiRequestDefinition | undefined) =>
+  JSON.stringify(left) === JSON.stringify(right);
 
 export type WorkbenchStoreState = {
   snapshot: WorkspaceSnapshot | null;
+  drafts: Readonly<Record<string, ApiRequestDefinition>>;
+  activeWorkspaceView: WorkspaceView;
+  setActiveWorkspaceView: (view: WorkspaceView) => void;
   selectedRequestId: string | null;
   activeRightTab: RightTab;
   activeRequestTab: RequestTab;
@@ -30,17 +33,21 @@ export type WorkbenchStoreState = {
   lastFailure: ExecutionFailure | null;
   lastScriptResult: ScriptExecutionResult | null;
   isExecuting: boolean;
-  isEnvDrawerOpen: boolean;
+  runningTaskId: string | null;
+  unsavedTaskRun: TaskDefinition | null;
+  setUnsavedTaskRun: (task: TaskDefinition | null) => void;
+  setRunningTaskId: (id: string | null) => void;
   selectedCollectionIdForRunner: string | null;
   runnerState: {
     isRunning: boolean;
     currentProgress: number;
     total: number;
     result: RunnerBatchResult | null;
+    error: boolean;
   };
 
   // Actions
-  setSnapshot: (snapshot: WorkspaceSnapshot) => void;
+  setSnapshot: (snapshot: WorkspaceSnapshot, replace?: boolean) => void;
   selectRequest: (id: string) => void;
   updateDraft: (patch: Partial<ApiRequestDefinition>) => void;
   setActiveRightTab: (tab: RightTab) => void;
@@ -48,43 +55,24 @@ export type WorkbenchStoreState = {
   setActiveResponseSubtab: (tab: ResponseSubtab) => void;
   setExecuting: (isExecuting: boolean) => void;
   setExecutionResult: (res: {
+    requestId: string;
     response?: ExecutedResponse;
     failure?: ExecutionFailure;
     script?: ScriptExecutionResult;
   }) => void;
-  setIsEnvDrawerOpen: (open: boolean) => void;
   setSelectedCollectionIdForRunner: (colId: string | null) => void;
   setRunnerState: (patch: Partial<WorkbenchStoreState['runnerState']>) => void;
 
   // Domain Actions (pure snapshot modifiers)
-  saveCurrentDraft: () => WorkspaceSnapshot | null;
-  createProject: (name: string) => WorkspaceSnapshot | null;
-  createCollection: (projectId: string, name: string) => WorkspaceSnapshot | null;
-  createRequest: (
-    collectionId: string,
-    name: string,
-  ) => {
-    snapshot: WorkspaceSnapshot;
-    createdRequestId: string;
-  } | null;
-  deleteEntity: (
-    kind: 'project' | 'collection' | 'request',
-    id: string,
-  ) => WorkspaceSnapshot | null;
-  switchEnvironment: (envId: string | undefined) => WorkspaceSnapshot | null;
-  updateEnvironmentVariables: (
-    envId: string,
-    variables: readonly KeyValueEntry[],
-  ) => WorkspaceSnapshot | null;
-  updateGlobals: (globals: readonly KeyValueEntry[]) => WorkspaceSnapshot | null;
-  createEnvironment: (name: string) => WorkspaceSnapshot | null;
-  deleteEnvironment: (envId: string) => WorkspaceSnapshot | null;
-  addHistoryRecord: (item: RequestHistoryItem) => WorkspaceSnapshot | null;
-  clearHistory: () => WorkspaceSnapshot | null;
+  prepareDraftSave: () => WorkspaceSnapshot | null;
 };
 
 export const useWorkbenchStore = createAppStore<WorkbenchStoreState>((set, get) => ({
   snapshot: null,
+  drafts: {},
+  activeWorkspaceView: 'request',
+  setActiveWorkspaceView: (view) =>
+    set({ activeWorkspaceView: view, ...(view === 'request' ? {} : { activeRightTab: view }) }),
   selectedRequestId: null,
   activeRightTab: 'response',
   activeRequestTab: 'params',
@@ -95,313 +83,129 @@ export const useWorkbenchStore = createAppStore<WorkbenchStoreState>((set, get) 
   lastFailure: null,
   lastScriptResult: null,
   isExecuting: false,
-  isEnvDrawerOpen: false,
+  runningTaskId: null,
+  unsavedTaskRun: null,
+  setUnsavedTaskRun: (unsavedTaskRun) => set({ unsavedTaskRun }),
+  setRunningTaskId: (runningTaskId) => set({ runningTaskId }),
   selectedCollectionIdForRunner: null,
   runnerState: {
     isRunning: false,
     currentProgress: 0,
     total: 0,
     result: null,
+    error: false,
   },
 
-  setSnapshot: (snapshot) => {
-    const currentSelected = get().selectedRequestId;
-    let nextSelected = currentSelected;
-
-    // Verify selected request still exists
-    if (!snapshot.requests.some((r) => r.id === currentSelected)) {
-      nextSelected = snapshot.requests[0]?.id ?? null;
-    }
-
-    const draft = nextSelected
-      ? (snapshot.requests.find((r) => r.id === nextSelected) ?? null)
-      : null;
-
+  setSnapshot: (snapshot, replace = false) => {
+    const state = get();
+    const drafts = replace
+      ? {}
+      : Object.fromEntries(
+          Object.entries(state.drafts).filter(([id, draft]) =>
+            snapshot.requests.some((r) => r.id === id && !sameRequest(draft, r)),
+          ),
+        );
+    const selectedRequestId = snapshot.requests.some((r) => r.id === state.selectedRequestId)
+      ? state.selectedRequestId
+      : (snapshot.requests[0]?.id ?? null);
+    const saved = snapshot.requests.find((r) => r.id === selectedRequestId);
+    const draftRequest = selectedRequestId ? (drafts[selectedRequestId] ?? saved ?? null) : null;
     set({
       snapshot,
-      selectedRequestId: nextSelected,
-      draftRequest: draft ? { ...draft } : null,
-      isDraftDirty: false,
-      selectedCollectionIdForRunner:
-        get().selectedCollectionIdForRunner || (snapshot.collections[0]?.id ?? null),
+      unsavedTaskRun:
+        !replace && snapshot.tasks.some((task) => task.id === state.unsavedTaskRun?.id)
+          ? state.unsavedTaskRun
+          : null,
+      drafts,
+      selectedRequestId,
+      draftRequest,
+      isDraftDirty: Boolean(draftRequest && !sameRequest(draftRequest, saved)),
+      selectedCollectionIdForRunner: snapshot.collections.some(
+        (c) => c.id === state.selectedCollectionIdForRunner,
+      )
+        ? state.selectedCollectionIdForRunner
+        : (snapshot.collections[0]?.id ?? null),
+      ...(replace || selectedRequestId !== state.selectedRequestId
+        ? {
+            lastResponse: null,
+            lastFailure: null,
+            lastScriptResult: null,
+            activeWorkspaceView: 'request' as const,
+          }
+        : {}),
     });
   },
-
   selectRequest: (id) => {
-    const { snapshot, selectedRequestId, draftRequest, isDraftDirty } = get();
-    if (id === selectedRequestId) return;
-
-    let updatedSnapshot = snapshot;
-    // Auto-save prior draft if dirty
-    if (isDraftDirty && draftRequest && snapshot) {
-      updatedSnapshot = {
-        ...snapshot,
-        requests: snapshot.requests.map((r) => (r.id === draftRequest.id ? draftRequest : r)),
-      };
-    }
-
-    const nextDraft = updatedSnapshot?.requests.find((r) => r.id === id) ?? null;
+    const state = get();
+    if (id === state.selectedRequestId) return;
+    const saved = state.snapshot?.requests.find((r) => r.id === id);
+    if (!saved) return;
+    const draftRequest = state.drafts[id] ?? saved;
     set({
-      snapshot: updatedSnapshot,
       selectedRequestId: id,
-      draftRequest: nextDraft ? { ...nextDraft } : null,
-      isDraftDirty: false,
+      draftRequest,
+      isDraftDirty: !sameRequest(draftRequest, saved),
       lastResponse: null,
       lastFailure: null,
       lastScriptResult: null,
+      activeWorkspaceView: 'request',
     });
   },
-
   updateDraft: (patch) => {
-    const { draftRequest } = get();
-    if (!draftRequest) return;
-    set({
-      draftRequest: { ...draftRequest, ...patch },
-      isDraftDirty: true,
-    });
+    const state = get();
+    if (!state.draftRequest) return;
+    const draftRequest = { ...state.draftRequest, ...patch };
+    const isDraftDirty = !sameRequest(
+      draftRequest,
+      state.snapshot?.requests.find((r) => r.id === draftRequest.id),
+    );
+    const drafts = { ...state.drafts };
+    if (isDraftDirty) drafts[draftRequest.id] = draftRequest;
+    else delete drafts[draftRequest.id];
+    set({ draftRequest, drafts, isDraftDirty });
   },
-
-  saveCurrentDraft: () => {
+  // Preparing a save never marks the draft saved. The caller commits after durable success.
+  prepareDraftSave: () => {
     const { snapshot, draftRequest } = get();
     if (!snapshot || !draftRequest) return null;
-
-    const updatedRequests = snapshot.requests.map((r) =>
-      r.id === draftRequest.id ? draftRequest : r,
-    );
-    const newSnapshot: WorkspaceSnapshot = {
+    return {
       ...snapshot,
-      requests: updatedRequests,
+      requests: snapshot.requests.map((r) => (r.id === draftRequest.id ? draftRequest : r)),
     };
-    set({
-      snapshot: newSnapshot,
-      isDraftDirty: false,
-    });
-    return newSnapshot;
   },
-
-  setActiveRightTab: (activeRightTab) => set({ activeRightTab }),
+  setActiveRightTab: (activeRightTab) =>
+    set({ activeRightTab, activeWorkspaceView: activeRightTab }),
   setActiveRequestTab: (activeRequestTab) => set({ activeRequestTab }),
   setActiveResponseSubtab: (activeResponseSubtab) => set({ activeResponseSubtab }),
-  setExecuting: (isExecuting) => set({ isExecuting }),
-  setExecutionResult: ({ response, failure, script }) => {
+  setExecuting: (isExecuting) =>
     set({
-      lastResponse: response ?? null,
-      lastFailure: failure ?? null,
-      lastScriptResult: script ?? null,
+      isExecuting,
+      ...(isExecuting
+        ? {
+            activeRightTab: 'response' as const,
+            activeWorkspaceView: 'response' as const,
+            lastResponse: null,
+            lastFailure: null,
+            lastScriptResult: null,
+          }
+        : {}),
+    }),
+  setExecutionResult: ({ requestId, response, failure, script }) => {
+    set({
       isExecuting: false,
-      activeRightTab: 'response',
-      activeResponseSubtab: response ? 'pretty' : 'raw',
+      ...(get().selectedRequestId === requestId
+        ? {
+            lastResponse: response ?? null,
+            lastFailure: failure ?? null,
+            lastScriptResult: script ?? null,
+            activeRightTab: 'response' as const,
+            activeWorkspaceView: 'response' as const,
+            activeResponseSubtab: response ? ('pretty' as const) : ('raw' as const),
+          }
+        : {}),
     });
   },
-  setIsEnvDrawerOpen: (isEnvDrawerOpen) => set({ isEnvDrawerOpen }),
   setSelectedCollectionIdForRunner: (selectedCollectionIdForRunner) =>
     set({ selectedCollectionIdForRunner }),
   setRunnerState: (patch) => set((state) => ({ runnerState: { ...state.runnerState, ...patch } })),
-
-  createProject: (name) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newProj: ApiProject = {
-      id: `proj_${Date.now().toString(36)}`,
-      name: name.trim() || '新项目',
-    };
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      projects: [...snapshot.projects, newProj],
-    };
-    set({ snapshot: newSnapshot });
-    return newSnapshot;
-  },
-
-  createCollection: (projectId, name) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newCol: ApiCollection = {
-      id: `col_${Date.now().toString(36)}`,
-      projectId,
-      name: name.trim() || '新集合',
-    };
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      collections: [...snapshot.collections, newCol],
-    };
-    set({
-      snapshot: newSnapshot,
-      selectedCollectionIdForRunner: get().selectedCollectionIdForRunner || newCol.id,
-    });
-    return newSnapshot;
-  },
-
-  createRequest: (collectionId, name) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newReqId = `req_${Date.now().toString(36)}`;
-    const newReq: ApiRequestDefinition = {
-      id: newReqId,
-      collectionId,
-      name: name.trim() || '新接口',
-      method: 'GET',
-      url: '{{baseUrl}}',
-      params: [],
-      headers: [],
-      auth: { type: 'none' },
-      body: { type: 'none' },
-      disguise: { timeoutMs: 10000 },
-      extractors: [],
-      preScript: '',
-      postScript: '',
-    };
-
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      requests: [...snapshot.requests, newReq],
-    };
-
-    set({
-      snapshot: newSnapshot,
-      selectedRequestId: newReqId,
-      draftRequest: { ...newReq },
-      isDraftDirty: false,
-    });
-
-    return { snapshot: newSnapshot, createdRequestId: newReqId };
-  },
-
-  deleteEntity: (kind, id) => {
-    const { snapshot, selectedRequestId } = get();
-    if (!snapshot) return null;
-
-    let newProjects = snapshot.projects;
-    let newCollections = snapshot.collections;
-    let newRequests = snapshot.requests;
-
-    if (kind === 'project') {
-      const removedColIds = new Set(
-        snapshot.collections.filter((c) => c.projectId === id).map((c) => c.id),
-      );
-      newProjects = snapshot.projects.filter((p) => p.id !== id);
-      newCollections = snapshot.collections.filter((c) => c.projectId !== id);
-      newRequests = snapshot.requests.filter((r) => !removedColIds.has(r.collectionId));
-    } else if (kind === 'collection') {
-      newCollections = snapshot.collections.filter((c) => c.id !== id);
-      newRequests = snapshot.requests.filter((r) => r.collectionId !== id);
-    } else if (kind === 'request') {
-      newRequests = snapshot.requests.filter((r) => r.id !== id);
-    }
-
-    let nextSelected = selectedRequestId;
-    if (selectedRequestId === id || !newRequests.some((r) => r.id === selectedRequestId)) {
-      nextSelected = newRequests[0]?.id ?? null;
-    }
-
-    const nextDraft = nextSelected
-      ? (newRequests.find((r) => r.id === nextSelected) ?? null)
-      : null;
-
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      projects: newProjects,
-      collections: newCollections,
-      requests: newRequests,
-    };
-
-    set({
-      snapshot: newSnapshot,
-      selectedRequestId: nextSelected,
-      draftRequest: nextDraft ? { ...nextDraft } : null,
-      isDraftDirty: false,
-    });
-
-    return newSnapshot;
-  },
-
-  switchEnvironment: (envId) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      activeEnvironmentId: envId,
-    };
-    set({ snapshot: newSnapshot });
-    return newSnapshot;
-  },
-
-  updateEnvironmentVariables: (envId, variables) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      environments: snapshot.environments.map((e) => (e.id === envId ? { ...e, variables } : e)),
-    };
-    set({ snapshot: newSnapshot });
-    return newSnapshot;
-  },
-
-  updateGlobals: (globals) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      globals,
-    };
-    set({ snapshot: newSnapshot });
-    return newSnapshot;
-  },
-
-  createEnvironment: (name) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newEnv: ApiEnvironment = {
-      id: `env_${Date.now().toString(36)}`,
-      name: name.trim() || '新环境',
-      variables: [],
-    };
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      environments: [...snapshot.environments, newEnv],
-      activeEnvironmentId: snapshot.activeEnvironmentId || newEnv.id,
-    };
-    set({ snapshot: newSnapshot });
-    return newSnapshot;
-  },
-
-  deleteEnvironment: (envId) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newEnvs = snapshot.environments.filter((e) => e.id !== envId);
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      environments: newEnvs,
-      activeEnvironmentId:
-        snapshot.activeEnvironmentId === envId
-          ? (newEnvs[0]?.id ?? undefined)
-          : snapshot.activeEnvironmentId,
-    };
-    set({ snapshot: newSnapshot });
-    return newSnapshot;
-  },
-
-  addHistoryRecord: (item) => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    // Keep last 50 items
-    const newHistory = [item, ...snapshot.history].slice(0, 50);
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      history: newHistory,
-    };
-    set({ snapshot: newSnapshot });
-    return newSnapshot;
-  },
-
-  clearHistory: () => {
-    const { snapshot } = get();
-    if (!snapshot) return null;
-    const newSnapshot: WorkspaceSnapshot = {
-      ...snapshot,
-      history: [],
-    };
-    set({ snapshot: newSnapshot });
-    return newSnapshot;
-  },
 }));

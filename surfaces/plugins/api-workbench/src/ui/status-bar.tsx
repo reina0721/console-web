@@ -1,90 +1,119 @@
 'use client';
-
 import { useFrontendTranslation } from '@community-go/i18n';
 import type { ApiEnvironment } from '@community-go/surface/api-workbench';
 import { Action } from '@community-go/ui-adapter/action';
-import { SelectField, type SelectOption } from '@community-go/ui-adapter/form-field';
-import { Download, Sliders, Upload } from 'lucide-react';
-
-export type StatusBarProps = Readonly<{
+import { SelectField } from '@community-go/ui-adapter/form-field';
+import { MenuButton } from '@community-go/ui-adapter/menu-button';
+import { StatusPill } from '@community-go/ui-adapter/status-pill';
+import { Download, Folder, Sliders, Upload } from 'lucide-react';
+export type WorkbenchToolbarProps = Readonly<{
   environments: readonly ApiEnvironment[];
   activeEnvironmentId?: string | undefined;
-  baseUrlHint?: string | undefined;
-  dbUsageText: string;
+  dbUsage: string | null;
+  compact: boolean;
+  mode: 'mock' | 'backend';
+  pending: boolean;
+  hasDrafts: boolean;
   onSelectEnvironment: (id: string | undefined) => void;
-  onOpenManageEnvs: () => void;
+  onOpenProjects: () => void;
+  onOpenEnvironments: () => void;
+  onOpenGlobals: () => void;
   onExport: () => void;
   onImport: () => void;
 }>;
-
-export function StatusBar({
+export function WorkbenchToolbar({
   environments,
   activeEnvironmentId,
-  baseUrlHint,
-  dbUsageText,
+  dbUsage,
+  compact,
+  mode,
+  pending,
+  hasDrafts,
   onSelectEnvironment,
-  onOpenManageEnvs,
+  onOpenProjects,
+  onOpenEnvironments,
+  onOpenGlobals,
   onExport,
   onImport,
-}: StatusBarProps) {
+}: WorkbenchToolbarProps) {
   const { t } = useFrontendTranslation();
-
-  const envOptions: readonly SelectOption[] = [
-    { value: 'none', label: t('apiWorkbench.bottomBar.noEnv') },
-    ...environments.map((e) => ({ value: e.id, label: e.name })),
-  ];
-
   return (
-    <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface px-4 py-2.5 text-xs text-ink-muted">
-      {/* Left: Environment & Import/Export */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="w-40">
-          <SelectField
-            label="环境选择"
-            options={envOptions}
-            value={activeEnvironmentId ?? 'none'}
-            onValueChange={(id: string) => onSelectEnvironment(id === 'none' ? undefined : id)}
-          />
-        </div>
-
-        <Action variant="secondary" size="sm" onPress={onOpenManageEnvs}>
-          <Sliders className="mr-1 size-3 text-ink-muted" />
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        {compact && (
+          <Action
+            size="sm"
+            variant="secondary"
+            leadingIcon={<Folder className="size-4" />}
+            onPress={onOpenProjects}
+          >
+            {t('apiWorkbench.workspace.navigation')}
+          </Action>
+        )}
+        <SelectField
+          presentation="toolbar"
+          label={t('apiWorkbench.bottomBar.env')}
+          value={activeEnvironmentId ?? 'none'}
+          options={[
+            { value: 'none', label: t('apiWorkbench.bottomBar.noEnv') },
+            ...environments.map((env) => ({ value: env.id, label: env.name })),
+          ]}
+          disabled={pending}
+          onValueChange={(value) => onSelectEnvironment(value === 'none' ? undefined : value)}
+        />
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <Action
+          size="sm"
+          variant="quiet"
+          leadingIcon={<Sliders className="size-4" />}
+          onPress={onOpenEnvironments}
+        >
           {t('apiWorkbench.bottomBar.manageEnvs')}
         </Action>
-
-        <Action variant="secondary" size="sm" onPress={onExport}>
-          <Download className="mr-1 size-3 text-ink-muted" />
-          {t('apiWorkbench.sidebar.exportWorkspace')}
-        </Action>
-
-        <Action variant="secondary" size="sm" onPress={onImport}>
-          <Upload className="mr-1 size-3 text-ink-muted" />
-          {t('apiWorkbench.sidebar.importWorkspace')}
-        </Action>
+        <MenuButton
+          label={t('apiWorkbench.workspace.menu')}
+          ariaLabel={t('apiWorkbench.workspace.menu')}
+          header={
+            <div className="grid max-w-64 gap-2">
+              <span>
+                {dbUsage
+                  ? t('apiWorkbench.workspace.storage', { size: dbUsage })
+                  : t('apiWorkbench.workspace.loading')}
+              </span>
+              <span>{t('apiWorkbench.workspace.version', { value: '0.4.0' })}</span>
+              {hasDrafts && (
+                <p className="text-xs leading-5 text-ink-muted">
+                  {t('apiWorkbench.workspace.unsavedExport')}
+                </p>
+              )}
+            </div>
+          }
+          items={[
+            { id: 'globals', label: t('apiWorkbench.bottomBar.setGlobals') },
+            {
+              id: 'export',
+              label: t('apiWorkbench.sidebar.exportWorkspace'),
+              icon: <Download className="size-4" />,
+              disabled: pending,
+            },
+            {
+              id: 'import',
+              label: t('apiWorkbench.sidebar.importWorkspace'),
+              icon: <Upload className="size-4" />,
+              disabled: pending,
+            },
+          ]}
+          onAction={(id) => {
+            if (id === 'globals') onOpenGlobals();
+            else if (id === 'export') onExport();
+            else if (id === 'import') onImport();
+          }}
+        />
+        <StatusPill tone={mode === 'mock' ? 'neutral' : 'info'}>
+          {t(mode === 'mock' ? 'apiWorkbench.workspace.mock' : 'apiWorkbench.workspace.backend')}
+        </StatusPill>
       </div>
-
-      {/* Middle: Variable Hint Pill */}
-      {baseUrlHint && (
-        <div className="hidden items-center gap-1.5 font-mono text-xs md:flex">
-          <span className="rounded-control bg-surface-muted px-2 py-0.5 text-ink-muted">
-            {'{{ baseUrl }}'}
-          </span>
-          <span className="text-ink">→ {baseUrlHint}</span>
-        </div>
-      )}
-
-      {/* Right: Storage & Version */}
-      <div className="flex items-center gap-4 text-xs">
-        <button
-          type="button"
-          onClick={onOpenManageEnvs}
-          className="text-ink hover:text-brand transition-colors"
-        >
-          {t('apiWorkbench.bottomBar.setGlobals')}
-        </button>
-        <span className="font-mono text-ink-muted">{dbUsageText}</span>
-        <span className="font-mono text-ink-muted">v0.4.0</span>
-      </div>
-    </footer>
+    </div>
   );
 }

@@ -15,7 +15,7 @@ export type DisguisePanelProps = Readonly<{
 export function DisguisePanel({ disguise, onChange }: DisguisePanelProps) {
   const { t } = useFrontendTranslation();
   const port = useApiWorkbenchPort();
-  const isMockMode = port.capabilities.mode === 'mock';
+  const isMockMode = !port.capabilities.disguise;
 
   return (
     <div className="grid max-w-lg gap-4">
@@ -41,7 +41,7 @@ export function DisguisePanel({ disguise, onChange }: DisguisePanelProps) {
         placeholder="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36..."
         value={disguise.userAgent ?? ''}
         disabled={isMockMode}
-        {...(isMockMode ? { hint: '浏览器环境禁止直接重写 User-Agent' } : {})}
+        {...(isMockMode ? { hint: t('apiWorkbench.disguise.uaHint') } : {})}
         onChange={(e) => onChange({ ...disguise, userAgent: e.target.value })}
       />
 
@@ -50,7 +50,7 @@ export function DisguisePanel({ disguise, onChange }: DisguisePanelProps) {
         placeholder="http://127.0.0.1:7890"
         value={disguise.proxy ?? ''}
         disabled={isMockMode}
-        {...(isMockMode ? { hint: '代理需后端 Relay 支持' } : {})}
+        {...(isMockMode ? { hint: t('apiWorkbench.disguise.proxyHint') } : {})}
         onChange={(e) => onChange({ ...disguise, proxy: e.target.value })}
       />
 
@@ -59,7 +59,7 @@ export function DisguisePanel({ disguise, onChange }: DisguisePanelProps) {
         placeholder="chrome_124_tls_fp"
         value={disguise.fingerprint ?? ''}
         disabled={isMockMode}
-        {...(isMockMode ? { hint: 'TLS 指纹伪装需后端 Relay 支持' } : {})}
+        {...(isMockMode ? { hint: t('apiWorkbench.disguise.fingerprintHint') } : {})}
         onChange={(e) => onChange({ ...disguise, fingerprint: e.target.value })}
       />
     </div>

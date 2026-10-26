@@ -38,7 +38,8 @@
     "./status-pill": "./src/status-pill.tsx",
     "./step-navigation": "./src/step-navigation.tsx",
     "./tree": "./src/tree.tsx",
-    "./toggle-group": "./src/toggle-group.tsx"
+    "./toggle-group": "./src/toggle-group.tsx",
+    "./container-layout": "./src/container-layout.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

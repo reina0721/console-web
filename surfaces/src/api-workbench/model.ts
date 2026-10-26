@@ -188,4 +188,9 @@ export type ApiWorkbenchPort = Readonly<{
   workspace: WorkspaceRepository;
   transport: RequestTransport;
   tasks: TaskScheduler;
+  transfer: Readonly<{
+    selectWorkspace: () => Promise<string | null>;
+    exportWorkspace: (snapshot: WorkspaceSnapshot) => Promise<void>;
+    copyResponse: (body: string) => Promise<void>;
+  }>;
 }>;

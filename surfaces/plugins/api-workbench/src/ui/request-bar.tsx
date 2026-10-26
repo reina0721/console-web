@@ -1,114 +1,114 @@
 'use client';
-
+import { useState } from 'react';
 import { useFrontendTranslation } from '@community-go/i18n';
 import type { ApiRequestDefinition, HttpMethod } from '@community-go/surface/api-workbench';
 import { Action } from '@community-go/ui-adapter/action';
-import { SelectField, type SelectOption, TextField } from '@community-go/ui-adapter/form-field';
+import { SelectField, TextField } from '@community-go/ui-adapter/form-field';
 import { CheckCheck, Save, Send } from 'lucide-react';
 import { parseCurl } from '../model/curl';
 
 export type RequestBarProps = Readonly<{
   request: ApiRequestDefinition;
   isExecuting: boolean;
+  isSaving: boolean;
   isDirty: boolean;
+  baseUrl: string;
   onChange: (patch: Partial<ApiRequestDefinition>) => void;
   onSend: () => void;
   onSave: () => void;
 }>;
-
-const methodOptions: readonly SelectOption[] = [
-  { value: 'GET', label: 'GET' },
-  { value: 'POST', label: 'POST' },
-  { value: 'PUT', label: 'PUT' },
-  { value: 'PATCH', label: 'PATCH' },
-  { value: 'DELETE', label: 'DELETE' },
-  { value: 'HEAD', label: 'HEAD' },
-  { value: 'OPTIONS', label: 'OPTIONS' },
-];
-
+const methods: readonly HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 export function RequestBar({
   request,
   isExecuting,
+  isSaving,
   isDirty,
+  baseUrl,
   onChange,
   onSend,
   onSave,
 }: RequestBarProps) {
   const { t } = useFrontendTranslation();
-
-  const handleUrlChange = (value: string) => {
-    // Check if user pasted a curl command
+  const [curlError, setCurlError] = useState(false);
+  const changeUrl = (value: string) => {
+    setCurlError(false);
     if (value.trim().toLowerCase().startsWith('curl')) {
       const parsed = parseCurl(value);
-      if (parsed) {
-        onChange({
-          method: parsed.method,
-          url: parsed.url,
-          headers: [...request.headers, ...parsed.headers],
-          body: parsed.body,
-        });
+      if (!parsed) {
+        setCurlError(true);
         return;
       }
-    }
-    onChange({ url: value });
+      onChange({
+        method: parsed.method,
+        url: parsed.url,
+        headers: [...request.headers, ...parsed.headers],
+        body: parsed.body,
+      });
+    } else onChange({ url: value });
   };
-
-  const methodTone =
-    request.method === 'GET'
-      ? 'text-success border-success/30 bg-success-soft/30'
-      : request.method === 'POST'
-        ? 'text-info border-info/30 bg-info-soft/30'
-        : request.method === 'DELETE'
-          ? 'text-danger border-danger/30 bg-danger-soft/30'
-          : 'text-warning border-warning/30 bg-warning-soft/30';
-
   return (
-    <div className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold tracking-tight text-ink">{request.name}</h2>
-        <Action
-          variant={isDirty ? 'primary' : 'secondary'}
-          size="sm"
-          onPress={onSave}
-          disabled={!isDirty}
-        >
-          {isDirty ? (
-            <>
-              <Save className="mr-1.5 size-4" />
+    <div className="@container/editor grid min-w-0 gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="min-w-0 break-words text-lg font-semibold text-ink">{request.name}</h2>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-xs text-ink-muted" role="status">
+            {!isDirty && <CheckCheck aria-hidden="true" className="size-4 text-success" />}
+            {t(isDirty ? 'apiWorkbench.requestBar.dirty' : 'apiWorkbench.requestBar.saved')}
+          </span>
+          {isDirty && (
+            <Action
+              variant="secondary"
+              size="sm"
+              leadingIcon={<Save className="size-4" />}
+              loading={isSaving}
+              onPress={onSave}
+            >
               {t('apiWorkbench.requestBar.save')}
-            </>
-          ) : (
-            <>
-              <CheckCheck className="mr-1.5 size-4 text-success" />
-              {t('apiWorkbench.requestBar.saved')}
-            </>
+            </Action>
           )}
-        </Action>
+        </div>
       </div>
-
-      <div className="flex items-center gap-2">
-        <div className={`w-32 rounded-panel border ${methodTone}`}>
+      <div className="flex min-w-0 flex-wrap items-end gap-3 @lg/editor:flex-nowrap">
+        <div className="order-2 w-32 shrink-0 @lg/editor:order-none">
           <SelectField
-            label="HTTP 方法"
-            options={methodOptions}
+            label={t('apiWorkbench.requestBar.method')}
+            options={methods.map((method) => ({ value: method, label: method }))}
             value={request.method}
-            onValueChange={(id: string) => onChange({ method: id as HttpMethod })}
+            onValueChange={(value) => {
+              const method = methods.find((item) => item === value);
+              if (method) onChange({ method });
+            }}
           />
         </div>
-
-        <div className="min-w-0 flex-1">
+        <div className="order-1 min-w-0 w-full">
           <TextField
-            label={t('apiWorkbench.requestBar.urlPlaceholder')}
-            placeholder={t('apiWorkbench.requestBar.urlPlaceholder')}
+            label={t('apiWorkbench.requestBar.url')}
+            placeholder="https://api.example.com"
             value={request.url}
-            onChange={(e) => handleUrlChange(e.target.value)}
+            onChange={(event) => changeUrl(event.target.value)}
+            {...(curlError ? { error: t('apiWorkbench.requestBar.curlFailed') } : {})}
           />
         </div>
-
-        <Action variant="primary" onPress={onSend} disabled={isExecuting || !request.url.trim()}>
-          <Send className="mr-1.5 size-4" />
-          {isExecuting ? t('apiWorkbench.requestBar.sending') : t('apiWorkbench.requestBar.send')}
-        </Action>
+        <div className="order-3 ml-auto flex shrink-0 justify-end">
+          <Action
+            variant="primary"
+            leadingIcon={<Send className="size-4" />}
+            loading={isExecuting}
+            disabled={!request.url.trim()}
+            onPress={onSend}
+          >
+            {t(isExecuting ? 'apiWorkbench.requestBar.sending' : 'apiWorkbench.requestBar.send')}
+          </Action>
+        </div>
+      </div>
+      <div className="grid min-w-0 gap-1 text-xs leading-5 text-ink-muted">
+        <p>{t('apiWorkbench.requestBar.hint')}</p>
+        {baseUrl && (
+          <p className="min-w-0 break-all">
+            <span>{t('apiWorkbench.requestBar.resolvedBase')}: </span>
+            <code className="font-mono text-ink">{baseUrl}</code>
+          </p>
+        )}
       </div>
     </div>
   );

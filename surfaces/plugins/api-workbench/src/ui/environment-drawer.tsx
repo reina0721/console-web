@@ -1,130 +1,134 @@
 'use client';
-
 import { useState } from 'react';
 import { useFrontendTranslation } from '@community-go/i18n';
+import { useRegisterDirtySource } from '@community-go/plugin-framework/leave-confirm';
 import type { ApiEnvironment, KeyValueEntry } from '@community-go/surface/api-workbench';
 import { Action } from '@community-go/ui-adapter/action';
-import { DrawerSurface } from '@community-go/ui-adapter/overlays';
+import {
+  DrawerSurface,
+  ConfirmDialog,
+  DestructiveConfirmDialog,
+} from '@community-go/ui-adapter/overlays';
 import { IconAction } from '@community-go/ui-adapter/icon-action';
 import { TabsView, type TabsViewItem } from '@community-go/ui-adapter/data-display';
-import { TextField } from '@community-go/ui-adapter/form-field';
-import { Plus, Trash2 } from 'lucide-react';
+import { SelectField, TextField } from '@community-go/ui-adapter/form-field';
+import { Plus, Save, Trash2 } from 'lucide-react';
 import { KeyValueEditor } from './key-value-editor';
-
+export type EnvironmentSection = 'envs' | 'globals';
 export type EnvironmentDrawerProps = Readonly<{
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  section: EnvironmentSection;
+  activeEnvironmentId?: string | undefined;
   environments: readonly ApiEnvironment[];
   globals: readonly KeyValueEntry[];
-  onEnvironmentsChange: (envs: readonly ApiEnvironment[]) => void;
-  onGlobalsChange: (globals: readonly KeyValueEntry[]) => void;
+  onClose: () => void;
+  onSave: (
+    environments: readonly ApiEnvironment[],
+    globals: readonly KeyValueEntry[],
+  ) => Promise<void>;
 }>;
-
 export function EnvironmentDrawer({
-  isOpen,
-  onOpenChange,
+  section,
   environments,
   globals,
-  onEnvironmentsChange,
-  onGlobalsChange,
+  activeEnvironmentId,
+  onClose,
+  onSave,
 }: EnvironmentDrawerProps) {
   const { t } = useFrontendTranslation();
-  const [activeTab, setActiveTab] = useState<'envs' | 'globals'>('envs');
-  const [selectedEnvId, setSelectedEnvId] = useState(environments[0]?.id ?? '');
-  const [newEnvName, setNewEnvName] = useState('');
-
-  const currentEnv = environments.find((e) => e.id === selectedEnvId) ?? environments[0];
-
-  const handleAddEnv = () => {
-    if (!newEnvName.trim()) return;
-    const newEnv: ApiEnvironment = {
-      id: `env_${Date.now().toString(36)}`,
-      name: newEnvName.trim(),
-      variables: [
-        { id: `v_${Date.now().toString(36)}`, key: 'baseUrl', value: 'https://', enabled: true },
-      ],
-    };
-    onEnvironmentsChange([...environments, newEnv]);
-    setSelectedEnvId(newEnv.id);
-    setNewEnvName('');
+  const [envs, setEnvs] = useState(environments);
+  const [globalDraft, setGlobalDraft] = useState(globals);
+  const [activeTab, setActiveTab] = useState<EnvironmentSection>(section);
+  const [selectedId, setSelectedId] = useState(activeEnvironmentId ?? environments[0]?.id ?? '');
+  const [name, setName] = useState('');
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [discard, setDiscard] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const dirty = JSON.stringify([envs, globalDraft]) !== JSON.stringify([environments, globals]);
+  const current = envs.find((env) => env.id === selectedId) ?? envs[0];
+  useRegisterDirtySource({
+    pageId: 'api-workbench.variables',
+    isDirty: () => dirty,
+    isSubmitting: () => pending,
+    message: () => t('apiWorkbench.workspace.dirtyLeave'),
+  });
+  const close = () => {
+    if (pending) return;
+    if (dirty) setDiscard(true);
+    else onClose();
   };
-
-  const handleDeleteEnv = (id: string) => {
-    const updated = environments.filter((e) => e.id !== id);
-    onEnvironmentsChange(updated);
-    if (selectedEnvId === id) {
-      setSelectedEnvId(updated[0]?.id ?? '');
-    }
-  };
-
-  const handleUpdateEnvVars = (variables: readonly KeyValueEntry[]) => {
-    if (!currentEnv) return;
-    onEnvironmentsChange(
-      environments.map((e) => (e.id === currentEnv.id ? { ...e, variables } : e)),
-    );
-  };
-
   const items: readonly TabsViewItem[] = [
     {
       id: 'envs',
       label: t('apiWorkbench.environments.envsTab'),
       content: (
-        <div className="grid gap-4 pt-4">
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <TextField
-                label={t('apiWorkbench.environments.envName')}
-                placeholder={t('apiWorkbench.environments.envName')}
-                value={newEnvName}
-                onChange={(e) => setNewEnvName(e.target.value)}
-              />
-            </div>
-            <Action variant="primary" size="sm" onPress={handleAddEnv}>
-              <Plus className="mr-1 size-3.5" />
-              {t('apiWorkbench.environments.addEnv')}
-            </Action>
-          </div>
-
-          <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-            {environments.map((env) => (
-              <div
-                key={env.id}
-                className={`flex items-center gap-2 rounded-panel border px-3 py-1.5 text-xs transition-colors ${
-                  env.id === currentEnv?.id
-                    ? 'border-brand bg-brand-soft font-semibold text-brand-strong'
-                    : 'border-border bg-surface text-ink hover:bg-surface-muted'
-                }`}
+        <div className="grid min-w-0 gap-5">
+          <div className="grid min-w-0 gap-3">
+            <TextField
+              label={t('apiWorkbench.environments.envName')}
+              placeholder={t('apiWorkbench.environments.addPlaceholder')}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+            <div>
+              <Action
+                size="sm"
+                variant="secondary"
+                disabled={!name.trim() || pending}
+                leadingIcon={<Plus className="size-4" />}
+                onPress={() => {
+                  const env: ApiEnvironment = {
+                    id: `env_${Date.now().toString(36)}`,
+                    name: name.trim(),
+                    variables: [],
+                  };
+                  setEnvs([...envs, env]);
+                  setSelectedId(env.id);
+                  setName('');
+                }}
               >
-                <button
-                  type="button"
-                  onClick={() => setSelectedEnvId(env.id)}
-                  className="outline-none"
-                >
-                  {env.name}
-                </button>
-                {environments.length > 1 && (
-                  <IconAction
-                    label={t('apiWorkbench.environments.deleteEnv')}
-                    onPress={() => handleDeleteEnv(env.id)}
-                    size="sm"
-                  >
-                    <Trash2 className="size-3 text-danger" />
-                  </IconAction>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {currentEnv && (
-            <div className="grid gap-2">
-              <span className="text-xs font-semibold text-ink">{currentEnv.name} · 变量配置</span>
-              <KeyValueEditor
-                entries={currentEnv.variables}
-                onChange={handleUpdateEnvVars}
-                keyPlaceholder="baseUrl"
-                valuePlaceholder="http://localhost:3000"
-              />
+                {t('apiWorkbench.environments.addEnv')}
+              </Action>
             </div>
+          </div>
+          {envs.length === 0 ? (
+            <p className="text-sm leading-6 text-ink-muted">
+              {t('apiWorkbench.environments.empty')}
+            </p>
+          ) : (
+            <>
+              <SelectField
+                label={t('apiWorkbench.environments.envsTab')}
+                value={current?.id ?? null}
+                options={envs.map((env) => ({ value: env.id, label: env.name }))}
+                onValueChange={setSelectedId}
+              />
+              {current && (
+                <div className="grid min-w-0 gap-4 border-t border-border pt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 break-words text-sm font-semibold text-ink">
+                      {t('apiWorkbench.environments.variables', { name: current.name })}
+                    </span>
+                    <IconAction
+                      label={t('apiWorkbench.environments.deleteEnv')}
+                      onPress={() => setDeleteId(current.id)}
+                    >
+                      <Trash2 className="size-4 text-danger" />
+                    </IconAction>
+                  </div>
+                  <KeyValueEditor
+                    entries={current.variables}
+                    onChange={(variables) =>
+                      setEnvs(
+                        envs.map((env) => (env.id === current.id ? { ...env, variables } : env)),
+                      )
+                    }
+                    keyPlaceholder="baseUrl"
+                    valuePlaceholder="https://api.example.com"
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       ),
@@ -132,36 +136,88 @@ export function EnvironmentDrawer({
     {
       id: 'globals',
       label: t('apiWorkbench.environments.globalsTab'),
-      content: (
-        <div className="pt-4">
-          <KeyValueEditor
-            entries={globals}
-            onChange={onGlobalsChange}
-            keyPlaceholder="globalKey"
-            valuePlaceholder="globalValue"
-          />
-        </div>
-      ),
+      content: <KeyValueEditor entries={globalDraft} onChange={setGlobalDraft} />,
     },
   ];
-
   return (
     <DrawerSurface
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-      triggerLabel=""
-      closeLabel="关闭"
+      triggerLabel={t('apiWorkbench.environments.title')}
       title={t('apiWorkbench.environments.title')}
       description={t('apiWorkbench.environments.description')}
+      closeLabel={t('apiWorkbench.common.close')}
+      isOpen
+      onOpenChange={(open) => {
+        if (!open) close();
+      }}
     >
-      <div className="p-4">
+      <div className="grid min-w-0 gap-5">
         <TabsView
           label={t('apiWorkbench.environments.title')}
           items={items}
           selectedId={activeTab}
-          onSelectionChange={(id: string) => setActiveTab(id as 'envs' | 'globals')}
+          onSelectionChange={(id) => setActiveTab(id === 'globals' ? 'globals' : 'envs')}
         />
+        {dirty && (
+          <p className="text-sm text-ink-muted" role="status">
+            {t('apiWorkbench.environments.dirty')}
+          </p>
+        )}
+        {failed && (
+          <p role="alert" className="text-sm text-danger">
+            {t('apiWorkbench.feedback.saveFailed')}
+          </p>
+        )}
+        <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-border bg-surface py-4">
+          <Action variant="secondary" disabled={pending} onPress={close}>
+            {t('apiWorkbench.common.cancel')}
+          </Action>
+          <Action
+            leadingIcon={<Save className="size-4" />}
+            loading={pending}
+            disabled={!dirty}
+            onPress={() => {
+              setPending(true);
+              setFailed(false);
+              void onSave(envs, globalDraft)
+                .catch(() => setFailed(true))
+                .finally(() => setPending(false));
+            }}
+          >
+            {t('apiWorkbench.environments.save')}
+          </Action>
+        </div>
       </div>
+      <ConfirmDialog
+        triggerLabel={t('apiWorkbench.environments.discardTitle')}
+        title={t('apiWorkbench.environments.discardTitle')}
+        description={t('apiWorkbench.environments.discardDescription')}
+        impact={t('apiWorkbench.environments.dirty')}
+        cancelLabel={t('apiWorkbench.common.cancel')}
+        confirmLabel={t('apiWorkbench.environments.discard')}
+        failureMessage={t('apiWorkbench.common.failed')}
+        isOpen={discard}
+        onOpenChange={setDiscard}
+        onConfirm={onClose}
+      />
+      <DestructiveConfirmDialog
+        triggerLabel={t('apiWorkbench.environments.deleteEnv')}
+        title={t('apiWorkbench.common.deleteTitle')}
+        description={t('apiWorkbench.common.deleteDescription', {
+          name: envs.find((env) => env.id === deleteId)?.name,
+        })}
+        impact={t('apiWorkbench.common.deleteOneImpact')}
+        cancelLabel={t('apiWorkbench.common.cancel')}
+        confirmLabel={t('apiWorkbench.common.delete')}
+        failureMessage={t('apiWorkbench.common.failed')}
+        isOpen={deleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteId(null);
+        }}
+        onConfirm={() => {
+          setEnvs(envs.filter((env) => env.id !== deleteId));
+          setDeleteId(null);
+        }}
+      />
     </DrawerSurface>
   );
 }

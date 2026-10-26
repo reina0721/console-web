@@ -37,18 +37,19 @@ Application = Product Surface × Runtime Host
 
 ## 2. 主题 authority 清单
 
-| 文档                                                           | authority 范围                                                                   |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| [Universal Frontend Foundation](frontend-foundation.md)        | Universal 层 workspace 职责与禁止项                                              |
-| [Surface Foundation](surface-foundation.md)                    | `surface-foundation` 的 Layout/Shell/Pattern/Collection/Detail/Form/State 能力   |
-| [Plugin Framework 与 Surface File Routes](plugin-framework.md) | Framework 契约、Registry、Surface 私有边界、File Route、Codegen、Host Capability |
-| [Web Authentication](../apps/web/src/auth/README.md)           | Web 布局隔离、模式配置、统一会话、账户边界与待联调 API                           |
-| [Global Configuration](config-foundation.md)                   | 全局配置架构：@community-go/config、WEB_HOST / WEB_PORT 环境变量与 .env 管理     |
-| [Foundation 扩展治理](foundation-extension-governance.md)      | 业务请求扩展 Foundation 的顺序与完整环节                                         |
-| [UI Element System](ui-element-system.md)                      | UI Element 分类、Form Control、Anchored Overlay、Composition 契约                |
-| [UI 视觉校准基线](ui-visual-calibration.md)                    | TailAdmin 外部校准基线、矩阵与复核触发器                                         |
-| [Motion Foundation 与语义动效分层](motion-foundation.md)       | Motion Token/Recipe/决策树、Reduced Motion 与中断安全                            |
-| [Foundation 质量证据](quality-evidence.md)                     | 当前门禁数字、预算、Playwright/Axe/Visual 证据与历史证据入口                     |
+| 文档                                                              | authority 范围                                                                   |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [Universal Frontend Foundation](frontend-foundation.md)           | Universal 层 workspace 职责与禁止项                                              |
+| [Surface Foundation](surface-foundation.md)                       | `surface-foundation` 的 Layout/Shell/Pattern/Collection/Detail/Form/State 能力   |
+| [Plugin Framework 与 Surface File Routes](plugin-framework.md)    | Framework 契约、Registry、Surface 私有边界、File Route、Codegen、Host Capability |
+| [Web Authentication](../apps/web/src/auth/README.md)              | Web 布局隔离、模式配置、统一会话、账户边界与待联调 API                           |
+| [API Workbench Contract](../surfaces/src/api-workbench/README.md) | 当前产品的工作区模型、传输、任务能力与文件/复制 Port                             |
+| [Global Configuration](config-foundation.md)                      | 全局配置架构：@community-go/config、WEB_HOST / WEB_PORT 环境变量与 .env 管理     |
+| [Foundation 扩展治理](foundation-extension-governance.md)         | 业务请求扩展 Foundation 的顺序与完整环节                                         |
+| [UI Element System](ui-element-system.md)                         | UI Element 分类、Form Control、Anchored Overlay、Composition 契约                |
+| [UI 视觉校准基线](ui-visual-calibration.md)                       | TailAdmin 外部校准基线、矩阵与复核触发器                                         |
+| [Motion Foundation 与语义动效分层](motion-foundation.md)          | Motion Token/Recipe/决策树、Reduced Motion 与中断安全                            |
+| [Foundation 质量证据](quality-evidence.md)                        | 当前门禁数字、预算、Playwright/Axe/Visual 证据与历史证据入口                     |
 
 可执行 authority（页面）与文档 authority 互补：`/ui-elements/*`、`/motion`、
 `/page-patterns/*`、`/page-archetypes/*`、`/reference-resources` 分别承担

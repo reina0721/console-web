@@ -10,6 +10,8 @@
  * - DELETE /api-workbench/tasks/:id
  */
 
+import { browserWorkspaceTransfer } from './transfer';
+
 import type {
   ApiWorkbenchPort,
   ExecutionResult,
@@ -36,6 +38,7 @@ export function createBackendApiWorkbenchService(apiBaseUrl: string): ApiWorkben
   };
 
   return {
+    transfer: browserWorkspaceTransfer,
     capabilities: {
       mode: 'backend',
       disguise: true,

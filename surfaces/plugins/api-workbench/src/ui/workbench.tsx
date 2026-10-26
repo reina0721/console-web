@@ -1,488 +1,532 @@
 'use client';
-
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFrontendTranslation } from '@community-go/i18n';
+import { useRegisterDirtySource } from '@community-go/plugin-framework/leave-confirm';
 import {
   safeParseWorkspaceSnapshot,
   useApiWorkbenchPort,
   type KeyValueEntry,
-  type RequestHistoryItem,
-  type TaskDefinition,
-  type TestResult,
+  type WorkspaceSnapshot,
 } from '@community-go/surface/api-workbench';
 import { Panel } from '@community-go/ui-adapter/panel';
 import { TabsView, type TabsViewItem } from '@community-go/ui-adapter/data-display';
 import { Skeleton } from '@community-go/ui-adapter/skeleton';
-import { buildResolvedRequest } from '../model/build-request';
+import { AlertBanner } from '@community-go/ui-adapter/feedback';
+import { useFeedback } from '@community-go/ui-adapter/feedback-context';
+import { StateSurface } from '@community-go/ui-adapter/state-surface';
+import { ConfirmDialog, DrawerSurface } from '@community-go/ui-adapter/overlays';
+import { useContainerBreakpoint } from '@community-go/ui-adapter/container-layout';
+import { AlertCircle, Send } from 'lucide-react';
 import { resolveVariableMap } from '../model/interpolate';
-import { runExtractors } from '../model/extractors';
-import { runScriptSandbox } from '../script/sandbox';
-import { useWorkbenchStore, type RightTab } from '../../stores/workbench';
-import { EnvironmentDrawer } from './environment-drawer';
+import { executeWorkbenchRequest } from '../model/execute-request';
+import {
+  createRequest,
+  mergeExecutionVariables,
+  removeWorkspaceEntity,
+} from '../model/workspace-actions';
+import { useWorkbenchStore } from '../../stores/workbench';
+import { EnvironmentDrawer, type EnvironmentSection } from './environment-drawer';
 import { ProjectTree } from './project-tree';
 import { RequestBar } from './request-bar';
 import { RequestTabs } from './request-tabs';
 import { ResponseView } from './response-view';
 import { RunnerView } from './runner-view';
-import { StatusBar } from './status-bar';
+import { WorkbenchToolbar } from './status-bar';
 import { TasksView } from './tasks-view';
-
-function createRandomId(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
-}
-
-function createIsoTimestamp(): string {
-  return new Date().toISOString();
-}
+import { useWorkbenchFormat } from './use-workbench-format';
+const newId = (prefix: string) =>
+  `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+const emptyEntries: readonly KeyValueEntry[] = [];
 
 export function Workbench() {
   const { t } = useFrontendTranslation();
+  const format = useWorkbenchFormat();
   const port = useApiWorkbenchPort();
+  const feedback = useFeedback();
+  const { ref: workspaceRef, matches: expanded } = useContainerBreakpoint('4xl');
+  const snapshot = useWorkbenchStore((state) => state.snapshot);
+  const setSnapshot = useWorkbenchStore((state) => state.setSnapshot);
+  const draftRequest = useWorkbenchStore((state) => state.draftRequest);
+  const drafts = useWorkbenchStore((state) => state.drafts);
+  const dirty = useWorkbenchStore((state) => state.isDraftDirty);
+  const unsavedTaskRun = useWorkbenchStore((state) => state.unsavedTaskRun);
+  const selectedRequestId = useWorkbenchStore((state) => state.selectedRequestId);
+  const updateDraft = useWorkbenchStore((state) => state.updateDraft);
+  const selectRequest = useWorkbenchStore((state) => state.selectRequest);
+  const activeRightTab = useWorkbenchStore((state) => state.activeRightTab);
+  const setActiveRightTab = useWorkbenchStore((state) => state.setActiveRightTab);
+  const workspaceView = useWorkbenchStore((state) => state.activeWorkspaceView);
+  const setWorkspaceView = useWorkbenchStore((state) => state.setActiveWorkspaceView);
+  const lastResponse = useWorkbenchStore((state) => state.lastResponse);
+  const lastFailure = useWorkbenchStore((state) => state.lastFailure);
+  const lastScriptResult = useWorkbenchStore((state) => state.lastScriptResult);
+  const isExecuting = useWorkbenchStore((state) => state.isExecuting);
+  const setExecuting = useWorkbenchStore((state) => state.setExecuting);
+  const setExecutionResult = useWorkbenchStore((state) => state.setExecutionResult);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [dbUsage, setDbUsage] = useState<string | null>(null);
+  const [isSaving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [writeCount, setWriteCount] = useState(0);
+  const writeQueue = useRef<Promise<void>>(Promise.resolve());
+  const executionGeneration = useRef(0);
+  const [error, setError] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
+  const [envSection, setEnvSection] = useState<EnvironmentSection | null>(null);
+  const [importCandidate, setImportCandidate] = useState<WorkspaceSnapshot | null>(null);
+  const [pickingImport, setPickingImport] = useState(false);
+  useRegisterDirtySource({
+    pageId: 'api-workbench',
+    isDirty: () => Object.keys(drafts).length > 0 || Boolean(unsavedTaskRun),
+    isSubmitting: () => isSaving,
+    message: () => t('apiWorkbench.workspace.dirtyLeave'),
+  });
 
-  const [dbUsage, setDbUsage] = useState('DB 168.0 KB');
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Store bindings
-  const snapshot = useWorkbenchStore((s) => s.snapshot);
-  const setSnapshot = useWorkbenchStore((s) => s.setSnapshot);
-  const draftRequest = useWorkbenchStore((s) => s.draftRequest);
-  const isDraftDirty = useWorkbenchStore((s) => s.isDraftDirty);
-  const selectedRequestId = useWorkbenchStore((s) => s.selectedRequestId);
-  const selectRequest = useWorkbenchStore((s) => s.selectRequest);
-  const updateDraft = useWorkbenchStore((s) => s.updateDraft);
-  const saveCurrentDraft = useWorkbenchStore((s) => s.saveCurrentDraft);
-
-  const activeRightTab = useWorkbenchStore((s) => s.activeRightTab);
-  const setActiveRightTab = useWorkbenchStore((s) => s.setActiveRightTab);
-
-  const lastResponse = useWorkbenchStore((s) => s.lastResponse);
-  const lastFailure = useWorkbenchStore((s) => s.lastFailure);
-  const lastScriptResult = useWorkbenchStore((s) => s.lastScriptResult);
-  const isExecuting = useWorkbenchStore((s) => s.isExecuting);
-  const setExecuting = useWorkbenchStore((s) => s.setExecuting);
-  const setExecutionResult = useWorkbenchStore((s) => s.setExecutionResult);
-
-  const isEnvDrawerOpen = useWorkbenchStore((s) => s.isEnvDrawerOpen);
-  const setIsEnvDrawerOpen = useWorkbenchStore((s) => s.setIsEnvDrawerOpen);
-
-  const createProject = useWorkbenchStore((s) => s.createProject);
-  const createCollection = useWorkbenchStore((s) => s.createCollection);
-  const createRequest = useWorkbenchStore((s) => s.createRequest);
-  const deleteEntity = useWorkbenchStore((s) => s.deleteEntity);
-  const switchEnvironment = useWorkbenchStore((s) => s.switchEnvironment);
-  const updateEnvironmentVariables = useWorkbenchStore((s) => s.updateEnvironmentVariables);
-  const updateGlobals = useWorkbenchStore((s) => s.updateGlobals);
-  const addHistoryRecord = useWorkbenchStore((s) => s.addHistoryRecord);
-  const clearHistory = useWorkbenchStore((s) => s.clearHistory);
-
-  // 1. Initial Load from Port
   useEffect(() => {
     let active = true;
-    port.workspace
+    void port.workspace
       .load()
-      .then((snap) => {
+      .then((loaded) => {
         if (!active) return;
-        setSnapshot(snap);
-        setIsLoading(false);
-        void port.workspace.getUsage().then((u) => setDbUsage(`DB ${u.dbSizeFormatted}`));
+        setSnapshot(loaded, true);
+        setLoadState('ready');
+        void port.workspace
+          .getUsage()
+          .then((usage) => {
+            if (active) setDbUsage(usage.dbSizeFormatted);
+          })
+          .catch(() => {
+            if (active) setDbUsage(null);
+          });
       })
       .catch(() => {
-        if (active) setIsLoading(false);
+        if (active) setLoadState('error');
       });
     return () => {
       active = false;
     };
-  }, [port, setSnapshot]);
+  }, [port, setSnapshot, loadAttempt]);
 
-  // Active Environment & Globals map
-  const activeEnv = snapshot?.environments.find((e) => e.id === snapshot.activeEnvironmentId);
-  const envVars: readonly KeyValueEntry[] = activeEnv?.variables ?? [];
-  const globalVars: readonly KeyValueEntry[] = snapshot?.globals ?? [];
-  const varMap = resolveVariableMap(envVars, globalVars);
-  const baseUrlHint = varMap['baseUrl'] ?? 'mock://';
-
-  // Persist helper
-  const persist = async (newSnapshot: typeof snapshot) => {
-    if (!newSnapshot) return;
+  const commit = async (
+    change: (current: WorkspaceSnapshot) => WorkspaceSnapshot,
+    replace = false,
+  ) => {
+    setWriteCount((count) => count + 1);
+    const operation = writeQueue.current.then(async () => {
+      const current = useWorkbenchStore.getState().snapshot;
+      if (!current) throw new Error('Workspace unavailable');
+      const next = change(current);
+      if (port.capabilities.persistentTasks) {
+        for (const task of current.tasks)
+          if (!next.tasks.some((item) => item.id === task.id)) await port.tasks.remove(task.id);
+        for (const task of next.tasks)
+          if (
+            JSON.stringify(task) !==
+            JSON.stringify(current.tasks.find((item) => item.id === task.id))
+          )
+            await port.tasks.upsert(task);
+      }
+      await port.workspace.save(next);
+      setSnapshot(next, replace);
+      void port.workspace
+        .getUsage()
+        .then((usage) => setDbUsage(usage.dbSizeFormatted))
+        .catch(() => setDbUsage(null));
+    });
+    writeQueue.current = operation.catch(() => undefined);
     try {
-      await port.workspace.save(newSnapshot);
-      const usage = await port.workspace.getUsage();
-      setDbUsage(`DB ${usage.dbSizeFormatted}`);
+      await operation;
+      setError(false);
+    } catch (failure) {
+      setError(true);
+      throw failure;
+    } finally {
+      setWriteCount((count) => count - 1);
+    }
+  };
+  const reportSaveFailure = () =>
+    feedback.notify({ title: t('apiWorkbench.feedback.saveFailed'), tone: 'danger' });
+  const save = async () => {
+    const state = useWorkbenchStore.getState();
+    const candidate = state.prepareDraftSave();
+    const request = candidate?.requests.find((item) => item.id === state.selectedRequestId);
+    if (!request || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await commit((current) => ({
+        ...current,
+        requests: current.requests.map((item) => (item.id === request.id ? request : item)),
+      }));
+      feedback.notify({ title: t('apiWorkbench.feedback.saved'), tone: 'success' });
     } catch {
-      // storage write fail handled gracefully
+      reportSaveFailure();
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
+  const activeEnv = snapshot?.environments.find((env) => env.id === snapshot.activeEnvironmentId);
+  const envVars = activeEnv?.variables ?? emptyEntries;
+  const globalVars = snapshot?.globals ?? emptyEntries;
+  const envMap = resolveVariableMap(envVars, []);
+  const globalMap = resolveVariableMap([], globalVars);
 
-  const handleSave = async () => {
-    const updated = saveCurrentDraft();
-    if (updated) {
-      await persist(updated);
-    }
-  };
-
-  // Execute Request Pipeline
-  const handleSend = async () => {
-    if (!draftRequest || isExecuting) return;
-
+  const send = async () => {
+    const state = useWorkbenchStore.getState();
+    const request = state.draftRequest;
+    if (!request || !request.url.trim() || state.isExecuting) return;
+    const generation = executionGeneration.current;
     setExecuting(true);
-    const resolved = buildResolvedRequest(draftRequest, varMap);
-
-    // Step A: Pre-request Script
-    let requestToExecute = resolved;
-    let isSkipped = false;
-    let preLogs: readonly string[] = [];
-    if (draftRequest.preScript.trim()) {
-      const preResult = await runScriptSandbox(draftRequest.preScript, {
-        request: {
-          headers: { ...resolved.headers },
-          body: resolved.body,
-          timeoutMs: resolved.timeoutMs,
-        },
-        envVariables: Object.fromEntries(envVars.map((v: KeyValueEntry) => [v.key, v.value])),
-        globalVariables: Object.fromEntries(globalVars.map((v: KeyValueEntry) => [v.key, v.value])),
+    try {
+      const result = await executeWorkbenchRequest(request, envMap, globalMap, port.transport);
+      if (executionGeneration.current !== generation) return;
+      setExecutionResult({
+        requestId: request.id,
+        ...(result.kind === 'response'
+          ? { response: result.response }
+          : result.kind === 'failure'
+            ? { failure: result.failure }
+            : {}),
+        script: result.script,
       });
-      preLogs = preResult.logs;
-      if (preResult.skipped) isSkipped = true;
-      if (preResult.mutatedRequest) {
-        requestToExecute = {
-          ...resolved,
-          headers: preResult.mutatedRequest.headers,
-          body: preResult.mutatedRequest.body,
-          timeoutMs: preResult.mutatedRequest.timeoutMs ?? resolved.timeoutMs,
-        };
-      }
-      // Apply variable updates
-      if (preResult.setVariables.length > 0 && activeEnv) {
-        const updatedEnvVars = [...activeEnv.variables];
-        for (const setVar of preResult.setVariables) {
-          if (setVar.scope === 'env') {
-            const idx = updatedEnvVars.findIndex((v) => v.key === setVar.key);
-            if (idx >= 0) {
-              const cur = updatedEnvVars[idx];
-              if (cur) updatedEnvVars[idx] = { ...cur, value: setVar.value };
-            } else {
-              updatedEnvVars.push({
-                id: createRandomId('v'),
-                key: setVar.key,
-                value: setVar.value,
-                enabled: true,
-              });
-            }
-          }
-        }
-        const updatedSnap = updateEnvironmentVariables(activeEnv.id, updatedEnvVars);
-        void persist(updatedSnap);
-      }
-    }
-
-    if (isSkipped) {
+      await commit((current) => ({
+        ...current,
+        environments: current.environments.map((env) =>
+          env.id === activeEnv?.id
+            ? { ...env, variables: mergeExecutionVariables(env.variables, envMap, result.envVars) }
+            : env,
+        ),
+        globals: mergeExecutionVariables(current.globals, globalMap, result.globalVars),
+        history:
+          result.kind === 'response'
+            ? [
+                {
+                  id: newId('history'),
+                  requestId: request.id,
+                  timestamp: new Date().toISOString(),
+                  method: result.request.method,
+                  url: result.request.url,
+                  status: result.response.status,
+                  durationMs: result.response.durationMs,
+                  sizeBytes: result.response.sizeBytes,
+                },
+                ...current.history,
+              ].slice(0, 50)
+            : current.history,
+      })).catch(() => reportSaveFailure());
+    } catch {
+      setExecutionResult({
+        requestId: request.id,
+        failure: { kind: 'unsupported', message: t('apiWorkbench.feedback.executionFailed') },
+      });
+    } finally {
       setExecuting(false);
-      return;
     }
-
-    // Step B: Transport Execute
-    const execResult = await port.transport.execute(requestToExecute);
-
-    if (!execResult.ok) {
-      setExecutionResult({ failure: execResult.failure });
-      return;
+  };
+  const pickImport = async () => {
+    setPickingImport(true);
+    try {
+      const text = await port.transfer.selectWorkspace();
+      if (text === null) return;
+      const parsed: unknown = JSON.parse(text);
+      const result = safeParseWorkspaceSnapshot(parsed);
+      if (!result.success) throw new Error('Invalid workspace');
+      setImportCandidate(result.data);
+    } catch {
+      feedback.notify({ title: t('apiWorkbench.feedback.importFailed'), tone: 'danger' });
+    } finally {
+      setPickingImport(false);
     }
-
-    const response = execResult.response;
-
-    // Step C: Post-response Script (Assertions & Extractors)
-    let postScriptResult: { tests: readonly TestResult[]; logs: readonly string[] } = {
-      tests: [],
-      logs: [],
-    };
-
-    if (draftRequest.postScript.trim()) {
-      const postResult = await runScriptSandbox(draftRequest.postScript, {
-        response,
-        envVariables: Object.fromEntries(envVars.map((v: KeyValueEntry) => [v.key, v.value])),
-        globalVariables: Object.fromEntries(globalVars.map((v: KeyValueEntry) => [v.key, v.value])),
-      });
-      postScriptResult = {
-        tests: postResult.tests,
-        logs: [...preLogs, ...postResult.logs],
-      };
-      if (postResult.setVariables.length > 0 && activeEnv) {
-        const updatedEnvVars = [...activeEnv.variables];
-        for (const setVar of postResult.setVariables) {
-          if (setVar.scope === 'env') {
-            const idx = updatedEnvVars.findIndex((v) => v.key === setVar.key);
-            if (idx >= 0) {
-              const cur = updatedEnvVars[idx];
-              if (cur) updatedEnvVars[idx] = { ...cur, value: setVar.value };
-            } else {
-              updatedEnvVars.push({
-                id: createRandomId('v'),
-                key: setVar.key,
-                value: setVar.value,
-                enabled: true,
-              });
-            }
+  };
+  const projectTree = (
+    <ProjectTree
+      projects={snapshot?.projects ?? []}
+      collections={snapshot?.collections ?? []}
+      requests={snapshot?.requests ?? []}
+      selectedRequestId={selectedRequestId}
+      onSelectRequest={(id) => {
+        selectRequest(id);
+        setProjectsOpen(false);
+      }}
+      onCreateProject={async (name) => {
+        const project = { id: newId('project'), name };
+        await commit((current) => ({ ...current, projects: [...current.projects, project] }));
+      }}
+      onCreateCollection={async (projectId, name) => {
+        const collection = { id: newId('collection'), projectId, name };
+        await commit((current) => ({
+          ...current,
+          collections: [...current.collections, collection],
+        }));
+      }}
+      onCreateRequest={async (collectionId, name) => {
+        const request = createRequest(newId('request'), collectionId, name);
+        await commit((current) => ({ ...current, requests: [...current.requests, request] }));
+        selectRequest(request.id);
+        setProjectsOpen(false);
+      }}
+      onDelete={async (kind, id) => {
+        await commit((current) => removeWorkspaceEntity(current, kind, id));
+      }}
+    />
+  );
+  const editor = draftRequest ? (
+    <div className="grid min-w-0 gap-6">
+      <RequestBar
+        key={draftRequest.id}
+        request={draftRequest}
+        isExecuting={isExecuting}
+        isSaving={isSaving}
+        isDirty={dirty}
+        baseUrl={envMap['baseUrl'] ?? globalMap['baseUrl'] ?? ''}
+        onChange={updateDraft}
+        onSend={() => void send()}
+        onSave={() => void save()}
+      />
+      <RequestTabs key={`tabs-${draftRequest.id}`} request={draftRequest} onChange={updateDraft} />
+    </div>
+  ) : (
+    <StateSurface
+      compact
+      state="empty"
+      icon={<Send className="size-5" />}
+      title={t('apiWorkbench.workspace.chooseRequest')}
+      description={t('apiWorkbench.workspace.chooseRequestHint')}
+      {...(!expanded
+        ? {
+            actionLabel: t('apiWorkbench.workspace.navigation'),
+            onAction: () => setProjectsOpen(true),
           }
-        }
-        const updatedSnap = updateEnvironmentVariables(activeEnv.id, updatedEnvVars);
-        void persist(updatedSnap);
-      }
-    }
-
-    // Step D: Extractors
-    if (draftRequest.extractors.length > 0 && activeEnv) {
-      const extracted = runExtractors(draftRequest.extractors, response);
-      if (extracted.length > 0) {
-        const updatedEnvVars = [...activeEnv.variables];
-        for (const item of extracted) {
-          if (item.scope === 'env') {
-            const idx = updatedEnvVars.findIndex((v) => v.key === item.key);
-            if (idx >= 0) {
-              const cur = updatedEnvVars[idx];
-              if (cur) updatedEnvVars[idx] = { ...cur, value: item.value };
-            } else {
-              updatedEnvVars.push({
-                id: createRandomId('v'),
-                key: item.key,
-                value: item.value,
-                enabled: true,
-              });
-            }
-          }
-        }
-        const updatedSnap = updateEnvironmentVariables(activeEnv.id, updatedEnvVars);
-        void persist(updatedSnap);
-      }
-    }
-
-    // Step E: Record History
-    const historyItem: RequestHistoryItem = {
-      id: createRandomId('hist'),
-      requestId: draftRequest.id,
-      timestamp: createIsoTimestamp(),
-      method: draftRequest.method,
-      url: requestToExecute.url,
-      status: response.status,
-      durationMs: response.durationMs,
-      sizeBytes: response.sizeBytes,
-    };
-    const updatedSnapWithHistory = addHistoryRecord(historyItem);
-    void persist(updatedSnapWithHistory);
-
-    setExecutionResult({
-      response,
-      script: {
-        tests: postScriptResult.tests,
-        logs: postScriptResult.logs,
-        setVariables: [],
-      },
-    });
-  };
-
-  // Export / Import Workspace
-  const handleExport = () => {
-    if (!snapshot) return;
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `toapi-workspace-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportClick = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const parsed: unknown = JSON.parse(text);
-        const validation = safeParseWorkspaceSnapshot(parsed);
-        if (validation.success) {
-          setSnapshot(validation.data);
-          await persist(validation.data);
-        }
-      } catch {
-        // JSON syntax error
-      }
-    };
-    input.click();
-  };
-
-  // Right Tabs
-  const rightTabItems: readonly TabsViewItem[] = [
-    {
-      id: 'response',
-      label: t('apiWorkbench.views.response'),
-      content: (
-        <ResponseView
-          response={lastResponse}
-          failure={lastFailure}
-          scriptResult={lastScriptResult}
-          history={snapshot?.history ?? []}
-          onClearHistory={() => {
-            const updated = clearHistory();
-            void persist(updated);
-          }}
-          onSelectHistoryUrl={(method, url) => {
-            if (draftRequest) {
-              updateDraft({
-                method: method as typeof draftRequest.method,
-                url,
-              });
-            }
-          }}
-        />
-      ),
-    },
-    {
-      id: 'runner',
-      label: t('apiWorkbench.views.runner'),
-      content: (
-        <RunnerView
-          collections={snapshot?.collections ?? []}
-          requests={snapshot?.requests ?? []}
-          transport={port.transport}
-          envVars={Object.fromEntries(envVars.map((v: KeyValueEntry) => [v.key, v.value]))}
-          globalVars={Object.fromEntries(globalVars.map((v: KeyValueEntry) => [v.key, v.value]))}
-        />
-      ),
-    },
-    {
-      id: 'tasks',
-      label: t('apiWorkbench.views.tasks'),
-      content: (
-        <TasksView
-          collections={snapshot?.collections ?? []}
-          tasks={snapshot?.tasks ?? []}
-          onTasksChange={(tasks: readonly TaskDefinition[]) => {
-            if (!snapshot) return;
-            const updated = { ...snapshot, tasks };
-            setSnapshot(updated);
-            void persist(updated);
-          }}
-        />
-      ),
-    },
+        : {})}
+    />
+  );
+  const response = (
+    <ResponseView
+      response={lastResponse}
+      failure={lastFailure}
+      scriptResult={lastScriptResult}
+      isExecuting={isExecuting}
+      history={snapshot?.history ?? []}
+      onClearHistory={async () => {
+        await commit((current) => ({ ...current, history: [] }));
+      }}
+      onSelectHistoryUrl={(method, url) => {
+        updateDraft({ method, url });
+        setWorkspaceView('request');
+      }}
+    />
+  );
+  const runner = (
+    <RunnerView
+      collections={snapshot?.collections ?? []}
+      requests={snapshot?.requests ?? []}
+      transport={port.transport}
+      envVars={envMap}
+      globalVars={globalMap}
+    />
+  );
+  const tasks = (
+    <TasksView
+      collections={snapshot?.collections ?? []}
+      requests={snapshot?.requests ?? []}
+      tasks={snapshot?.tasks ?? []}
+      envVars={envMap}
+      globalVars={globalMap}
+      onTasksChange={async (nextTasks) => {
+        await commit((current) => ({ ...current, tasks: nextTasks }));
+      }}
+    />
+  );
+  const rightItems: readonly TabsViewItem[] = [
+    { id: 'response', label: t('apiWorkbench.views.response'), content: response },
+    { id: 'runner', label: t('apiWorkbench.views.runner'), content: runner },
+    { id: 'tasks', label: t('apiWorkbench.views.tasks'), content: tasks },
   ];
-
-  if (isLoading) {
-    return (
-      <div className="flex h-128 flex-col gap-4 p-4">
-        <Skeleton className="h-10 w-full" />
-        <div className="flex flex-1 gap-4">
-          <Skeleton className="h-full w-64" />
-          <Skeleton className="h-full flex-1" />
-          <Skeleton className="h-full flex-1" />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <Panel
-      aria-label="API 接口调试工作台"
-      className="flex flex-col overflow-hidden border border-border bg-surface p-0"
+    <div
+      ref={workspaceRef}
+      className="@container/workbench min-w-0"
+      data-workbench-layout={expanded ? 'expanded' : 'compact'}
     >
-      {/* Main Responsive Layout */}
-      <div className="flex min-h-96 flex-1 flex-col divide-y divide-border lg:flex-row lg:divide-x lg:divide-y-0">
-        {/* Left Column: Project Tree */}
-        <div className="w-full shrink-0 p-3 lg:w-72">
-          <ProjectTree
-            projects={snapshot?.projects ?? []}
-            collections={snapshot?.collections ?? []}
-            requests={snapshot?.requests ?? []}
-            selectedRequestId={selectedRequestId}
-            onSelectRequest={selectRequest}
-            onCreateProject={(name) => {
-              const updated = createProject(name);
-              void persist(updated);
+      {loadState === 'loading' ? (
+        <div className="grid min-w-0 gap-4" aria-label={t('apiWorkbench.workspace.loading')}>
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      ) : loadState === 'error' ? (
+        <StateSurface
+          state="error"
+          icon={<AlertCircle className="size-5" />}
+          title={t('apiWorkbench.workspace.loadFailed')}
+          description={t('apiWorkbench.workspace.loadFailedHint')}
+          actionLabel={t('apiWorkbench.common.retry')}
+          onAction={() => {
+            setLoadState('loading');
+            setLoadAttempt((attempt) => attempt + 1);
+          }}
+        />
+      ) : (
+        <Panel
+          aria-label={t('apiWorkbench.page.title')}
+          appearance="outlined"
+          className="min-w-0 overflow-hidden"
+        >
+          <WorkbenchToolbar
+            environments={snapshot?.environments ?? []}
+            activeEnvironmentId={snapshot?.activeEnvironmentId}
+            dbUsage={dbUsage}
+            compact={!expanded}
+            mode={port.capabilities.mode}
+            pending={writeCount > 0 || pickingImport}
+            hasDrafts={Object.keys(drafts).length > 0}
+            onSelectEnvironment={(id) => {
+              void commit((current) => ({ ...current, activeEnvironmentId: id })).catch(() =>
+                reportSaveFailure(),
+              );
             }}
-            onCreateCollection={(pId, name) => {
-              const updated = createCollection(pId, name);
-              void persist(updated);
-            }}
-            onCreateRequest={(cId, name) => {
-              const res = createRequest(cId, name);
-              if (res) void persist(res.snapshot);
-            }}
-            onDelete={(kind, id) => {
-              const updated = deleteEntity(kind, id);
-              void persist(updated);
+            onOpenProjects={() => setProjectsOpen(true)}
+            onOpenEnvironments={() => setEnvSection('envs')}
+            onOpenGlobals={() => setEnvSection('globals')}
+            onImport={() => void pickImport()}
+            onExport={() => {
+              const current = useWorkbenchStore.getState().snapshot;
+              if (current)
+                void port.transfer
+                  .exportWorkspace(current)
+                  .then(() =>
+                    feedback.notify({
+                      title: t('apiWorkbench.feedback.exported'),
+                      tone: 'success',
+                    }),
+                  )
+                  .catch(() =>
+                    feedback.notify({
+                      title: t('apiWorkbench.feedback.exportFailed'),
+                      tone: 'danger',
+                    }),
+                  );
             }}
           />
-        </div>
-
-        {/* Middle Column: Request Bar & Tabs */}
-        <div className="min-w-0 flex-1 p-4">
-          {draftRequest ? (
-            <div className="grid gap-4">
-              <RequestBar
-                request={draftRequest}
-                isExecuting={isExecuting}
-                isDirty={isDraftDirty}
-                onChange={updateDraft}
-                onSend={() => void handleSend()}
-                onSave={() => void handleSave()}
+          {error && (
+            <div className="p-4">
+              <AlertBanner
+                tone="danger"
+                announcement="urgent"
+                icon={<AlertCircle className="size-5" />}
+                title={t('apiWorkbench.feedback.saveFailed')}
+                description={t('apiWorkbench.common.failed')}
+                dismissLabel={t('apiWorkbench.common.close')}
+                onDismiss={() => setError(false)}
               />
-              <RequestTabs request={draftRequest} onChange={updateDraft} />
-            </div>
-          ) : (
-            <div className="py-16 text-center text-xs text-ink-muted">
-              请从左侧选择一个接口，或点击「+ 接口」开始调试
             </div>
           )}
-        </div>
+          {expanded ? (
+            <div className="flex min-w-0">
+              <div className="w-64 shrink-0 border-r border-border p-4">{projectTree}</div>
+              <div className="flex min-w-0 flex-1 flex-col @7xl/workbench:flex-row">
+                <div className="min-w-0 flex-1 p-5">{editor}</div>
+                <div className="min-w-0 border-t border-border p-5 @7xl/workbench:w-96 shrink-0 @7xl/workbench:border-t-0 @7xl/workbench:border-l">
+                  <TabsView
+                    label={t('apiWorkbench.workspace.view')}
+                    items={rightItems}
+                    selectedId={activeRightTab}
+                    onSelectionChange={(id) => {
+                      if (id === 'response' || id === 'runner' || id === 'tasks')
+                        setActiveRightTab(id);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="min-w-0 p-4">
+              <TabsView
+                label={t('apiWorkbench.workspace.view')}
+                items={[
+                  { id: 'request', label: t('apiWorkbench.workspace.request'), content: editor },
+                  ...rightItems,
+                ]}
+                selectedId={workspaceView}
+                onSelectionChange={(id) => {
+                  if (id === 'request' || id === 'response' || id === 'runner' || id === 'tasks')
+                    setWorkspaceView(id);
+                }}
+              />
+            </div>
+          )}
+          {expanded && dbUsage && (
+            <footer className="border-t border-border px-4 py-3 text-xs text-ink-muted">
+              {t('apiWorkbench.workspace.storage', { size: dbUsage })}
+            </footer>
+          )}
+        </Panel>
+      )}
+      {!expanded && (
+        <DrawerSurface
+          isOpen={projectsOpen}
+          onOpenChange={setProjectsOpen}
+          triggerLabel={t('apiWorkbench.workspace.navigation')}
+          title={t('apiWorkbench.workspace.navigation')}
+          description={t('apiWorkbench.workspace.navigationHint')}
+          closeLabel={t('apiWorkbench.common.close')}
+          placement="left"
+          composition="navigation"
+        >
+          <div className="p-4">{projectTree}</div>
+        </DrawerSurface>
+      )}
 
-        {/* Right Column: Response / Runner / Tasks */}
-        <div className="w-full shrink-0 p-4 lg:w-96">
-          <TabsView
-            label="右栏视图"
-            items={rightTabItems}
-            selectedId={activeRightTab}
-            onSelectionChange={(id: string) => setActiveRightTab(id as RightTab)}
-          />
-        </div>
-      </div>
-
-      {/* Bottom Status Bar */}
-      <StatusBar
-        environments={snapshot?.environments ?? []}
-        activeEnvironmentId={snapshot?.activeEnvironmentId}
-        baseUrlHint={baseUrlHint}
-        dbUsageText={dbUsage}
-        onSelectEnvironment={(envId) => {
-          const updated = switchEnvironment(envId);
-          void persist(updated);
+      {envSection && (
+        <EnvironmentDrawer
+          key={envSection}
+          section={envSection}
+          environments={snapshot?.environments ?? []}
+          globals={snapshot?.globals ?? []}
+          activeEnvironmentId={snapshot?.activeEnvironmentId}
+          onClose={() => setEnvSection(null)}
+          onSave={async (environments, globals) => {
+            await commit((current) => ({
+              ...current,
+              environments,
+              globals,
+              activeEnvironmentId: environments.some(
+                (env) => env.id === current.activeEnvironmentId,
+              )
+                ? current.activeEnvironmentId
+                : environments[0]?.id,
+            }));
+            setEnvSection(null);
+            feedback.notify({ title: t('apiWorkbench.feedback.saved'), tone: 'success' });
+          }}
+        />
+      )}
+      <ConfirmDialog
+        isOpen={importCandidate !== null}
+        onOpenChange={(open) => {
+          if (!open) setImportCandidate(null);
         }}
-        onOpenManageEnvs={() => setIsEnvDrawerOpen(true)}
-        onExport={handleExport}
-        onImport={handleImportClick}
+        triggerLabel={t('apiWorkbench.workspace.importTitle')}
+        title={t('apiWorkbench.workspace.importTitle')}
+        description={t('apiWorkbench.workspace.importDescription')}
+        impact={t('apiWorkbench.workspace.importSummary', {
+          projects: format.count(importCandidate?.projects.length ?? 0),
+          collections: format.count(importCandidate?.collections.length ?? 0),
+          requests: format.count(importCandidate?.requests.length ?? 0),
+        })}
+        cancelLabel={t('apiWorkbench.common.cancel')}
+        confirmLabel={t('apiWorkbench.workspace.importConfirm')}
+        failureMessage={t('apiWorkbench.feedback.saveFailed')}
+        onConfirm={async () => {
+          if (importCandidate) {
+            executionGeneration.current += 1;
+            await commit(() => importCandidate, true);
+          }
+          setImportCandidate(null);
+          feedback.notify({ title: t('apiWorkbench.sidebar.importSuccess'), tone: 'success' });
+        }}
       />
-
-      {/* Environment Drawer */}
-      <EnvironmentDrawer
-        isOpen={isEnvDrawerOpen}
-        onOpenChange={setIsEnvDrawerOpen}
-        environments={snapshot?.environments ?? []}
-        globals={snapshot?.globals ?? []}
-        onEnvironmentsChange={(envs) => {
-          if (!snapshot) return;
-          const updated = { ...snapshot, environments: envs };
-          setSnapshot(updated);
-          void persist(updated);
-        }}
-        onGlobalsChange={(globals) => {
-          const updated = updateGlobals(globals);
-          void persist(updated);
-        }}
-      />
-    </Panel>
+    </div>
   );
 }

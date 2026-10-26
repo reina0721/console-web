@@ -6,8 +6,10 @@
  * 2. Request execution:
  *    - mock:// URLs: In-memory Mock Server router (instant, no CORS, full response)
  *    - http(s):// URLs: Real browser direct fetch (with CORS error handling & timeout)
- * 3. Local task scheduling (in-tab while page is open)
+ * 3. Task configuration storage (automatic scheduling is unavailable)
  */
+
+import { browserWorkspaceTransfer } from './transfer';
 
 import {
   dispatchMockRoute,
@@ -138,42 +140,30 @@ class StorageAdapter {
   private inMemoryCache: WorkspaceSnapshot | null = null;
 
   async load(): Promise<WorkspaceSnapshot> {
-    if (this.inMemoryCache) {
-      return this.inMemoryCache;
+    if (this.inMemoryCache) return this.inMemoryCache;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      const validation = safeParseWorkspaceSnapshot(parsed);
+      if (!validation.success) throw new Error('Invalid stored API workspace');
+      this.inMemoryCache = validation.data;
+      return validation.data;
     }
-
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed: unknown = JSON.parse(raw);
-          const validation = safeParseWorkspaceSnapshot(parsed);
-          if (validation.success) {
-            this.inMemoryCache = validation.data;
-            return validation.data;
-          }
-        }
-      }
-    } catch {
-      // Fallback
-    }
-
     const initial = createInitialWorkspaceSnapshot();
-    this.inMemoryCache = initial;
     await this.save(initial);
     return initial;
   }
 
   save(snapshot: WorkspaceSnapshot): Promise<void> {
-    this.inMemoryCache = snapshot;
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-      }
-    } catch {
-      // Storage quota or privacy restrictions
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      this.inMemoryCache = snapshot;
+      return Promise.resolve();
+    } catch (failure) {
+      return Promise.reject(
+        failure instanceof Error ? failure : new Error(String(failure), { cause: failure }),
+      );
     }
-    return Promise.resolve();
   }
 
   async clearHistory(): Promise<void> {
@@ -205,7 +195,7 @@ class StorageAdapter {
     } catch {
       // fallback
     }
-    return { dbSizeFormatted: '12.4 KB', count: 5 };
+    throw new Error('Workspace storage usage unavailable');
   }
 }
 
@@ -213,11 +203,12 @@ export function createMockApiWorkbenchService(): ApiWorkbenchPort {
   const storage = new StorageAdapter();
 
   return {
+    transfer: browserWorkspaceTransfer,
     capabilities: {
       mode: 'mock',
       disguise: false, // UA, proxy, and fingerprint require backend relay
       corsFree: false, // Browser direct requests subject to CORS
-      persistentTasks: false, // In-tab local scheduling
+      persistentTasks: false, // No scheduler is implemented by this service
     },
 
     workspace: {

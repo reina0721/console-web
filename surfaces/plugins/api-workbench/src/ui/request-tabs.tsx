@@ -3,7 +3,7 @@
 import { useFrontendTranslation } from '@community-go/i18n';
 import type { ApiRequestDefinition } from '@community-go/surface/api-workbench';
 import { TabsView, type TabsViewItem } from '@community-go/ui-adapter/data-display';
-import { useWorkbenchStore, type RequestTab } from '../../stores/workbench';
+import { useWorkbenchStore } from '../../stores/workbench';
 import { AuthPanel } from './auth-panel';
 import { BodyPanel } from './body-panel';
 import { DisguisePanel } from './disguise-panel';
@@ -25,6 +25,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
     {
       id: 'params',
       label: t('apiWorkbench.tabs.params'),
+      badge: request.params.filter((entry) => entry.enabled).length,
       content: (
         <div className="pt-4">
           <KeyValueEditor
@@ -38,6 +39,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
     {
       id: 'headers',
       label: t('apiWorkbench.tabs.headers'),
+      badge: request.headers.filter((entry) => entry.enabled).length,
       content: (
         <div className="pt-4">
           <KeyValueEditor
@@ -81,6 +83,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
     {
       id: 'extractors',
       label: t('apiWorkbench.tabs.extractors'),
+      badge: request.extractors.length,
       content: (
         <div className="pt-4">
           <ExtractorsPanel
@@ -112,7 +115,18 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
         label={t('apiWorkbench.tabs.params')}
         items={items}
         selectedId={activeTab}
-        onSelectionChange={(id: string) => setActiveTab(id as RequestTab)}
+        onSelectionChange={(id) => {
+          if (
+            id === 'params' ||
+            id === 'headers' ||
+            id === 'auth' ||
+            id === 'disguise' ||
+            id === 'body' ||
+            id === 'extractors' ||
+            id === 'scripts'
+          )
+            setActiveTab(id);
+        }}
       />
     </div>
   );

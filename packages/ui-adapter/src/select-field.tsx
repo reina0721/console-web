@@ -44,7 +44,6 @@ export function SelectField({
 
   return (
     <Select
-      aria-label={label}
       className={isToolbar ? 'inline-flex shrink-0' : 'ui-field'}
       defaultOpen={defaultOpen}
       disabledKeys={disabledKeys}
