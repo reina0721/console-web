@@ -74,15 +74,25 @@ test.describe('API workbench execution and state', () => {
 
   test('runner and manual task runs report the same real failure', async ({ page }) => {
     await openWorkbench(page);
-    await page.getByRole('tab', { name: 'Runner', exact: true }).click();
+    await page.getByRole('tab', { name: '集合运行', exact: true }).click();
     await page.getByRole('button', { name: '运行集合测试', exact: true }).click();
     await expect(page.getByText('成功 2 · 失败 1 · 总计 3', { exact: true })).toBeVisible();
     await expect(page.getByText('HTTP 错误；断言通过不改变请求失败的判定。')).toBeVisible();
+    await page.screenshot({
+      path: 'docs/changes/114-api-workbench-refinement/evidence/runner-result.png',
+      fullPage: true,
+      animations: 'disabled',
+    });
     await page.getByRole('tab', { name: '任务', exact: true }).click();
     await expect(page.getByRole('switch', { name: '状态', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: '立即运行', exact: true }).click();
     await expect(page.getByText('成功 2 · 失败 1 · 总计 3', { exact: true })).toBeVisible();
     await expect(page.getByText('手动运行完成，全部断言通过')).toHaveCount(0);
+    await page.screenshot({
+      path: 'docs/changes/114-api-workbench-refinement/evidence/task-result.png',
+      fullPage: true,
+      animations: 'disabled',
+    });
     await assertAccessible(page);
   });
 
@@ -144,7 +154,7 @@ test.describe('API workbench execution and state', () => {
   }) => {
     await openWorkbench(page);
     await selectRequest(page, 'POST 模拟登录认证 (POST)');
-    await page.getByRole('tab', { name: 'Body', exact: true }).click();
+    await page.getByRole('tab', { name: '请求体', exact: true }).click();
     const body = page.getByRole('textbox', { name: '请求内容', exact: true });
     await body.fill('{');
     await page.getByRole('button', { name: '格式化 JSON', exact: true }).click();
@@ -153,7 +163,7 @@ test.describe('API workbench execution and state', () => {
     ).toBeVisible();
     await expect(body).toHaveValue('{');
     await page.getByRole('button', { name: 'JSON 格式', exact: true }).click();
-    await page.getByRole('option', { name: 'none', exact: true }).click();
+    await page.getByRole('option', { name: '无请求体', exact: true }).click();
     const confirm = page.getByRole('alertdialog', { name: '更改请求体格式', exact: true });
     await assertAccessible(page, '[role="alertdialog"]');
     await confirm.getByRole('button', { name: '取消', exact: true }).click();
@@ -309,8 +319,8 @@ for (const width of [390, 768, 1024, 1440, 1920, 2560]) {
     await openWorkbench(page, width, width < 768 ? 844 : 1080);
     await selectRequest(page, 'POST 模拟登录认证 (POST)');
     await page
-      .getByRole('tablist', { name: 'Params', exact: true })
-      .getByRole('tab', { name: /^Headers/ })
+      .getByRole('tablist', { name: '查询参数', exact: true })
+      .getByRole('tab', { name: /^请求头/ })
       .click();
     for (const label of ['参数名', '参数值', '说明']) {
       const box = await page.getByRole('textbox', { name: label, exact: true }).boundingBox();
@@ -341,8 +351,10 @@ test('dark English layout, keyboard collection navigation and floating layer bou
   await page.getByRole('button', { name: '切换语言', exact: true }).click();
   await page.getByRole('button', { name: 'Switch theme', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'API Workbench', exact: true })).toBeVisible();
+  const projects = page.getByRole('button', { name: 'Projects and requests', exact: true });
+  if (await projects.isVisible()) await projects.click();
   const row = page.getByRole('row', { name: 'GET 获取用户列表 (Mock)', exact: true });
-  await row.click();
+  await row.focus();
   await row.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page
@@ -362,4 +374,52 @@ test('dark English layout, keyboard collection navigation and floating layer bou
     path: 'test-results/api-workbench-ux/1440-dark-english.png',
     fullPage: true,
   });
+});
+
+test('history restores full request configuration as a separate request without overwriting source drafts', async ({
+  page,
+}) => {
+  await openWorkbench(page);
+  const url = page.getByRole('textbox', { name: '请求 URL', exact: true });
+  await selectRequest(page, 'POST 模拟登录认证 (POST)');
+  await url.fill('mock://auth/login');
+  await page.getByRole('tab', { name: '请求体', exact: true }).click();
+  await page.getByRole('textbox', { name: '请求内容', exact: true }).fill('{"history": true}');
+  await page.getByRole('button', { name: '发送', exact: true }).click();
+  await expect(page.getByText('200 OK', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: '历史', exact: true }).click();
+  const beforeRaw = await page.evaluate((key) => localStorage.getItem(key), workspaceKey);
+  const beforeParsed: unknown = JSON.parse(beforeRaw ?? '{}');
+  const beforeResult = safeParseWorkspaceSnapshot(beforeParsed);
+  if (!beforeResult.success) throw new Error('Missing workspace');
+  const before = beforeResult.data;
+  await url.fill('mock://source-draft');
+  await page.getByRole('button', { name: /mock:\/\/auth\/login/ }).click();
+  await expect(url).toHaveValue('mock://auth/login');
+  await expect(page.getByRole('status').filter({ hasText: '恢复为独立草稿' })).toBeVisible();
+  await page.getByRole('tab', { name: '请求体', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '请求内容', exact: true })).toHaveValue(
+    '{"history": true}',
+  );
+  await selectRequest(page, 'POST 模拟登录认证 (POST)');
+  await expect(url).toHaveValue('mock://source-draft');
+  await page.getByRole('button', { name: '工作区', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^历史 ·/ }).click();
+  await expect(url).toHaveValue('mock://auth/login');
+  await page.screenshot({
+    path: 'docs/changes/114-api-workbench-refinement/evidence/history-draft.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.getByText('已保存', { exact: true })).toBeVisible();
+  const afterRaw = await page.evaluate((key) => localStorage.getItem(key), workspaceKey);
+  const afterParsed: unknown = JSON.parse(afterRaw ?? '{}');
+  const afterResult = safeParseWorkspaceSnapshot(afterParsed);
+  if (!afterResult.success) throw new Error('Missing saved workspace');
+  const after = afterResult.data;
+  expect(after.requests).toHaveLength(before.requests.length + 1);
+  expect(after.requests.slice(0, before.requests.length)).toEqual(before.requests);
+  await selectRequest(page, 'POST 模拟登录认证 (POST)');
+  await expect(url).toHaveValue('mock://source-draft');
 });

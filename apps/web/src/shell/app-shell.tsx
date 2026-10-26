@@ -69,7 +69,7 @@ function NavigationContent({
   return (
     <>
       <div
-        className={`flex h-20 items-center border-b border-border ${compact ? 'justify-center px-3' : 'gap-3 px-5'}`}
+        className={`flex h-20 shrink-0 items-center border-b border-border ${compact ? 'justify-center px-3' : 'gap-3 px-5'}`}
       >
         <BrandMark />
         {compact ? null : (
@@ -82,7 +82,7 @@ function NavigationContent({
         )}
       </div>
       <nav
-        className={`surface-shell-navigation-viewport min-h-0 flex-1 py-6 ${compact ? 'px-4' : 'space-y-7 px-3'}`}
+        className={`surface-shell-navigation-viewport min-h-0 flex-1 py-6 ${compact ? 'flex flex-col items-center px-3' : 'space-y-7 px-3'}`}
         aria-label={t('shell.primaryNav')}
       >
         <Suspense
@@ -231,7 +231,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     <ShellRoot collapsed={sidebarCollapsed}>
       <NotificationAlerts />
       <TopProgress />
-      <aside className="sticky top-0 hidden h-screen flex-col border-r border-border bg-surface lg:flex">
+      <aside className="sticky top-0 hidden h-screen min-w-0 flex-col border-r border-border bg-surface lg:flex">
         <NavigationContent groups={navigationGroups} compact={sidebarCollapsed} />
       </aside>
 

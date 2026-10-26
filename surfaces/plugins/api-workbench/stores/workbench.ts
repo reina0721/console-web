@@ -21,6 +21,8 @@ const sameRequest = (left: ApiRequestDefinition, right: ApiRequestDefinition | u
 export type WorkbenchStoreState = {
   snapshot: WorkspaceSnapshot | null;
   drafts: Readonly<Record<string, ApiRequestDefinition>>;
+  historyDraftIds: readonly string[];
+  restoreHistoryDraft: (request: ApiRequestDefinition) => void;
   activeWorkspaceView: WorkspaceView;
   setActiveWorkspaceView: (view: WorkspaceView) => void;
   selectedRequestId: string | null;
@@ -70,6 +72,19 @@ export type WorkbenchStoreState = {
 export const useWorkbenchStore = createAppStore<WorkbenchStoreState>((set, get) => ({
   snapshot: null,
   drafts: {},
+  historyDraftIds: [],
+  restoreHistoryDraft: (request) =>
+    set((state) => ({
+      drafts: { ...state.drafts, [request.id]: request },
+      historyDraftIds: [...state.historyDraftIds, request.id],
+      selectedRequestId: request.id,
+      draftRequest: request,
+      isDraftDirty: true,
+      activeWorkspaceView: 'request',
+      lastResponse: null,
+      lastFailure: null,
+      lastScriptResult: null,
+    })),
   activeWorkspaceView: 'request',
   setActiveWorkspaceView: (view) =>
     set({ activeWorkspaceView: view, ...(view === 'request' ? {} : { activeRightTab: view }) }),
@@ -101,17 +116,24 @@ export const useWorkbenchStore = createAppStore<WorkbenchStoreState>((set, get) 
     const drafts = replace
       ? {}
       : Object.fromEntries(
-          Object.entries(state.drafts).filter(([id, draft]) =>
-            snapshot.requests.some((r) => r.id === id && !sameRequest(draft, r)),
+          Object.entries(state.drafts).filter(
+            ([id, draft]) =>
+              (state.historyDraftIds.includes(id) && !snapshot.requests.some((r) => r.id === id)) ||
+              snapshot.requests.some((r) => r.id === id && !sameRequest(draft, r)),
           ),
         );
-    const selectedRequestId = snapshot.requests.some((r) => r.id === state.selectedRequestId)
-      ? state.selectedRequestId
-      : (snapshot.requests[0]?.id ?? null);
+    const selectedRequestId =
+      (!replace && state.historyDraftIds.includes(state.selectedRequestId ?? '')) ||
+      snapshot.requests.some((r) => r.id === state.selectedRequestId)
+        ? state.selectedRequestId
+        : (snapshot.requests[0]?.id ?? null);
     const saved = snapshot.requests.find((r) => r.id === selectedRequestId);
     const draftRequest = selectedRequestId ? (drafts[selectedRequestId] ?? saved ?? null) : null;
     set({
       snapshot,
+      historyDraftIds: replace
+        ? []
+        : state.historyDraftIds.filter((id) => !snapshot.requests.some((r) => r.id === id)),
       unsavedTaskRun:
         !replace && snapshot.tasks.some((task) => task.id === state.unsavedTaskRun?.id)
           ? state.unsavedTaskRun
@@ -139,8 +161,8 @@ export const useWorkbenchStore = createAppStore<WorkbenchStoreState>((set, get) 
     const state = get();
     if (id === state.selectedRequestId) return;
     const saved = state.snapshot?.requests.find((r) => r.id === id);
-    if (!saved) return;
     const draftRequest = state.drafts[id] ?? saved;
+    if (!draftRequest) return;
     set({
       selectedRequestId: id,
       draftRequest,
@@ -170,7 +192,9 @@ export const useWorkbenchStore = createAppStore<WorkbenchStoreState>((set, get) 
     if (!snapshot || !draftRequest) return null;
     return {
       ...snapshot,
-      requests: snapshot.requests.map((r) => (r.id === draftRequest.id ? draftRequest : r)),
+      requests: snapshot.requests.some((r) => r.id === draftRequest.id)
+        ? snapshot.requests.map((r) => (r.id === draftRequest.id ? draftRequest : r))
+        : [...snapshot.requests, draftRequest],
     };
   },
   setActiveRightTab: (activeRightTab) =>

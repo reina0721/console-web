@@ -5,7 +5,6 @@ import {
   useApiWorkbenchPort,
   type ExecutedResponse,
   type ExecutionFailure,
-  type HttpMethod,
   type RequestHistoryItem,
   type ScriptExecutionResult,
 } from '@community-go/surface/api-workbench';
@@ -27,7 +26,7 @@ export type ResponseViewProps = Readonly<{
   isExecuting: boolean;
   history: readonly RequestHistoryItem[];
   onClearHistory: () => Promise<void>;
-  onSelectHistoryUrl: (method: HttpMethod, url: string) => void;
+  onRestoreHistory: (item: RequestHistoryItem) => Promise<void>;
 }>;
 const tone = (status: number) =>
   status < 300 ? 'success' : status < 400 ? 'info' : status < 500 ? 'warning' : 'danger';
@@ -38,7 +37,7 @@ export function ResponseView({
   isExecuting,
   history,
   onClearHistory,
-  onSelectHistoryUrl,
+  onRestoreHistory,
 }: ResponseViewProps) {
   const { t } = useFrontendTranslation();
   const format = useWorkbenchFormat();
@@ -47,6 +46,7 @@ export function ResponseView({
   const subtab = useWorkbenchStore((s) => s.activeResponseSubtab);
   const setSubtab = useWorkbenchStore((s) => s.setActiveResponseSubtab);
   const [clearOpen, setClearOpen] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   let prettyBody = response?.body ?? '';
   if (response?.body) {
     try {
@@ -103,7 +103,7 @@ export function ResponseView({
             {t('apiWorkbench.response.copy')}
           </Action>
         </div>
-        <pre className="max-h-80 min-w-0 overflow-auto rounded-control border border-border bg-surface-inset p-4 font-mono text-sm leading-6 text-ink">
+        <pre className="max-h-128 min-w-0 overflow-auto rounded-control border border-border bg-surface-inset p-4 font-mono text-sm leading-6 text-ink">
           <code>{pretty ? prettyBody : response.body}</code>
         </pre>
       </div>
@@ -155,12 +155,23 @@ export function ResponseView({
           {history.length === 0 && (
             <p className="py-6 text-sm text-ink-muted">{t('apiWorkbench.response.noHistory')}</p>
           )}
-          <div className="max-h-80 min-w-0 divide-y divide-border overflow-y-auto">
+          <div className="max-h-128 min-w-0 divide-y divide-border overflow-y-auto">
             {history.map((item) => (
               <button
                 type="button"
                 key={item.id}
-                onClick={() => onSelectHistoryUrl(item.method, item.url)}
+                disabled={restoring}
+                onClick={() => {
+                  setRestoring(true);
+                  void onRestoreHistory(item)
+                    .catch(() => {
+                      feedback.notify({
+                        title: t('apiWorkbench.feedback.saveFailed'),
+                        tone: 'danger',
+                      });
+                    })
+                    .finally(() => setRestoring(false));
+                }}
                 className="grid w-full min-w-0 gap-2 rounded-control p-3 text-left outline-none transition-colors hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-focus"
               >
                 <span className="flex flex-wrap items-center gap-2">
@@ -172,6 +183,11 @@ export function ResponseView({
                 </span>
                 <span className="min-w-0 break-all font-mono text-xs text-ink">{item.url}</span>
                 <span className="text-xs text-ink-muted">{format.timestamp(item.timestamp)}</span>
+                {!item.request && (
+                  <span className="text-xs text-brand">
+                    {t('apiWorkbench.response.restoreLegacy')}
+                  </span>
+                )}
               </button>
             ))}
           </div>

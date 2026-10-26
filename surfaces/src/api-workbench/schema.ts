@@ -239,6 +239,12 @@ export function safeParseWorkspaceSnapshot(
           status: asNumber(h.status),
           durationMs: asNumber(h.durationMs),
           sizeBytes: asNumber(h.sizeBytes),
+          ...(isObject(h.request)
+            ? {
+                request: parseWorkspaceSnapshot({ requests: [h.request] }).requests[0],
+              }
+            : {}),
+          ...(typeof h.environmentId === 'string' ? { environmentId: h.environmentId } : {}),
         }))
         .filter((h) => Boolean(h.id && h.url))
     : [];

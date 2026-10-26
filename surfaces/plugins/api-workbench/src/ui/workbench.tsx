@@ -18,6 +18,7 @@ import { ConfirmDialog, DrawerSurface } from '@community-go/ui-adapter/overlays'
 import { useContainerBreakpoint } from '@community-go/ui-adapter/container-layout';
 import { AlertCircle, Send } from 'lucide-react';
 import { resolveVariableMap } from '../model/interpolate';
+import { historyRequestSnapshot } from '../model/history';
 import { executeWorkbenchRequest } from '../model/execute-request';
 import {
   createRequest,
@@ -44,10 +45,14 @@ export function Workbench() {
   const port = useApiWorkbenchPort();
   const feedback = useFeedback();
   const { ref: workspaceRef, matches: expanded } = useContainerBreakpoint('4xl');
+  const { ref: treeWidthRef, matches: wide } = useContainerBreakpoint('7xl');
+  const [treeCollapsed, setTreeCollapsed] = useState(false);
+  const treeVisible = wide && !treeCollapsed;
   const snapshot = useWorkbenchStore((state) => state.snapshot);
   const setSnapshot = useWorkbenchStore((state) => state.setSnapshot);
   const draftRequest = useWorkbenchStore((state) => state.draftRequest);
   const drafts = useWorkbenchStore((state) => state.drafts);
+  const historyDraftIds = useWorkbenchStore((state) => state.historyDraftIds);
   const dirty = useWorkbenchStore((state) => state.isDraftDirty);
   const unsavedTaskRun = useWorkbenchStore((state) => state.unsavedTaskRun);
   const selectedRequestId = useWorkbenchStore((state) => state.selectedRequestId);
@@ -157,7 +162,9 @@ export function Workbench() {
     try {
       await commit((current) => ({
         ...current,
-        requests: current.requests.map((item) => (item.id === request.id ? request : item)),
+        requests: current.requests.some((item) => item.id === request.id)
+          ? current.requests.map((item) => (item.id === request.id ? request : item))
+          : [...current.requests, request],
       }));
       feedback.notify({ title: t('apiWorkbench.feedback.saved'), tone: 'success' });
     } catch {
@@ -205,6 +212,8 @@ export function Workbench() {
                 {
                   id: newId('history'),
                   requestId: request.id,
+                  request: historyRequestSnapshot(request),
+                  environmentId: activeEnv?.id,
                   timestamp: new Date().toISOString(),
                   method: result.request.method,
                   url: result.request.url,
@@ -273,7 +282,15 @@ export function Workbench() {
     />
   );
   const editor = draftRequest ? (
-    <div className="grid min-w-0 gap-6">
+    <div className="grid min-w-0 gap-4">
+      {historyDraftIds.includes(draftRequest.id) && (
+        <p
+          role="status"
+          className="rounded-control border border-border bg-surface-inset p-3 text-sm text-ink-muted"
+        >
+          {t('apiWorkbench.response.historyHint')}
+        </p>
+      )}
       <RequestBar
         key={draftRequest.id}
         request={draftRequest}
@@ -294,7 +311,7 @@ export function Workbench() {
       icon={<Send className="size-5" />}
       title={t('apiWorkbench.workspace.chooseRequest')}
       description={t('apiWorkbench.workspace.chooseRequestHint')}
-      {...(!expanded
+      {...(!treeVisible
         ? {
             actionLabel: t('apiWorkbench.workspace.navigation'),
             onAction: () => setProjectsOpen(true),
@@ -312,9 +329,37 @@ export function Workbench() {
       onClearHistory={async () => {
         await commit((current) => ({ ...current, history: [] }));
       }}
-      onSelectHistoryUrl={(method, url) => {
-        updateDraft({ method, url });
-        setWorkspaceView('request');
+      onRestoreHistory={async (item) => {
+        const current = useWorkbenchStore.getState().snapshot;
+        const collectionId =
+          current?.collections.find((collection) => collection.id === item.request?.collectionId)
+            ?.id ?? current?.collections[0]?.id;
+        if (!collectionId) {
+          feedback.notify({
+            title: t('apiWorkbench.response.restoreNeedsCollection'),
+            tone: 'warning',
+          });
+          return;
+        }
+        const environmentId = current?.environments.find(
+          (env) => env.id === item.environmentId,
+        )?.id;
+        await commit((snapshot) => ({ ...snapshot, activeEnvironmentId: environmentId }));
+        useWorkbenchStore.getState().restoreHistoryDraft({
+          ...(item.request ?? {
+            ...createRequest('', collectionId, ''),
+            method: item.method,
+            url: item.url,
+          }),
+          id: newId('restored'),
+          collectionId,
+          name: [t('apiWorkbench.response.history'), item.request?.name ?? item.url].join(' · '),
+        });
+        if (item.environmentId && !environmentId)
+          feedback.notify({
+            title: t('apiWorkbench.response.environmentMissing'),
+            tone: 'warning',
+          });
       }}
     />
   );
@@ -346,7 +391,10 @@ export function Workbench() {
   ];
   return (
     <div
-      ref={workspaceRef}
+      ref={(node) => {
+        workspaceRef.current = node;
+        treeWidthRef.current = node;
+      }}
       className="@container/workbench min-w-0"
       data-workbench-layout={expanded ? 'expanded' : 'compact'}
     >
@@ -377,16 +425,24 @@ export function Workbench() {
             environments={snapshot?.environments ?? []}
             activeEnvironmentId={snapshot?.activeEnvironmentId}
             dbUsage={dbUsage}
-            compact={!expanded}
+            projectsVisible={treeVisible}
             mode={port.capabilities.mode}
             pending={writeCount > 0 || pickingImport}
             hasDrafts={Object.keys(drafts).length > 0}
+            historyDrafts={Object.values(drafts).filter((request) =>
+              historyDraftIds.includes(request.id),
+            )}
+            onSelectHistoryDraft={selectRequest}
             onSelectEnvironment={(id) => {
               void commit((current) => ({ ...current, activeEnvironmentId: id })).catch(() =>
                 reportSaveFailure(),
               );
             }}
-            onOpenProjects={() => setProjectsOpen(true)}
+            onOpenProjects={() => {
+              if (treeVisible) setTreeCollapsed(true);
+              else if (wide) setTreeCollapsed(false);
+              else setProjectsOpen(true);
+            }}
             onOpenEnvironments={() => setEnvSection('envs')}
             onOpenGlobals={() => setEnvSection('globals')}
             onImport={() => void pickImport()}
@@ -424,10 +480,14 @@ export function Workbench() {
           )}
           {expanded ? (
             <div className="flex min-w-0">
-              <div className="w-64 shrink-0 border-r border-border p-4">{projectTree}</div>
-              <div className="flex min-w-0 flex-1 flex-col @7xl/workbench:flex-row">
-                <div className="min-w-0 flex-1 p-5">{editor}</div>
-                <div className="min-w-0 border-t border-border p-5 @7xl/workbench:w-96 shrink-0 @7xl/workbench:border-t-0 @7xl/workbench:border-l">
+              {treeVisible && (
+                <div className="w-64 min-w-0 shrink-0 border-r border-border p-4">
+                  <div className="max-h-160 overflow-y-auto">{projectTree}</div>
+                </div>
+              )}
+              <div className="grid min-w-0 flex-1 grid-cols-2 items-start">
+                <div className="min-w-0 p-4">{editor}</div>
+                <div className="min-w-0 self-stretch border-l border-border p-4">
                   <TabsView
                     label={t('apiWorkbench.workspace.view')}
                     items={rightItems}
@@ -463,7 +523,7 @@ export function Workbench() {
           )}
         </Panel>
       )}
-      {!expanded && (
+      {!treeVisible && (
         <DrawerSurface
           isOpen={projectsOpen}
           onOpenChange={setProjectsOpen}

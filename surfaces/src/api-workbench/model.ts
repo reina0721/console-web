@@ -145,6 +145,9 @@ export type RequestHistoryItem = Readonly<{
   status: number;
   durationMs: number;
   sizeBytes: number;
+  /** Original configuration, before variable interpolation. Absent in legacy v1 records. */
+  request?: ApiRequestDefinition | undefined;
+  environmentId?: string | undefined;
 }>;
 
 export type ApiWorkbenchCapabilities = Readonly<{

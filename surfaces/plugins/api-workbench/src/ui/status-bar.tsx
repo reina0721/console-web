@@ -1,6 +1,6 @@
 'use client';
 import { useFrontendTranslation } from '@community-go/i18n';
-import type { ApiEnvironment } from '@community-go/surface/api-workbench';
+import type { ApiEnvironment, ApiRequestDefinition } from '@community-go/surface/api-workbench';
 import { Action } from '@community-go/ui-adapter/action';
 import { SelectField } from '@community-go/ui-adapter/form-field';
 import { MenuButton } from '@community-go/ui-adapter/menu-button';
@@ -10,10 +10,12 @@ export type WorkbenchToolbarProps = Readonly<{
   environments: readonly ApiEnvironment[];
   activeEnvironmentId?: string | undefined;
   dbUsage: string | null;
-  compact: boolean;
+  projectsVisible: boolean;
   mode: 'mock' | 'backend';
   pending: boolean;
   hasDrafts: boolean;
+  historyDrafts: readonly ApiRequestDefinition[];
+  onSelectHistoryDraft: (id: string) => void;
   onSelectEnvironment: (id: string | undefined) => void;
   onOpenProjects: () => void;
   onOpenEnvironments: () => void;
@@ -25,10 +27,12 @@ export function WorkbenchToolbar({
   environments,
   activeEnvironmentId,
   dbUsage,
-  compact,
+  projectsVisible,
   mode,
   pending,
   hasDrafts,
+  historyDrafts,
+  onSelectHistoryDraft,
   onSelectEnvironment,
   onOpenProjects,
   onOpenEnvironments,
@@ -40,16 +44,20 @@ export function WorkbenchToolbar({
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border p-4">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
-        {compact && (
+        {
           <Action
             size="sm"
             variant="secondary"
             leadingIcon={<Folder className="size-4" />}
             onPress={onOpenProjects}
           >
-            {t('apiWorkbench.workspace.navigation')}
+            {t(
+              projectsVisible
+                ? 'apiWorkbench.workspace.hideProjects'
+                : 'apiWorkbench.workspace.navigation',
+            )}
           </Action>
-        )}
+        }
         <SelectField
           presentation="toolbar"
           label={t('apiWorkbench.bottomBar.env')}
@@ -90,6 +98,7 @@ export function WorkbenchToolbar({
             </div>
           }
           items={[
+            ...historyDrafts.map((request) => ({ id: request.id, label: request.name })),
             { id: 'globals', label: t('apiWorkbench.bottomBar.setGlobals') },
             {
               id: 'export',
@@ -108,6 +117,7 @@ export function WorkbenchToolbar({
             if (id === 'globals') onOpenGlobals();
             else if (id === 'export') onExport();
             else if (id === 'import') onImport();
+            else onSelectHistoryDraft(id);
           }}
         />
         <StatusPill tone={mode === 'mock' ? 'neutral' : 'info'}>

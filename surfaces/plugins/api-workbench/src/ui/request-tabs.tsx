@@ -27,7 +27,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
       label: t('apiWorkbench.tabs.params'),
       badge: request.params.filter((entry) => entry.enabled).length,
       content: (
-        <div className="pt-4">
+        <div className="max-h-128 min-w-0 overflow-y-auto pt-1">
           <KeyValueEditor
             entries={request.params}
             onChange={(params) => onChange({ params })}
@@ -41,7 +41,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
       label: t('apiWorkbench.tabs.headers'),
       badge: request.headers.filter((entry) => entry.enabled).length,
       content: (
-        <div className="pt-4">
+        <div className="max-h-128 min-w-0 overflow-y-auto pt-1">
           <KeyValueEditor
             entries={request.headers}
             onChange={(headers) => onChange({ headers })}
@@ -54,7 +54,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
       id: 'auth',
       label: t('apiWorkbench.tabs.auth'),
       content: (
-        <div className="pt-4">
+        <div className="max-h-128 min-w-0 overflow-y-auto pt-1">
           <AuthPanel auth={request.auth} onChange={(auth) => onChange({ auth })} />
         </div>
       ),
@@ -63,7 +63,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
       id: 'disguise',
       label: t('apiWorkbench.tabs.disguise'),
       content: (
-        <div className="pt-4">
+        <div className="max-h-128 min-w-0 overflow-y-auto pt-1">
           <DisguisePanel
             disguise={request.disguise}
             onChange={(disguise) => onChange({ disguise })}
@@ -75,7 +75,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
       id: 'body',
       label: t('apiWorkbench.tabs.body'),
       content: (
-        <div className="pt-4">
+        <div className="max-h-128 min-w-0 overflow-y-auto pt-1">
           <BodyPanel body={request.body} onChange={(body) => onChange({ body })} />
         </div>
       ),
@@ -85,7 +85,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
       label: t('apiWorkbench.tabs.extractors'),
       badge: request.extractors.length,
       content: (
-        <div className="pt-4">
+        <div className="max-h-128 min-w-0 overflow-y-auto pt-1">
           <ExtractorsPanel
             extractors={request.extractors}
             onChange={(extractors) => onChange({ extractors })}
@@ -97,7 +97,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
       id: 'scripts',
       label: t('apiWorkbench.tabs.scripts'),
       content: (
-        <div className="pt-4">
+        <div className="max-h-128 min-w-0 overflow-y-auto pt-1">
           <ScriptPanel
             preScript={request.preScript}
             postScript={request.postScript}
@@ -110,7 +110,7 @@ export function RequestTabs({ request, onChange }: RequestTabsProps) {
   ];
 
   return (
-    <div className="grid">
+    <div className="grid min-w-0">
       <TabsView
         label={t('apiWorkbench.tabs.params')}
         items={items}

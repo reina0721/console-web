@@ -4,8 +4,6 @@ export const pluginI18nResources = {
       apiWorkbench: {
         common: {
           cancel: '取消',
-          save: '保存',
-          saving: '保存中',
           close: '关闭',
           create: '创建',
           name: '名称',
@@ -27,6 +25,7 @@ export const pluginI18nResources = {
         },
         workspace: {
           navigation: '项目与接口',
+          hideProjects: '收起项目树',
           navigationHint: '选择项目、集合或接口，使用菜单管理所选对象。',
           view: '工作区视图',
           request: '请求',
@@ -35,6 +34,7 @@ export const pluginI18nResources = {
           backend: '后端 Relay',
           new: '新建',
 
+          newProject: '新建项目',
           newCollection: '新建集合',
           newRequest: '新建接口',
           project: '所属项目',
@@ -61,6 +61,7 @@ export const pluginI18nResources = {
         feedback: {
           saveFailed: '保存失败，修改仍保留，请重试',
           saved: '更改已保存',
+          copied: '响应已复制',
           exportFailed: '导出失败，请重试',
           exported: '工作区已导出',
           importFailed: '导入失败，请选择符合工作区规范的 JSON 文件',
@@ -76,8 +77,6 @@ export const pluginI18nResources = {
           description: '构建请求、检查响应并运行集合测试。',
         },
         sidebar: {
-          delete: '删除',
-
           searchPlaceholder: '过滤接口...',
           exportWorkspace: '导出工作区',
           importWorkspace: '导入工作区',
@@ -93,21 +92,19 @@ export const pluginI18nResources = {
           send: '发送',
           save: '保存',
           saved: '已保存',
-          cancel: '取消',
           sending: '请求中...',
         },
         tabs: {
-          params: 'Params',
-          headers: 'Headers',
-          auth: 'Auth',
-          disguise: '伪装',
-          body: 'Body',
+          params: '查询参数',
+          headers: '请求头',
+          auth: '认证',
+          disguise: '连接设置',
+          body: '请求体',
           extractors: '提取器',
           scripts: '脚本',
         },
         keyValues: {
           enabled: '启用此项',
-          entry: '参数 {{number}}',
           key: '参数名',
           value: '参数值',
           description: '说明',
@@ -117,18 +114,18 @@ export const pluginI18nResources = {
         },
         auth: {
           type: '认证方式',
-          none: 'No Auth (无需认证)',
+          none: '无需认证',
           bearer: 'Bearer Token',
-          basic: 'Basic Auth',
-          apiKey: 'API Key',
-          token: 'Token',
+          basic: 'Basic 认证',
+          apiKey: 'API 密钥',
+          token: '令牌',
           username: '用户名',
           password: '密码',
-          key: 'Key',
-          value: 'Value',
+          key: '密钥名称',
+          value: '密钥值',
           addTo: '添加到',
-          header: 'Header',
-          query: 'Query Params',
+          header: '请求头',
+          query: '查询参数',
         },
         body: {
           content: '请求内容',
@@ -138,12 +135,12 @@ export const pluginI18nResources = {
           changeConfirm: '更改格式',
           placeholder: '输入请求体内容',
           type: '格式',
-          none: 'none',
+          none: '无请求体',
           json: 'JSON',
-          text: 'Text',
+          text: '纯文本',
           xml: 'XML',
-          formUrlencoded: 'x-www-form-urlencoded',
-          formData: 'form-data',
+          formUrlencoded: 'URL 编码表单',
+          formData: '多部分表单',
           prettify: '格式化 JSON',
         },
         disguise: {
@@ -151,7 +148,7 @@ export const pluginI18nResources = {
           proxyHint: '代理需后端 Relay 支持',
           fingerprintHint: 'TLS 指纹需后端 Relay 支持',
           timeout: '请求超时 (毫秒)',
-          ua: 'User-Agent (伪装客户端)',
+          ua: 'User-Agent（客户端标识）',
           proxy: 'HTTP 代理地址',
           fingerprint: '客户端指纹',
           mockNoticeTitle: '纯前端运行模式限制',
@@ -162,8 +159,8 @@ export const pluginI18nResources = {
           title: '变量提取器 (请求成功后自动提取并写入变量)',
           varName: '变量名',
           source: '提取来源',
-          sourceJson: '响应 Body (JSONPath)',
-          sourceHeader: '响应 Header',
+          sourceJson: '响应体（JSONPath）',
+          sourceHeader: '响应头',
           sourceStatus: '状态码',
           expression: '表达式 (如 $.data.token)',
           scope: '作用域',
@@ -182,7 +179,7 @@ export const pluginI18nResources = {
         },
         views: {
           response: '响应',
-          runner: 'Runner',
+          runner: '集合运行',
           tasks: '任务',
         },
         response: {
@@ -196,14 +193,18 @@ export const pluginI18nResources = {
           assertions: '断言详情',
           logs: '执行日志',
 
-          historyHint: '最近 50 条；点击记录仅恢复方法与 URL。',
+          historyHint:
+            '恢复为独立草稿，保存将新增接口。密钥仅保留变量引用，发送前请检查环境与认证。',
+          restoreLegacy: '旧记录：仅方法与 URL',
+          restoreNeedsCollection: '请先创建集合',
+          environmentMissing: '原环境已移除，请重新选择',
           clearTitle: '清空请求历史',
           clearDescription: '将移除当前工作区的所有请求记录。',
           networkHint: '请检查 URL、网络和目标服务配置后重试。',
           skipped: '请求已被前置脚本跳过',
-          pretty: 'Pretty',
-          raw: 'Raw',
-          headers: 'Headers',
+          pretty: '格式化',
+          raw: '原始内容',
+          headers: '响应头',
           history: '历史',
           copy: '复制',
 
@@ -219,8 +220,8 @@ export const pluginI18nResources = {
           testsFailed: '项断言失败',
         },
         runner: {
-          resultPass: 'PASS',
-          resultFail: 'FAIL',
+          resultPass: '通过',
+          resultFail: '失败',
           intro: '选择集合，按顺序执行其中的接口与断言。',
           progress: '已完成 {{done}} / {{total}} 个请求',
           http: 'HTTP 状态',
@@ -233,9 +234,6 @@ export const pluginI18nResources = {
           run: '运行集合测试',
           running: '执行中...',
           summary: '测试汇总',
-          total: '总请求',
-          passed: '成功',
-          failed: '失败',
           empty: '请选择一个包含接口的集合以开始批量运行。',
         },
         tasks: {
@@ -250,8 +248,6 @@ export const pluginI18nResources = {
           scheduleHint: '使用五段 Cron（例如 */5 * * * *）或间隔（例如 5m）。',
           invalidSchedule: '请输入有效的五段 Cron 或正数间隔（ms、s、m、h、d）。',
           result: '成功 {{passed}} · 失败 {{failed}} · 总计 {{total}}',
-          running: '运行中',
-          failed: '运行失败',
           delete: '删除任务',
           emptyCollection: '请先创建一个包含接口的集合。',
           title: '定时任务调度',
@@ -261,7 +257,6 @@ export const pluginI18nResources = {
           cron: '调度频率 (Cron 或间隔)',
           status: '状态',
           lastRun: '最近运行',
-          actions: '操作',
           runNow: '立即运行',
           notice: '当前服务不提供自动定时调度。可保存任务配置并手动运行；启用调度需后端服务支持。',
           empty: '暂无定时任务',
@@ -271,8 +266,6 @@ export const pluginI18nResources = {
           noEnv: '无环境',
           setGlobals: '设置全局变量',
           manageEnvs: '管理环境',
-
-          version: '版本',
         },
         environments: {
           save: '保存变量',
@@ -299,8 +292,6 @@ export const pluginI18nResources = {
       apiWorkbench: {
         common: {
           cancel: 'Cancel',
-          save: 'Save',
-          saving: 'Saving',
           close: 'Close',
           create: 'Create',
           name: 'Name',
@@ -323,6 +314,7 @@ export const pluginI18nResources = {
         },
         workspace: {
           navigation: 'Projects and requests',
+          hideProjects: 'Collapse project tree',
           navigationHint:
             'Select a project, collection or request, then use the menu to manage it.',
           view: 'Workspace views',
@@ -332,6 +324,7 @@ export const pluginI18nResources = {
           backend: 'Backend Relay',
           new: 'New',
 
+          newProject: 'New project',
           newCollection: 'New collection',
           newRequest: 'New request',
           project: 'Project',
@@ -359,6 +352,7 @@ export const pluginI18nResources = {
         feedback: {
           saveFailed: 'Save failed. Your changes are retained; please retry.',
           saved: 'Changes saved',
+          copied: 'Response copied',
           exportFailed: 'Export failed. Please retry.',
           exported: 'Workspace exported',
           importFailed: 'Import failed. Choose a valid workspace JSON file.',
@@ -374,7 +368,6 @@ export const pluginI18nResources = {
           description: 'Build requests, inspect responses, and run collection tests.',
         },
         sidebar: {
-          delete: 'Delete',
           confirmDeleteProject:
             'Are you sure you want to delete this project and all its collections?',
           confirmDeleteCollection:
@@ -395,7 +388,6 @@ export const pluginI18nResources = {
           send: 'Send',
           save: 'Save',
           saved: 'Saved',
-          cancel: 'Cancel',
           sending: 'Sending...',
         },
         tabs: {
@@ -409,7 +401,6 @@ export const pluginI18nResources = {
         },
         keyValues: {
           enabled: 'Enable entry',
-          entry: 'Parameter {{number}}',
           key: 'Key',
           value: 'Value',
           description: 'Description',
@@ -498,7 +489,11 @@ export const pluginI18nResources = {
           assertions: 'Assertion details',
           logs: 'Execution logs',
 
-          historyHint: 'Latest 50 requests. Selecting one restores only its method and URL.',
+          historyHint:
+            'Restore a separate draft; saving adds a request. Credentials keep variable references only. Check environment and authentication.',
+          restoreLegacy: 'Legacy: method and URL',
+          restoreNeedsCollection: 'Create a collection first',
+          environmentMissing: 'Environment removed; select another.',
           clearTitle: 'Clear request history',
           clearDescription: 'All request history in this workspace will be removed.',
           networkHint: 'Check the URL, network and target service before retrying.',
@@ -535,9 +530,6 @@ export const pluginI18nResources = {
           run: 'Run Collection Tests',
           running: 'Running...',
           summary: 'Execution Summary',
-          total: 'Total',
-          passed: 'Passed',
-          failed: 'Failed',
           empty: 'Select a collection with requests to start the runner.',
         },
         tasks: {
@@ -553,8 +545,6 @@ export const pluginI18nResources = {
           scheduleHint: 'Use five-field Cron (e.g. */5 * * * *) or an interval (e.g. 5m).',
           invalidSchedule: 'Enter valid five-field Cron or a positive interval (ms, s, m, h, d).',
           result: 'Passed {{passed}} · Failed {{failed}} · Total {{total}}',
-          running: 'Running',
-          failed: 'Run failed',
           delete: 'Delete task',
           emptyCollection: 'Create a collection with requests first.',
           title: 'Scheduled Tasks',
@@ -564,7 +554,6 @@ export const pluginI18nResources = {
           cron: 'Schedule (Cron or Interval)',
           status: 'Status',
           lastRun: 'Last Run',
-          actions: 'Actions',
           runNow: 'Run Now',
           notice:
             'Automatic scheduling is not available in this service. Save configurations and run manually; scheduling requires backend support.',
@@ -575,8 +564,6 @@ export const pluginI18nResources = {
           noEnv: 'No Environment',
           setGlobals: 'Set Global Variables',
           manageEnvs: 'Manage Environments',
-
-          version: 'Version',
         },
         environments: {
           save: 'Save variables',

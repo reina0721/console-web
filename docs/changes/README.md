@@ -1,5 +1,7 @@
 # Frontend 变更记录
 
+- [114 API 工作台第二轮优化](114-api-workbench-refinement/README.md)：导航边界、响应式布局、中文术语、独立历史草稿及真实浏览器验证。
+
 - [113 API Workbench 多端 UI/UX 优化](113-api-workbench-ui-ux/README.md)：容器布局、项目抽屉、请求表单、真实执行、草稿持久化与多端交互验收。
 
 - [112 接口调试工作台（API Workbench）](112-api-workbench/README.md)：开发中心接口调试系统（类似 ToAPI），涵盖参数/请求头/认证/伪装/Body/提取器/前后置脚本断言/集合批跑 Runner/定时任务与 IndexedDB 持久化。

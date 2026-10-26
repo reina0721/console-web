@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { historyRequestSnapshot } from './history';
+import { parseWorkspaceSnapshot } from '@community-go/surface/api-workbench';
 import type { WorkspaceSnapshot } from '@community-go/surface/api-workbench';
 import { useWorkbenchStore } from '../../stores/workbench';
 import { createRequest, mergeExecutionVariables, removeWorkspaceEntity } from './workspace-actions';
@@ -134,4 +136,57 @@ describe('Workbench execution and configuration', () => {
     '*/0 * * * *',
     'random',
   ])('rejects schedule %s', (value) => expect(isValidSchedule(value)).toBe(false));
+});
+
+describe('History drafts', () => {
+  beforeEach(() => useWorkbenchStore.getState().setSnapshot(snapshot, true));
+  it('preserves source edits and saves a restored request as a new definition', () => {
+    const store = useWorkbenchStore.getState();
+    store.selectRequest(request.id);
+    store.updateDraft({ url: 'mock://unsaved-source' });
+    store.restoreHistoryDraft({ ...request, id: 'restored', url: 'mock://historical' });
+    const saved = store.prepareDraftSave();
+    expect(saved?.requests).toHaveLength(snapshot.requests.length + 1);
+    expect(saved?.requests.find((item) => item.id === request.id)).toEqual(request);
+    store.setSnapshot({ ...snapshot, globals: [] });
+    expect(useWorkbenchStore.getState().draftRequest?.url).toBe('mock://historical');
+    store.selectRequest(request.id);
+    expect(useWorkbenchStore.getState().draftRequest?.url).toBe('mock://unsaved-source');
+    store.selectRequest('restored');
+    expect(useWorkbenchStore.getState().draftRequest?.url).toBe('mock://historical');
+    expect(useWorkbenchStore.getState().isDraftDirty).toBe(true);
+    if (!saved) throw new Error('Missing save candidate');
+    store.setSnapshot(saved);
+    expect(useWorkbenchStore.getState().historyDraftIds).toEqual([]);
+  });
+  it('round-trips original configuration and environment references while retaining old records', () => {
+    const record = {
+      id: 'history',
+      requestId: request.id,
+      timestamp: '2026-10-26T00:00:00Z',
+      method: request.method,
+      url: 'mock://resolved',
+      status: 200,
+      durationMs: 1,
+      sizeBytes: 2,
+    };
+    const restored = parseWorkspaceSnapshot({
+      ...snapshot,
+      history: [record, { ...record, id: 'new', request, environmentId: 'env' }],
+    });
+    expect(restored.history[0]?.request).toBeUndefined();
+    expect(restored.history[1]?.request).toEqual(request);
+    expect(restored.history[1]?.environmentId).toBe('env');
+  });
+  it('keeps credential references but omits literal authentication secrets', () => {
+    expect(
+      historyRequestSnapshot({ ...request, auth: { type: 'bearer', token: 'secret' } }).auth,
+    ).toEqual({ type: 'bearer', token: '' });
+    expect(
+      historyRequestSnapshot({ ...request, auth: { type: 'bearer', token: '{{token}}' } }).auth,
+    ).toEqual({ type: 'bearer', token: '{{token}}' });
+    const headers = [{ id: 'auth', key: 'Authorization', value: 'Bearer secret', enabled: true }];
+    expect(historyRequestSnapshot({ ...request, headers }).headers[0]?.value).toBe('');
+    expect(headers[0]?.value).toBe('Bearer secret');
+  });
 });

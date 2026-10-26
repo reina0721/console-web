@@ -37,7 +37,8 @@ export function ProjectTree({
 }: ProjectTreeProps) {
   const { t } = useFrontendTranslation();
   const [query, setQuery] = useState('');
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{ id: string; requestId: string | null } | null>(null);
+  const activeId = selection?.requestId === selectedRequestId ? selection.id : null;
   const [createKind, setCreateKind] = useState<'project' | 'collection' | 'request' | null>(null);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
@@ -162,8 +163,10 @@ export function ProjectTree({
           onSelectionChange={(ids) => {
             const id = [...ids][0];
             if (!id) return;
-            setActiveId(id);
-            if (requests.some((item) => item.id === id)) onSelectRequest(id);
+            if (requests.some((item) => item.id === id)) {
+              setSelection(null);
+              onSelectRequest(id);
+            } else setSelection({ id, requestId: selectedRequestId });
           }}
         />
         {nodes.length === 0 && (
@@ -260,7 +263,7 @@ export function ProjectTree({
                 void operation
                   .then(() => {
                     setCreateKind(null);
-                    setActiveId(null);
+                    setSelection(null);
                   })
                   .catch(() => setFailed(true))
                   .finally(() => setPending(false));
@@ -290,7 +293,7 @@ export function ProjectTree({
         onConfirm={async () => {
           if (deleteTarget) await onDelete(deleteTarget.kind, deleteTarget.id);
           setDeleteTarget(null);
-          setActiveId(null);
+          setSelection(null);
         }}
       />
     </aside>
