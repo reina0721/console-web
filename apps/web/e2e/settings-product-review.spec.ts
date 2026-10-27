@@ -8,8 +8,6 @@ import {
   type Preferences,
 } from '@community-go/surface/preferences-model';
 
-const evidence = 'docs/changes/109-ui-ux-optimization/evidence/semantic-final';
-
 async function seedAppearance(
   page: Page,
   expanded: boolean,
@@ -67,7 +65,8 @@ for (const category of [
 ]) {
   test(`All settings fields remain readable and accessible: ${category || 'appearance'}`, async ({
     browser,
-  }) => {
+  }, testInfo) => {
+    const evidence = testInfo.outputDir;
     for (const expanded of [false, true]) {
       const context = await browser.newContext({
         baseURL: e2eBaseUrl,
@@ -148,7 +147,8 @@ for (const family of ['forms', 'actions-selection', 'data', 'overlays']) {
   for (const expanded of [false, true]) {
     test(`Shared controls preserve high contrast: ${family}, ${expanded ? 'dark narrow English' : 'light desktop'}`, async ({
       browser,
-    }) => {
+    }, testInfo) => {
+      const evidence = testInfo.outputDir;
       const context = await browser.newContext({
         baseURL: e2eBaseUrl,
         viewport: { width: expanded ? 390 : 1440, height: 900 },
@@ -187,7 +187,8 @@ for (const family of ['forms', 'actions-selection', 'data', 'overlays']) {
 
 test('Collapsed desktop sidebar releases its grid column on mobile and restores it on desktop', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/settings/navigation');
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
@@ -230,7 +231,8 @@ for (const accent of ['blue', 'green', 'orange'] as const) {
   for (const expanded of [false, true]) {
     test(`Dialog confirmation uses the accent foreground: ${accent}, ${expanded ? 'dark' : 'light'}`, async ({
       page,
-    }) => {
+    }, testInfo) => {
+      const evidence = testInfo.outputDir;
       await page.setViewportSize({ width: expanded ? 390 : 1440, height: 900 });
       await seedAppearance(page, expanded, accent);
       await page.goto('/ui-elements/overlays');

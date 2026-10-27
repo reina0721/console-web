@@ -273,7 +273,9 @@ Flyout 有标题和完整子树，键盘内部焦点不会因指针离开关闭�
   Sparkline 不逐点聚焦（避免每卡几十个 Tab 停靠）。
 - 响应式：`viewBox` + `preserveAspectRatio` + `w-full`，无固定像素宽度；不使用动画，
   因此天然满足 reduced motion。
-- Showcase/业务同源：Analytics 页面与 `/ui-elements` 消费同一组件。
+- Showcase/业务同源：Analytics 页面与 `/ui-elements/data#charts` 消费同一组件；Showcase
+  逐图展示 Theme / Responsive / Keyboard / Accessible summary 四个状态，并由
+  `data-display.spec.ts` 断言 `role="img"`、`aria-label`、方向键数据点移动与 Axe AA。
 
 ## 表格生产力组合 Collection Tools（116）
 

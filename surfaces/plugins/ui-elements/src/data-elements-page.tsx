@@ -1,6 +1,14 @@
 'use client';
 
 import { Action } from '@community-go/ui-adapter/action';
+import {
+  AreaChart,
+  BarChart,
+  DonutChart,
+  Sparkline,
+  type ChartSegment,
+  type ChartSeries,
+} from '@community-go/ui-adapter/charts';
 import { DataTable } from '@community-go/ui-adapter/data-display';
 import { Badge } from '@community-go/ui-adapter/feedback';
 import { useFeedback } from '@community-go/ui-adapter/feedback-context';
@@ -9,7 +17,7 @@ import { ToggleGroup } from '@community-go/ui-adapter/toggle-group';
 import type { DataColumn } from '@community-go/ui-adapter/data-display';
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useFrontendTranslation } from '@community-go/i18n';
+import { useFrontendTranslation, formatNumber } from '@community-go/i18n';
 import { Section } from '@community-go/surface-foundation/layout';
 import {
   CollectionToolbar,
@@ -273,6 +281,36 @@ export function DataElementsPage() {
     }
   };
 
+  // Charts Showcase：与 /analytics 使用同一套 chart primitives 与语义 token。
+  const chartFormat = (value: number) => formatNumber(locale, value);
+  const chartVisits: readonly ChartSeries[] = [
+    {
+      id: 'visits',
+      label: t('uiElements.charts.areaSeriesVisits'),
+      points: [0, 1, 2, 3, 4, 5, 6].map((x) => ({
+        x,
+        y: [420, 780, 640, 960, 880, 1230, 1080][x]!,
+      })),
+    },
+    {
+      id: 'downloads',
+      label: t('uiElements.charts.areaSeriesDownloads'),
+      points: [0, 1, 2, 3, 4, 5, 6].map((x) => ({ x, y: [120, 240, 200, 320, 300, 420, 380][x]! })),
+    },
+  ];
+  const chartSources: readonly ChartSegment[] = [
+    { id: 'direct', label: t('uiElements.charts.donutDirect'), value: 48 },
+    { id: 'search', label: t('uiElements.charts.donutSearch'), value: 34 },
+    { id: 'referral', label: t('uiElements.charts.donutReferral'), value: 18 },
+  ];
+  const chartPages: readonly ChartSegment[] = [
+    { id: 'docs', label: t('uiElements.charts.barDocs'), value: 520 },
+    { id: 'settings', label: t('uiElements.charts.barSettings'), value: 410 },
+    { id: 'analytics', label: t('uiElements.charts.barAnalytics'), value: 360 },
+    { id: 'workspace', label: t('uiElements.charts.barWorkspace'), value: 280 },
+  ];
+  const sparklineValues = [18, 24, 21, 32, 28, 36, 33, 41, 38, 46];
+
   return (
     <UiElementsFamilyPage
       familyId="data"
@@ -458,6 +496,66 @@ export function DataElementsPage() {
                 </div>
               </ComponentPreview>
             </div>
+          </Section>
+
+          <Section
+            description={t('uiElements.charts.description')}
+            id="charts"
+            title={t('uiElements.charts.title')}
+          >
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ComponentPreview
+                description={t('uiElements.charts.description')}
+                name="AreaChart"
+                states={['Theme', 'Responsive', 'Keyboard', 'Accessible summary']}
+              >
+                <AreaChart
+                  formatValue={chartFormat}
+                  label={t('uiElements.charts.areaLabel')}
+                  series={chartVisits}
+                />
+              </ComponentPreview>
+              <ComponentPreview
+                description={t('uiElements.charts.description')}
+                name="DonutChart"
+                states={['Theme', 'Responsive', 'Keyboard', 'Accessible summary']}
+              >
+                <DonutChart
+                  formatValue={chartFormat}
+                  label={t('uiElements.charts.donutLabel')}
+                  segments={chartSources}
+                />
+              </ComponentPreview>
+              <ComponentPreview
+                description={t('uiElements.charts.description')}
+                name="BarChart"
+                states={['Theme', 'Responsive', 'Keyboard', 'Accessible summary']}
+              >
+                <BarChart
+                  formatValue={chartFormat}
+                  items={chartPages}
+                  label={t('uiElements.charts.barLabel')}
+                />
+              </ComponentPreview>
+              <ComponentPreview
+                description={t('uiElements.charts.description')}
+                name="Sparkline"
+                states={['Theme', 'Responsive', 'Keyboard', 'Accessible summary']}
+              >
+                <div className="grid min-w-0 gap-2">
+                  <Sparkline
+                    formatValue={chartFormat}
+                    label={t('uiElements.charts.sparklineLabel')}
+                    tone="brand"
+                    values={sparklineValues}
+                  />
+                  <span className="text-sm text-ink-muted">
+                    {t('uiElements.charts.sparklineLabel')}
+                  </span>
+                </div>
+              </ComponentPreview>
+            </div>
+            <p className="text-sm text-ink-muted">{t('uiElements.charts.accessibilityNote')}</p>
           </Section>
         </>
       )}

@@ -129,12 +129,25 @@ primitive 时必须补充对应组件样式导入；遗漏通常表现为视觉�
 ### 收口（2026-10-27，最终提交）
 
 上文的 405,759 / 430,094 与 406,695 / 431,115 都是迭代过程数字；最终以
-[`pnpm-check.log`](pnpm-check.log)（412 项浏览器、退出码 0）为准：
+[`pnpm-check.log`](pnpm-check.log)（413 项浏览器、退出码 0）为准：
 
-- initial **406,744 B**（≤409,600）、maxRoute **431,132 B** `/login`（≤445,440）、
+- initial **407,293 B**（≤409,600）、maxRoute **431,681 B** `/login`（≤445,440）、
   CSS **48,567 B**（≤49,152），预算未调整。
 - 新增 `analytics-workspace.spec.ts`（3 项）后浏览器总数 412；六类场景另有定向复测
   **109 项**（[`parity-retest.log`](parity-retest.log)），逐项结论见
   [最终逐项复测矩阵](../research/final-parity-matrix.md)。
 - 仓库内测试生成的意外证据文件已清理：设置安全页截图归入本目录
   `evidence/screenshots/`，109 历史证据目录恢复。
+
+- 图表 Showcase：`/ui-elements/data#charts` 与 Analytics 同源，`data-display.spec.ts` 覆盖 aria/方向键/Axe。
+
+### 图表 Showcase 与溢出修复（同日补入）
+
+- 公共 `ui-adapter/charts` 原先只有 Analytics 一个消费者，缺少 Showcase；已在
+  `/ui-elements/data#charts` 增加 Area/Donut/Bar/Sparkline 四图预览（Theme / Responsive /
+  Keyboard / Accessible summary 四状态），与 `data-display.spec.ts` 同源断言。
+- 该 Showcase 暴露了图表隐藏数据表的真实缺陷：`<table class="sr-only">` 在 320px +
+  English large text 下仍参与文档滚动宽度（381px 溢出）。修复为把表格包进
+  `div.sr-only`（overflow 裁剪生效），`ui-ux-109` 三个密度用例恢复通过。
+- `settings-product-review.spec.ts` 的证据输出改到 `testInfo.outputDir`，不再向
+  `docs/changes/109` 写入新文件；历史证据目录保持静态。

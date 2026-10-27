@@ -64,8 +64,8 @@
 - `pnpm check` **退出码 0**：Foundation、Architecture（843 files）、Dependency（28）、两项
   Codegen freshness、ESLint、全部 TypeScript、Vitest（web 192 / surfaces 175 /
   core+plugin-framework+surface-foundation 等）、Next build、产物预算、Playwright
-  **412 项**（chromium 405 + backend-contract 7）、Prettier、Docs（22 条变更）。
-- 产物预算（未调整阈值）：initial **406,744 B / 409,600**、maxRoute **431,132 B / 445,440**
+  **413 项**（chromium 406 + backend-contract 7）、Prettier、Docs（22 条变更）。
+- 产物预算（未调整阈值）：initial **407,293 B / 409,600**、maxRoute **431,681 B / 445,440**
   （`/login`）、CSS **48,567 B / 49,152**、最大 chunk 84,658 B。
 - 浏览器测试新增：demo-access、shell-security、table-productivity、system-management；
   视觉基线按逐项复核更新 12 张（导航项/顶栏入口/设置分类/登录演示面板）。

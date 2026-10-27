@@ -77,7 +77,7 @@
 
 ## 验证与证据
 
-- 完整门禁：`pnpm check` 退出码 0（412 项浏览器、192 web 单测、175 surfaces 单测、
+- 完整门禁：`pnpm check` 退出码 0（413 项浏览器、192 web 单测、175 surfaces 单测、
   build、预算、format、docs），原始日志见 [pnpm-check.log](evidence/pnpm-check.log)。
 - 关键修复与数字：见 [验证记录](evidence/verification.md) 与
   [设计决策 D-12](design/decisions.md)。

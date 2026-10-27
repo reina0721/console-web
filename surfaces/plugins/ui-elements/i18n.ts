@@ -171,6 +171,8 @@ const previewStateLabels = {
   '64%': '64%',
   '100%': '100%',
   'aria-hidden': 'aria-hidden',
+  Theme: '主题',
+  'Accessible summary': '可访问摘要',
 };
 
 export const pluginI18nResources = {
@@ -328,6 +330,26 @@ export const pluginI18nResources = {
           'CollectionToolbar 组合 ColumnSettingsDialog、三档密度与 CSV 导出；业务页与 Showcase 使用同一实现。',
         dataToolbarHint:
           '列设置即时影响表格与导出列；备注列含逗号、引号与换行，用于验证 RFC 4180 转义。',
+        charts: {
+          title: '图表 · Charts',
+          description:
+            '趋势、构成、排行与迷你趋势四类可访问 SVG 图表；主题、响应式与键盘导航与业务页同源。',
+          areaLabel: '近 7 天访问量趋势',
+          areaSeriesVisits: '访问量',
+          areaSeriesDownloads: '下载量',
+          donutLabel: '访问来源构成',
+          donutDirect: '直接访问',
+          donutSearch: '搜索',
+          donutReferral: '外部引荐',
+          barLabel: '页面访问排行',
+          barDocs: '文档中心',
+          barSettings: '设置中心',
+          barAnalytics: '分析',
+          barWorkspace: '个人工作区',
+          sparklineLabel: '用户量趋势',
+          accessibilityNote:
+            '每张图提供 role=img 名称、隐藏数据表与方向键数据点导航；颜色仅来自 chart 语义 token。',
+        },
         dataToolbarTableLabel: 'CSV 导出演示',
         dataColumnSettings: '列设置',
         dataColumnSettingsTitle: '列设置',
@@ -764,6 +786,26 @@ export const pluginI18nResources = {
           'CollectionToolbar composes ColumnSettingsDialog, three density levels, and CSV export; business pages and the showcase share the same implementation.',
         dataToolbarHint:
           'Column settings immediately change the table and exported columns; the note column contains commas, quotes and line breaks to prove RFC 4180 escaping.',
+        charts: {
+          title: 'Charts',
+          description:
+            'Four accessible SVG chart primitives: trend, composition, ranking and sparkline; theme, responsiveness and keyboard navigation match the product pages.',
+          areaLabel: 'Visits over the last 7 days',
+          areaSeriesVisits: 'Visits',
+          areaSeriesDownloads: 'Downloads',
+          donutLabel: 'Traffic sources',
+          donutDirect: 'Direct',
+          donutSearch: 'Search',
+          donutReferral: 'Referral',
+          barLabel: 'Top pages',
+          barDocs: 'Documentation',
+          barSettings: 'Settings',
+          barAnalytics: 'Analytics',
+          barWorkspace: 'Personal workspace',
+          sparklineLabel: 'Users trend',
+          accessibilityNote:
+            'Every chart exposes a role=img name, a hidden data table and arrow-key point navigation; colours come only from chart semantic tokens.',
+        },
         dataToolbarTableLabel: 'CSV export demo',
         dataColumnSettings: 'Columns',
         dataColumnSettingsTitle: 'Column settings',

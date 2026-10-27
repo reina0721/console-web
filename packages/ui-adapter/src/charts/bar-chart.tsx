@@ -135,17 +135,19 @@ export function BarChart({
           );
         })}
       </svg>
-      <table className="sr-only">
-        <caption>{label}</caption>
-        <tbody>
-          {geometry.items.map((item) => (
-            <tr key={`row-${item.id}`}>
-              <th scope="row">{item.label}</th>
-              <td>{formatValue(item.value)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="sr-only">
+        <table>
+          <caption>{label}</caption>
+          <tbody>
+            {geometry.items.map((item) => (
+              <tr key={`row-${item.id}`}>
+                <th scope="row">{item.label}</th>
+                <td>{formatValue(item.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

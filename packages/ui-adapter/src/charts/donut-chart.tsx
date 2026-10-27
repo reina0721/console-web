@@ -129,17 +129,19 @@ export function DonutChart({
           </li>
         ))}
       </ul>
-      <table className="sr-only">
-        <caption>{label}</caption>
-        <tbody>
-          {geometry.slices.map((slice) => (
-            <tr key={`row-${slice.id}`}>
-              <th scope="row">{slice.label}</th>
-              <td>{`${formatValue(slice.value)} (${formatShare(slice.share)})`}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="sr-only">
+        <table>
+          <caption>{label}</caption>
+          <tbody>
+            {geometry.slices.map((slice) => (
+              <tr key={`row-${slice.id}`}>
+                <th scope="row">{slice.label}</th>
+                <td>{`${formatValue(slice.value)} (${formatShare(slice.share)})`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

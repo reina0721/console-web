@@ -71,17 +71,19 @@ export function Sparkline({
           strokeWidth={2}
         />
       </svg>
-      <table className="sr-only">
-        <caption>{label}</caption>
-        <tbody>
-          {values.map((value, index) => (
-            <tr key={`${label}-${index}`}>
-              <th scope="row">{index + 1}</th>
-              <td>{formatValue(value)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="sr-only">
+        <table>
+          <caption>{label}</caption>
+          <tbody>
+            {values.map((value, index) => (
+              <tr key={`${label}-${index}`}>
+                <th scope="row">{index + 1}</th>
+                <td>{formatValue(value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

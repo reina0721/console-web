@@ -8,7 +8,7 @@
 | 证据                               | 内容                                                                                       |
 | ---------------------------------- | ------------------------------------------------------------------------------------------ |
 | `evidence/parity-retest.log`       | 本轮六类场景定向复测：19 个 spec、**109 项通过**（2026-10-27）                             |
-| `evidence/pnpm-check.log`          | 完整 `pnpm check`：**412 项浏览器**、192 web + 175 surfaces 单测、build、预算、format/docs |
+| `evidence/pnpm-check.log`          | 完整 `pnpm check`：**413 项浏览器**、192 web + 175 surfaces 单测、build、预算、format/docs |
 | `evidence/screenshots/`            | 登录、分析与工作区、菜单/部门/字典、快捷偏好抽屉的 1440×900 实际截图                       |
 | `research/vben-live-comparison.md` | Vben 线上实测记录（结构、字段、工具栏、空/错态、访问限制）                                 |
 

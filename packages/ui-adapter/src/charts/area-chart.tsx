@@ -224,17 +224,19 @@ export function AreaChart({
       ) : null}
 
       {series.map((entry) => (
-        <table className="sr-only" key={`table-${entry.id}`}>
-          <caption>{`${label} — ${entry.label}`}</caption>
-          <tbody>
-            {entry.points.map((point) => (
-              <tr key={`${entry.id}-row-${point.x}`}>
-                <th scope="row">{formatX(point.x)}</th>
-                <td>{formatValue(point.y)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="sr-only" key={`table-${entry.id}`}>
+          <table>
+            <caption>{`${label} — ${entry.label}`}</caption>
+            <tbody>
+              {entry.points.map((point) => (
+                <tr key={`${entry.id}-row-${point.x}`}>
+                  <th scope="row">{formatX(point.x)}</th>
+                  <td>{formatValue(point.y)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ))}
     </figure>
   );
