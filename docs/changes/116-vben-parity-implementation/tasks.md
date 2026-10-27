@@ -69,7 +69,10 @@
 - [x] 文档：116 账本、115 修订、auth/README、surface-foundation、ui-element-system、
       plugin-framework、quality-evidence、docs/changes 索引。
 - [x] 视觉基线：仅按逐项截图复核后更新受影响快照。
-- [ ] `pnpm check` 全绿（以最终日志为准，见验证记录）。
+- [x] `pnpm check` 全绿（退出码 0，见 [pnpm-check.log](evidence/pnpm-check.log)）。
+- [x] 六类场景定向复测：19 个 spec / 109 项通过，见
+      [parity-retest.log](evidence/parity-retest.log)；
+      逐项结论见 [final-parity-matrix.md](research/final-parity-matrix.md)。
 
 ## 后续（真实限制，不是待决策）
 

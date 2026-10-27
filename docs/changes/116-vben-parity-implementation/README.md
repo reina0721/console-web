@@ -69,6 +69,7 @@
 ## 阅读入口
 
 - [Vben 实测对照与差距矩阵](research/vben-live-comparison.md)
+- [最终逐项复测矩阵](research/final-parity-matrix.md)
 - [需求与验收](requirements/README.md)
 - [设计与决策](design/decisions.md)
 - [实施清单](tasks.md)
@@ -76,9 +77,12 @@
 
 ## 验证与证据
 
-- 完整门禁：`pnpm check` 退出码 0（409 项浏览器、192 web 单测、175 surfaces 单测、
+- 完整门禁：`pnpm check` 退出码 0（412 项浏览器、192 web 单测、175 surfaces 单测、
   build、预算、format、docs），原始日志见 [pnpm-check.log](evidence/pnpm-check.log)。
 - 关键修复与数字：见 [验证记录](evidence/verification.md) 与
   [设计决策 D-12](design/decisions.md)。
+- 六类场景定向复测：19 个 spec / 109 项通过，见
+  [parity-retest.log](evidence/parity-retest.log)；逐项结论见
+  [最终逐项复测矩阵](research/final-parity-matrix.md)。
 - 产品截图：`evidence/screenshots/`（登录演示身份、分析与个人工作区、菜单/部门/字典、
   快捷偏好抽屉）。

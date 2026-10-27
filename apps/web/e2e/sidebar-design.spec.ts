@@ -5,6 +5,8 @@ import { expect, test, type Page } from '@playwright/test';
 const navigation = (page: Page) => page.getByRole('navigation', { name: '主导航' });
 async function collapse(page: Page) {
   await page.goto('/ui-elements/navigation');
+  // 页面实现按需加载：先等 shell hydration，避免冷编译时在按钮出现前就到超时。
+  await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
   await page.getByRole('button', { name: '收起侧栏' }).click();
   await expect(page.locator('aside').first()).toHaveCSS('width', '80px');
 }

@@ -1,5 +1,10 @@
 # Vben 对标文档包使用指南（已校准）
 
+> **状态（2026-10-27）**：本包对应的 VP-01…VP-06 目标已由
+> `docs/changes/116-vben-parity-implementation/` 完成、验证并提交；逐项对标结论见
+> `research/final-parity-matrix.md`。本包提示词保留为历史模板，新工作请从 116 账本继续，
+> 不必重新执行接入审查或候选筛选。
+
 本包已按 2026-10-26 的本地源码与项目规则校准。正式任务材料已整理到 [115 校准账本](../docs/changes/115-vben-parity-calibration/README.md)，无需再复制 docs/vben-parity 或运行挂载脚本。
 
 ## 如何使用
