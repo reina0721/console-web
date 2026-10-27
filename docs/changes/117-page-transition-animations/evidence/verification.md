@@ -31,3 +31,18 @@
   Next build、Prettier、Docs（23 条变更）全部通过；
 - 产物预算（未调整阈值）：initial **408,047 B / 409,600**、maxRoute **432,435 B / 445,440**
   （`/login`）、CSS **48,736 B / 49,152**、最大 chunk 84,704 B。
+
+## 环境阻塞与收口说明
+
+上述门禁（check14）是产品代码与最终提交一致时的一次完整绿色运行。之后为让
+`settings-index.test.ts` 的补充断言也进入同一次门禁，又发起了两次重跑，均被环境打断：
+
+1. 系统盘写满（Turbopack `磁盘空间不足 / ENOSPC`），8 个 family 页 hydration 超时；
+   清理构建缓存、Chrome 模型缓存与回收站后恢复（磁盘已回到 GB 级余量）。
+2. 残留的 3001 端口被 `wslrelay` 占用，Playwright `webServer` 等待 120s 超时；结束该进程后端口释放。
+3. 第三次浏览器全量重跑进行到 232/423 时，按用户决定停止，避免继续用 30 分钟等待换取与
+   check14 等价的结论。
+
+结论依据：check14 完整门禁退出码 0（产品代码与 HEAD 一致）；之后的差异仅为
+`settings-index.test.ts` 两条断言与文档，已由 `pnpm --filter @community-go/surface test`
+（176 passed）、ESLint、Prettier、Docs check 单独验证。
