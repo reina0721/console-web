@@ -14,15 +14,34 @@ Semantic Component 绑定真实生命周期，决定为什么动、何时动
 
 ## 2. 生命周期与所有权
 
-| 生命周期                 | 当前组件                     | 所有权                                        | 规则                                                                                                         |
-| ------------------------ | ---------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Router / Suspense        | Host `RouteTransition`       | `apps/web/src/host`                           | `nav-forward` 使用 Surface screen recipe；无导航类型使用克制的 `content.enter`；hydration 不重复播放页面滑动 |
-| 数据 readiness           | `AsyncRegion`、`StateRegion` | Universal / Product Surface                   | initial 才替换 Skeleton；refresh 保留旧内容；background 静默                                                 |
-| 首次进入视口             | `ViewportReveal`             | 已登记浏览器适配 + Host 装配 + Surface recipe | Page 语义项 scope，单例 Observer，默认可见，首次进入一次                                                     |
-| 同路由内容切换           | `ContentSwapTransition`      | UI Adapter                                    | 使用稳定 `contentKey`；`TabsView` 默认接入；筛选刷新不使用它                                                 |
-| Inline Feedback Presence | `FeedbackPresence`           | UI Adapter                                    | exit 期间立即退出辅助技术与交互树；支持快速反转；Toast 不接入                                                |
-| 非 Avatar 图片 readiness | `ReadyImage`                 | UI Adapter                                    | width/height 预留空间，load + decode 后 crossfade，error 保持尺寸                                            |
-| Overlay                  | HeroUI compound lifecycle    | UI Adapter                                    | 禁止再套 Presence 或页面动画容器                                                                             |
+| 生命周期          | 当前组件               | 所有权              | 规则                                                                                                                                                                                              |
+| ----------------- | ---------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Router / Suspense | Host `RouteTransition` | `apps/web/src/host` | `nav-forward` 使用 Surface screen recipe；无导航类型使用克制的 `content.enter`；hydration 不重复播放页面滑动；`appearance.pageTransition` 选择 `surface-screen-*` 整页 recipe（默认保留方向进入） |
+
+### 2.1 页面切换动画偏好（117）
+
+`appearance.pageTransition` 是 Surface Screen Recipe 的选择器，默认 `default`：
+
+| 值           | Recipe                      | 行为                                                                           |
+| ------------ | --------------------------- | ------------------------------------------------------------------------------ |
+| `default`    | 无新增（沿用标题方向进入）  | 非持久 PageHeader 的 `content-rise-in` / `surface-enter-forward`，项目现行体验 |
+| `fade`       | `surface-screen-fade`       | 整页淡入，无位移                                                               |
+| `fade-slide` | `surface-screen-fade-slide` | 自右轻移入 + 淡入（`--motion-distance-enter`）                                 |
+| `fade-up`    | `surface-screen-fade-up`    | 自下轻移入 + 淡入                                                              |
+| `fade-down`  | `surface-screen-fade-down`  | 自上轻移入 + 淡入                                                              |
+| `none`       | 无                          | 仅停用页面切换动画，不关闭其它动效                                             |
+
+- 非默认值下标题动画让位（`animation: none`），避免与整页 recipe 叠加；
+- 动画只作用于 `.surface-route-content > .surface-page-stack`，纯 opacity/transform；
+- 含嵌套 Route 的持久面板（`:has([data-route-content])`）不重放整页动画；
+- `motion=reduced`、系统 reduced-motion 与 `data-motion-screen='off'` 统一降级；
+- 只实现 enter（React commit 替换子树），Vben 的 leave 过渡不适用；`fade-scale` 不在 Vben 可选集合，未提供。
+  | 数据 readiness | `AsyncRegion`、`StateRegion` | Universal / Product Surface | initial 才替换 Skeleton；refresh 保留旧内容；background 静默 |
+  | 首次进入视口 | `ViewportReveal` | 已登记浏览器适配 + Host 装配 + Surface recipe | Page 语义项 scope，单例 Observer，默认可见，首次进入一次 |
+  | 同路由内容切换 | `ContentSwapTransition` | UI Adapter | 使用稳定 `contentKey`；`TabsView` 默认接入；筛选刷新不使用它 |
+  | Inline Feedback Presence | `FeedbackPresence` | UI Adapter | exit 期间立即退出辅助技术与交互树；支持快速反转；Toast 不接入 |
+  | 非 Avatar 图片 readiness | `ReadyImage` | UI Adapter | width/height 预留空间，load + decode 后 crossfade，error 保持尺寸 |
+  | Overlay | HeroUI compound lifecycle | UI Adapter | 禁止再套 Presence 或页面动画容器 |
 
 冷启动与路由挂起统一使用 `PageLoadingSurface`。根 `loading.tsx` 与各路由 Suspense 都必须提供 `page/catalog/collection/form` 结构化 Skeleton；禁止 `fallback={null}` 和居中卡片整屏替换 Shell。
 

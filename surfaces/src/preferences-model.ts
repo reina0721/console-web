@@ -64,6 +64,25 @@ export type FontScale = (typeof FONT_SCALES)[number];
 export const CONTENT_WIDTHS = ['auto', 'standard', 'wide'] as const;
 export type ContentWidth = (typeof CONTENT_WIDTHS)[number];
 
+/**
+ * 页面切换动画（Vben 对标，117）。
+ *
+ * - `default`：保留项目现行页面切换（方向进入，仅标题轻量过渡）；
+ * - `fade` / `fade-slide` / `fade-up` / `fade-down`：Vben 运行期支持的页面切换名；
+ * - `none`：关闭页面切换动画（等价 Vben 的「页面切换动画」开关关闭），不影响其它动效。
+ *
+ * 与 `motion` 的关系：`motion=reduced` 会关闭所有动画；`none` 只关闭页面切换。
+ */
+export const PAGE_TRANSITIONS = [
+  'default',
+  'fade',
+  'fade-slide',
+  'fade-up',
+  'fade-down',
+  'none',
+] as const;
+export type PageTransition = (typeof PAGE_TRANSITIONS)[number];
+
 /** 动效偏好：system = 跟随 prefers-reduced-motion；reduced = 明确减少。 */
 export const MOTION_PREFERENCES = ['system', 'standard', 'reduced'] as const;
 export type MotionPreference = (typeof MOTION_PREFERENCES)[number];
@@ -85,6 +104,8 @@ export type AppearancePreferences = Readonly<{
   colorWeak: boolean;
   /** 灰阶辅助：整体去色，配合增强对比用于长时间阅读或低刺激场景。 */
   grayscale: boolean;
+  /** 页面切换动画；`default` = 项目现行方向进入（旧记录缺省即此值）。 */
+  pageTransition: PageTransition;
 }>;
 
 export const defaultAppearance: AppearancePreferences = {
@@ -97,6 +118,7 @@ export const defaultAppearance: AppearancePreferences = {
   contrast: 'system',
   colorWeak: false,
   grayscale: false,
+  pageTransition: 'default',
 };
 
 /* ------------------------------------------------------------------ */
@@ -593,6 +615,9 @@ export function validateCategory(
           issues.push({ path: `${category}.${key}`, message: `${key} 必须是布尔` });
         else if (raw[key] !== undefined) value[key] = raw[key];
       }
+      if (raw.pageTransition !== undefined && !isOneOf(raw.pageTransition, PAGE_TRANSITIONS))
+        issues.push({ path: `${category}.pageTransition`, message: '非法 pageTransition' });
+      else if (raw.pageTransition !== undefined) value.pageTransition = raw.pageTransition;
       return issues.length > 0 ? { ok: false, issues } : { ok: true, value };
     }
     case 'navigation': {

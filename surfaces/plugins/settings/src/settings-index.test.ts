@@ -26,11 +26,13 @@ function zhResolver(key: string): string {
 }
 
 describe('settings-index 搜索目录', () => {
-  it('“动画”命中外观·动效（同义词）', () => {
+  it('“动画”命中外观·动效与页面切换（同义词）', () => {
     const { categories } = searchSettings('动画', zhResolver);
     expect(categories).toContain('appearance');
     const { entries } = searchSettings('动效', zhResolver);
     expect(entries.some((e) => e.fieldId === 'motion')).toBe(true);
+    const transitions = searchSettings('页面切换', zhResolver);
+    expect(transitions.entries.some((e) => e.fieldId === 'pageTransition')).toBe(true);
   });
 
   it('“快捷键”命中 shortcuts.enabled', () => {
@@ -86,6 +88,7 @@ describe('settings-index 搜索目录', () => {
       ['security', 'lockOnHidden'],
       ['appearance', 'colorWeak'],
       ['appearance', 'grayscale'],
+      ['appearance', 'pageTransition'],
       ['navigation', 'layoutMode'],
     ] as const;
 

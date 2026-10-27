@@ -120,6 +120,20 @@ describe('preferences-model validatePreferences（不可信持久化守卫）', 
     expect(result.ok).toBe(false);
   });
 
+  it('pageTransition：旧记录补 default，显式值保真，非法值拒绝', () => {
+    const legacy = validatePreferences({ appearance: { themeMode: 'dark' } });
+    expect(legacy.ok && legacy.value.appearance.pageTransition).toBe('default');
+
+    const explicit = validatePreferences({ appearance: { pageTransition: 'fade-slide' } });
+    expect(explicit.ok && explicit.value.appearance.pageTransition).toBe('fade-slide');
+
+    const invalid = validatePreferences({ appearance: { pageTransition: 'zoom' } });
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.issues.map((issue) => issue.path)).toContain('appearance.pageTransition');
+    }
+  });
+
   it('numbersFollowLocale 不可关闭', () => {
     const result = validatePreferences({ localeRegion: { numbersFollowLocale: false } });
     expect(result.ok).toBe(false);

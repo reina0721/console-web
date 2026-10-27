@@ -180,6 +180,45 @@
     > header {
     animation: none;
   }
+
+  /* 页面切换动画（117）：非默认模式改为整页进入，标题动画让位给 Screen Recipe。 */
+  html[data-page-transition]:not([data-page-transition='default'])
+    .surface-route-content[data-route-enter='true']
+    > .surface-page-stack:not(:has([data-route-content]))
+    > header {
+    animation: none;
+  }
+
+  html[data-page-transition='fade']
+    .surface-route-content[data-route-enter='true']
+    > .surface-page-stack:not(:has([data-route-content])) {
+    animation: surface-screen-fade var(--motion-duration-page) var(--ease-product) both;
+  }
+
+  html[data-page-transition='fade-slide']
+    .surface-route-content[data-route-enter='true']
+    > .surface-page-stack:not(:has([data-route-content])) {
+    animation: surface-screen-fade-slide var(--motion-duration-page) var(--ease-product) both;
+  }
+
+  html[data-page-transition='fade-up']
+    .surface-route-content[data-route-enter='true']
+    > .surface-page-stack:not(:has([data-route-content])) {
+    animation: surface-screen-fade-up var(--motion-duration-page) var(--ease-product) both;
+  }
+
+  html[data-page-transition='fade-down']
+    .surface-route-content[data-route-enter='true']
+    > .surface-page-stack:not(:has([data-route-content])) {
+    animation: surface-screen-fade-down var(--motion-duration-page) var(--ease-product) both;
+  }
+
+  /* 关闭页面切换动画 / 关闭 Screen 动效：值规则之后覆盖，保证后写优先。 */
+  html:is([data-page-transition='none'], [data-motion-screen='off'])
+    .surface-route-content[data-route-enter='true']
+    > .surface-page-stack {
+    animation: none;
+  }
   .surface-state-region:is(
       [data-state='ready'],
       [data-state='refreshing'],
@@ -263,6 +302,50 @@
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+/* 页面切换 Screen Recipe（117，Vben 对标）：只做 opacity/transform，
+ * 父层 `.surface-route-content` 已 overflow-x: clip，不产生横向滚动。 */
+@keyframes surface-screen-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes surface-screen-fade-slide {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--motion-distance-enter) * -1));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes surface-screen-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-distance-enter));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes surface-screen-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--motion-distance-enter) * -1));
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

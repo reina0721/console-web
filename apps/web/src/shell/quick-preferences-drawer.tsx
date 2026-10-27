@@ -9,6 +9,7 @@ import {
   IDLE_LOCK_MINUTES,
   LAYOUT_MODES,
   MOTION_PREFERENCES,
+  PAGE_TRANSITIONS,
   PREFERENCES_VERSION,
   THEME_MODES,
   type Preferences,
@@ -30,6 +31,11 @@ import { useFeedback } from '@community-go/ui-adapter/feedback-context';
  * `community-go.shell`、同一校验与失败语义），抽屉只提供高频项的即时预览，
  * 不建立第二份偏好状态，也不复制设置页的业务规则。
  */
+/** pageTransition 值 → i18n key 片段（fade-slide → fadeSlide）。 */
+function transitionKey(value: (typeof PAGE_TRANSITIONS)[number]): string {
+  return value.replace(/-([a-z])/g, (_, char: string) => char.toUpperCase());
+}
+
 export function QuickPreferencesDrawer({
   open,
   onOpenChange,
@@ -151,6 +157,19 @@ export function QuickPreferencesDrawer({
             value={preferences.appearance.motion}
             onValueChange={(value) =>
               update('appearance', { motion: value as Preferences['appearance']['motion'] })
+            }
+          />
+          <SelectField
+            label={t('shell.quickPreferences.pageTransition')}
+            options={PAGE_TRANSITIONS.map((value) => ({
+              value,
+              label: t(`shell.quickPreferences.pageTransitions.${transitionKey(value)}`),
+            }))}
+            value={preferences.appearance.pageTransition}
+            onValueChange={(value) =>
+              update('appearance', {
+                pageTransition: value as Preferences['appearance']['pageTransition'],
+              })
             }
           />
         </section>

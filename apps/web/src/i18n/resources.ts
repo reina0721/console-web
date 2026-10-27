@@ -131,6 +131,15 @@ export const resources = {
             standard: '标准',
             reduced: '减少动效',
           },
+          pageTransition: '页面切换动画',
+          pageTransitions: {
+            default: '默认（方向进入）',
+            fade: '淡入',
+            'fade-slide': '淡入滑动',
+            'fade-up': '淡入上滑',
+            'fade-down': '淡入下滑',
+            none: '关闭',
+          },
           layoutMode: '布局模式',
           layoutModes: {
             vertical: '侧边导航',
@@ -352,6 +361,15 @@ export const resources = {
             system: 'Follow system',
             standard: 'Standard',
             reduced: 'Reduced',
+          },
+          pageTransition: 'Page transition',
+          pageTransitions: {
+            default: 'Default (directional)',
+            fade: 'Fade',
+            'fade-slide': 'Fade slide',
+            'fade-up': 'Fade up',
+            'fade-down': 'Fade down',
+            none: 'Off',
           },
           layoutMode: 'Layout mode',
           layoutModes: {

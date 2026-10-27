@@ -108,6 +108,14 @@ export const SETTINGS_INDEX: readonly SettingsEntry[] = [
     categoryLabelKey: 'settings.categories.appearance',
     synonyms: ['灰阶', '灰度', '去色', '黑白', 'grayscale', 'monochrome'],
   },
+  {
+    category: 'appearance',
+    fieldId: 'pageTransition',
+    nameKey: 'settings.appearance.pageTransition',
+    descriptionKey: 'settings.appearance.pageTransitionDescription',
+    categoryLabelKey: 'settings.categories.appearance',
+    synonyms: ['页面切换动画', '页面切换', '转场', '过渡', '动画', 'transition', 'fade', 'slide'],
+  },
   // 导航
   {
     category: 'navigation',

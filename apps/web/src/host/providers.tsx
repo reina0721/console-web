@@ -116,6 +116,9 @@ function RuntimeProviders({ children }: Readonly<{ children: ReactNode }>) {
     // 色弱 / 灰阶辅助：纯视觉滤镜（tokens.css 保留外层 data-* 覆盖），默认 off。
     html.dataset.colorWeak = preferences.appearance.colorWeak ? 'on' : 'off';
     html.dataset.grayscale = preferences.appearance.grayscale ? 'on' : 'off';
+    // 页面切换动画（117）：由 Surface Foundation 的 Screen Recipe 消费；
+    // `default` 保持项目现行方向进入，其余值对应 Vben 页面切换集合。
+    html.dataset.pageTransition = preferences.appearance.pageTransition;
     // 可访问性增强（默认关；只增强）：焦点轮廓 / 交互区域尺寸 data-* → tokens.css
     // 保留外层覆盖；跟随系统辅助设置 → 监听 prefers-contrast 写 data-system-contrast。
     html.dataset.enhanceFocus = preferences.accessibility.enhanceFocus ? 'on' : 'off';
@@ -163,6 +166,7 @@ function RuntimeProviders({ children }: Readonly<{ children: ReactNode }>) {
     preferences.appearance.contrast,
     preferences.appearance.colorWeak,
     preferences.appearance.grayscale,
+    preferences.appearance.pageTransition,
     preferences.accessibility.enhanceFocus,
     preferences.accessibility.enhanceTargetSize,
     preferences.accessibility.followSystemAssistive,

@@ -137,6 +137,23 @@ export const pluginI18nResources = {
             '降低色相区分、保留明度与结构，帮助分辨相近颜色；不改变数据与状态语义。',
           grayscale: '灰阶显示',
           grayscaleDescription: '整体去色，适合长时间阅读或低刺激场景；可与高对比度同时使用。',
+          pageTransition: '页面切换动画',
+          pageTransitionDescription:
+            '仅影响页面切换；默认保留项目现行方向进入。选择“关闭”只停用页面切换动画，其他动效不受影响。',
+          pageTransitions: {
+            default: '默认（方向进入）',
+            defaultDescription: '标题轻量方向过渡，保持当前项目体验。',
+            fade: '淡入',
+            fadeDescription: '整页淡入，无位移。',
+            fadeSlide: '淡入滑动',
+            fadeSlideDescription: '从右侧轻移入并淡入。',
+            fadeUp: '淡入上滑',
+            fadeUpDescription: '从下方轻移入并淡入。',
+            fadeDown: '淡入下滑',
+            fadeDownDescription: '从上方轻移入并淡入。',
+            none: '关闭',
+            noneDescription: '不播放页面切换动画；其他交互动效保持不变。',
+          },
         },
         navigation: {
           layoutMode: '布局模式',
@@ -475,6 +492,24 @@ export const pluginI18nResources = {
           grayscale: 'Grayscale display',
           grayscaleDescription:
             'Removes color overall for long reading sessions or low-stimulation contexts; can be combined with high contrast.',
+          pageTransition: 'Page transition',
+          pageTransitionDescription:
+            'Affects page switching only; the default keeps the current directional title enter. "Off" disables page transitions without touching other motion.',
+          pageTransitions: {
+            default: 'Default (directional enter)',
+            defaultDescription:
+              'Lightweight directional title enter, the current project experience.',
+            fade: 'Fade',
+            fadeDescription: 'Whole page fades in without displacement.',
+            fadeSlide: 'Fade slide',
+            fadeSlideDescription: 'Slides in slightly from the right while fading.',
+            fadeUp: 'Fade up',
+            fadeUpDescription: 'Slides in slightly from below while fading.',
+            fadeDown: 'Fade down',
+            fadeDownDescription: 'Slides in slightly from above while fading.',
+            none: 'Off',
+            noneDescription: 'No page transition; other interaction motion stays unchanged.',
+          },
         },
         navigation: {
           layoutMode: 'Layout mode',

@@ -70,3 +70,14 @@
 - 浏览器测试新增：demo-access、shell-security、table-productivity、system-management；
   视觉基线按逐项复核更新 12 张（导航项/顶栏入口/设置分类/登录演示面板）。
 - 原始日志：[116 完整门禁](changes/116-vben-parity-implementation/evidence/pnpm-check.log)。
+
+### 117 页面切换动画偏好（2026-10-27）
+
+- `pnpm check` **退出码 0**：Architecture 845 files、Dependency 28、Codegen fresh、ESLint、
+  TypeScript、Vitest（web 192 / surfaces 176）、Next build、产物预算、
+  Playwright **423 项**（116 的 413 + 页面切换 10）、Prettier、Docs（23 条变更）。
+- 产物预算（未调整阈值）：initial **408,047 B / 409,600**、maxRoute **432,435 B / 445,440**
+  （`/login`）、CSS **48,736 B / 49,152**、最大 chunk 84,704 B。
+- 视觉基线仅 `settings-desktop` 更新（新增一行「页面切换动画」，1440×2265 → 1440×2381，
+  0.02 像素比，逐项查看后确认）；默认页面切换动画保持不变。
+- 原始日志：[117 完整门禁](changes/117-page-transition-animations/evidence/pnpm-check.log)。

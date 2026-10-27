@@ -1,5 +1,6 @@
 # Frontend 变更记录
 
+- [117 页面切换动画偏好](117-page-transition-animations/README.md)：保留项目默认页面切换，新增 Vben 的 fade / fade-slide / fade-up / fade-down 与关闭选项，在设置与快捷偏好中配置，含 Vben 运行期证据与验证。
 - [116 Vben 对标产品实施](116-vben-parity-implementation/README.md)：六类能力全部落地（演示身份、多布局/页签、偏好/水印/锁屏、表格生产力、菜单/部门/字典、Analytics 与 Workspace），含 Vben 线上实测对照、决策与验证证据。
 - [115 Vben 对标需求校准](115-vben-parity-calibration/README.md)：六项源码核对、重复与冲突纠正、独立 VP 编号、候选实施清单和验证；仅文档，未实施产品功能（结论已由 116 逐项实施并修订）。
 

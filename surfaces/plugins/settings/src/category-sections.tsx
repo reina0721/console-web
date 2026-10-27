@@ -6,6 +6,7 @@ import type { Preferences } from '@community-go/surface/preferences-model';
 import {
   validatePreferences,
   IDLE_LOCK_MINUTES,
+  PAGE_TRANSITIONS,
   TIME_ZONE_OPTIONS,
 } from '@community-go/surface/preferences-model';
 import {
@@ -58,6 +59,11 @@ function updateSetting<C extends keyof Preferences>(
   if (!candidate.ok)
     throw new Error(candidate.issues.map((issue) => issue.path + ': ' + issue.message).join('; '));
   return ctx.port.updateCategory(category, candidate.value[category]);
+}
+
+/** pageTransition 值 → i18n key 片段（fade-slide → fadeSlide）。 */
+function transitionI18nKey(value: (typeof PAGE_TRANSITIONS)[number]): string {
+  return value.replace(/-([a-z])/g, (_, char: string) => char.toUpperCase());
 }
 
 function SectionShell({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
@@ -259,6 +265,23 @@ export function AppearanceSection({ ctx }: Readonly<{ ctx: Ctx }>) {
           ]}
           value={appearance.motion}
           onValueChange={(value) => updateSetting(ctx, 'appearance', { motion: value })}
+        />
+        <SelectField
+          hint={t('settings.appearance.pageTransitionDescription')}
+          label={t('settings.appearance.pageTransition')}
+          options={PAGE_TRANSITIONS.map((value) => ({
+            value,
+            label: t(`settings.appearance.pageTransitions.${transitionI18nKey(value)}`),
+            description: t(
+              `settings.appearance.pageTransitions.${transitionI18nKey(value)}Description`,
+            ),
+          }))}
+          value={appearance.pageTransition}
+          onValueChange={(value) =>
+            updateSetting(ctx, 'appearance', {
+              pageTransition: value,
+            })
+          }
         />
         <RadioGroupField
           presentation="inline"

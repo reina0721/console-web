@@ -35,6 +35,7 @@ async function startTransitionWatcher(page: Page) {
         if (
           !name.includes('content-') &&
           !name.includes('surface-enter-') &&
+          !name.includes('surface-screen-') &&
           name !== 'surface-item-enter'
         )
           continue;
@@ -101,7 +102,9 @@ async function waitForTransitionsToSettle(page: Page) {
           if (effect?.pseudoElement) continue;
           const name = (animation as CSSAnimation).animationName ?? '';
           if (
-            (name.includes('content-') || name.includes('surface-enter-')) &&
+            (name.includes('content-') ||
+              name.includes('surface-enter-') ||
+              name.includes('surface-screen-')) &&
             animation.playState === 'running'
           ) {
             return true;
