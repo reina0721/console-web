@@ -21,10 +21,16 @@
 /* 版本与分类                                                           */
 /* ------------------------------------------------------------------ */
 
-/** 当前偏好模型版本（community-go.shell persist version）。 */
-export const PREFERENCES_VERSION = 1;
+/**
+ * 当前偏好模型版本（community-go.shell persist version）。
+ *
+ * v1 → v2：新增 `security` 分类（水印/空闲锁屏）、`appearance.colorWeak|grayscale`、
+ * `navigation.layoutMode`。v1 记录由 `validatePreferences` 按字段默认值补全后直接可用，
+ * 因此不需要破坏性迁移；版本号用于记录语义变化与跨窗口快照判定。
+ */
+export const PREFERENCES_VERSION = 2;
 
-/** 八分类（与设置页信息架构一一对应；key 顺序即分类导航顺序）。 */
+/** 九分类（与设置页信息架构一一对应；key 顺序即分类导航顺序）。 */
 export const PREFERENCE_CATEGORIES = [
   'appearance',
   'navigation',
@@ -33,6 +39,7 @@ export const PREFERENCE_CATEGORIES = [
   'localeRegion',
   'notifications',
   'accessibility',
+  'security',
   'shortcuts',
 ] as const;
 export type PreferenceCategory = (typeof PREFERENCE_CATEGORIES)[number];
@@ -74,6 +81,10 @@ export type AppearancePreferences = Readonly<{
   contentWidth: ContentWidth;
   motion: MotionPreference;
   contrast: ContrastPreference;
+  /** 色弱辅助：降低色相对比、保留明度与结构（纯视觉辅助，不改变数据）。 */
+  colorWeak: boolean;
+  /** 灰阶辅助：整体去色，配合增强对比用于长时间阅读或低刺激场景。 */
+  grayscale: boolean;
 }>;
 
 export const defaultAppearance: AppearancePreferences = {
@@ -84,6 +95,8 @@ export const defaultAppearance: AppearancePreferences = {
   contentWidth: 'auto',
   motion: 'system',
   contrast: 'system',
+  colorWeak: false,
+  grayscale: false,
 };
 
 /* ------------------------------------------------------------------ */
@@ -103,9 +116,21 @@ export type NewPageOpenMode = (typeof NEW_PAGE_OPEN_MODES)[number];
 export const SIDEBAR_BEHAVIORS = ['expanded', 'collapsed', 'remember'] as const;
 export type SidebarBehavior = (typeof SIDEBAR_BEHAVIORS)[number];
 
+/**
+ * Shell 布局模式：
+ * - vertical：左侧导航 + 顶部工具栏（默认）；
+ * - horizontal：顶部一级导航，无侧栏；
+ * - mixed：顶部一级分组，侧栏显示当前分组的下级菜单。
+ * 三种模式共用同一导航模型与页面栈，不改变路由与权限语义。
+ */
+export const LAYOUT_MODES = ['vertical', 'horizontal', 'mixed'] as const;
+export type LayoutMode = (typeof LAYOUT_MODES)[number];
+
 export type NavigationPreferences = Readonly<{
   /** 登录后默认首页（稳定 routeId；'/' 为当前首页）。 */
   homeTarget: HomeTarget;
+  /** Shell 布局模式（vertical/horizontal/mixed）。 */
+  layoutMode: LayoutMode;
   /** 页面跳转后自动滚动到顶部。 */
   scrollToTopOnNavigate: boolean;
   /** 面包屑显示。 */
@@ -135,6 +160,7 @@ export type NavigationPreferences = Readonly<{
 
 export const defaultNavigation: NavigationPreferences = {
   homeTarget: '/',
+  layoutMode: 'vertical',
   scrollToTopOnNavigate: true,
   breadcrumbs: true,
   pageTabsEnabled: false,
@@ -379,6 +405,35 @@ export const defaultAccessibility: AccessibilityPreferences = {
 };
 
 /* ------------------------------------------------------------------ */
+/* 安全与隐私 security                                                   */
+/* ------------------------------------------------------------------ */
+
+/** 空闲锁屏分钟数（0 = 关闭）。与手动锁屏共用同一解锁流程。 */
+export const IDLE_LOCK_MINUTES = [0, 1, 5, 15, 30] as const;
+export type IdleLockMinutes = (typeof IDLE_LOCK_MINUTES)[number];
+
+export type SecurityPreferences = Readonly<{
+  /**
+   * 显示水印：以当前账号标识覆盖内容区，降低截图外传风险。
+   * 属视觉提示，不是防篡改或访问控制；客户端清理存储即可绕过。
+   */
+  watermark: boolean;
+  /** 水印附加文字（可选，最多 40 字符；空 = 只显示账号标识）。 */
+  watermarkText: string;
+  /** 空闲自动锁屏分钟数（0 = 关闭）。空闲判定基于真实用户输入事件。 */
+  idleLockMinutes: IdleLockMinutes;
+  /** 页面进入后台时立即锁定（切换标签页/最小化）。 */
+  lockOnHidden: boolean;
+}>;
+
+export const defaultSecurity: SecurityPreferences = {
+  watermark: false,
+  watermarkText: '',
+  idleLockMinutes: 0,
+  lockOnHidden: false,
+};
+
+/* ------------------------------------------------------------------ */
 /* 快捷键 shortcuts                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -406,6 +461,7 @@ export type Preferences = Readonly<{
   localeRegion: LocaleRegionPreferences;
   notifications: NotificationsPreferences;
   accessibility: AccessibilityPreferences;
+  security: SecurityPreferences;
   shortcuts: ShortcutsPreferences;
 }>;
 
@@ -418,6 +474,7 @@ export const defaultPreferences: Preferences = {
   localeRegion: defaultLocaleRegion,
   notifications: defaultNotifications,
   accessibility: defaultAccessibility,
+  security: defaultSecurity,
   shortcuts: defaultShortcuts,
 };
 
@@ -531,6 +588,11 @@ export function validateCategory(
       if (raw.contrast !== undefined && !isOneOf(raw.contrast, CONTRAST_PREFERENCES))
         issues.push({ path: `${category}.contrast`, message: '非法 contrast' });
       else if (raw.contrast !== undefined) value.contrast = raw.contrast;
+      for (const key of ['colorWeak', 'grayscale'] as const) {
+        if (raw[key] !== undefined && !isBoolean(raw[key]))
+          issues.push({ path: `${category}.${key}`, message: `${key} 必须是布尔` });
+        else if (raw[key] !== undefined) value[key] = raw[key];
+      }
       return issues.length > 0 ? { ok: false, issues } : { ok: true, value };
     }
     case 'navigation': {
@@ -564,6 +626,9 @@ export function validateCategory(
       if (raw.sidebarBehavior !== undefined && !isOneOf(raw.sidebarBehavior, SIDEBAR_BEHAVIORS))
         issues.push({ path: `${category}.sidebarBehavior`, message: '非法 sidebarBehavior' });
       else if (raw.sidebarBehavior !== undefined) value.sidebarBehavior = raw.sidebarBehavior;
+      if (raw.layoutMode !== undefined && !isOneOf(raw.layoutMode, LAYOUT_MODES))
+        issues.push({ path: `${category}.layoutMode`, message: '非法 layoutMode' });
+      else if (raw.layoutMode !== undefined) value.layoutMode = raw.layoutMode;
       return issues.length > 0 ? { ok: false, issues } : { ok: true, value };
     }
     case 'dataDisplay': {
@@ -706,6 +771,30 @@ export function validateCategory(
         if (raw[key] !== undefined && !isBoolean(raw[key]))
           issues.push({ path: `${category}.${key}`, message: `${key} 必须是布尔` });
         else if (raw[key] !== undefined) value[key] = raw[key];
+      }
+      return issues.length > 0 ? { ok: false, issues } : { ok: true, value };
+    }
+    case 'security': {
+      const base = defaultSecurity;
+      const value: Mutable<SecurityPreferences> = { ...base };
+      const raw = input;
+      for (const key of ['watermark', 'lockOnHidden'] as const) {
+        if (raw[key] !== undefined && !isBoolean(raw[key]))
+          issues.push({ path: `${category}.${key}`, message: `${key} 必须是布尔` });
+        else if (raw[key] !== undefined) value[key] = raw[key];
+      }
+      if (raw.watermarkText !== undefined && typeof raw.watermarkText !== 'string')
+        issues.push({ path: `${category}.watermarkText`, message: 'watermarkText 必须是字符串' });
+      else if (raw.watermarkText !== undefined)
+        value.watermarkText = raw.watermarkText.slice(0, 40);
+      if (raw.idleLockMinutes !== undefined) {
+        const minutes = raw.idleLockMinutes;
+        if (
+          typeof minutes !== 'number' ||
+          !(IDLE_LOCK_MINUTES as readonly number[]).includes(minutes)
+        )
+          issues.push({ path: `${category}.idleLockMinutes`, message: '非法 idleLockMinutes' });
+        else value.idleLockMinutes = minutes as IdleLockMinutes;
       }
       return issues.length > 0 ? { ok: false, issues } : { ok: true, value };
     }

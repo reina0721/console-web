@@ -35,6 +35,11 @@
   --color-on-info: var(--ds-on-info);
   --color-focus-ring: var(--ds-focus-ring);
   --color-scrim: var(--ds-scrim);
+  --color-chart-1: var(--ds-chart-1);
+  --color-chart-2: var(--ds-chart-2);
+  --color-chart-3: var(--ds-chart-3);
+  --color-chart-4: var(--ds-chart-4);
+  --color-chart-5: var(--ds-chart-5);
   --radius-control: 0.75rem;
   --radius-panel: 1rem;
   --radius-shell: 1.25rem;
@@ -129,6 +134,11 @@
   --ds-on-info: #ffffff;
   --ds-focus-ring: #5d49d6;
   --ds-scrim: rgb(15 23 42 / 0.38);
+  --ds-chart-1: #5d49d6;
+  --ds-chart-2: #2463eb;
+  --ds-chart-3: #0f7f74;
+  --ds-chart-4: #b45309;
+  --ds-chart-5: #be3b6b;
   /* @ds-region:root-color-properties:end */
 }
 
@@ -162,6 +172,11 @@
   --ds-on-info: #0b1b3a;
   --ds-focus-ring: #b0a5ff;
   --ds-scrim: rgb(0 0 0 / 0.58);
+  --ds-chart-1: #9b8cff;
+  --ds-chart-2: #78a5ff;
+  --ds-chart-3: #4fd1b8;
+  --ds-chart-4: #f3b55a;
+  --ds-chart-5: #f78fb3;
   /* @ds-region:dark-color-properties:end */
 }
 
@@ -352,4 +367,14 @@ html[data-follow-system='on'][data-system-contrast='more'] {
 /* Preview uses the same generated palette; no duplicated preset values. */
 .ds-accent-swatch {
   background-color: var(--ds-brand);
+}
+
+/* 色弱 / 灰阶辅助（Host 依偏好写 html[data-color-weak] 与 html[data-grayscale]）。
+   纯视觉滤镜：不改变数据、语义、焦点或可访问名称；关闭即完全恢复。 */
+html[data-color-weak='on'] {
+  filter: saturate(0.45) contrast(1.05);
+}
+
+html[data-grayscale='on'] {
+  filter: grayscale(1);
 }

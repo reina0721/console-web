@@ -6,6 +6,7 @@ import { MenuButton } from '@community-go/ui-adapter/menu-button';
 import {
   ChevronDown,
   Languages,
+  LockKeyhole,
   LogOut,
   Monitor,
   Moon,
@@ -19,7 +20,10 @@ import { useShellStore } from '../state/use-shell-store';
 export function AccountMenu({
   compact,
   onNavigate,
-}: Readonly<{ compact: boolean; onNavigate: (destination: 'settings' | 'account') => void }>) {
+}: Readonly<{
+  compact: boolean;
+  onNavigate: (destination: 'settings' | 'account' | 'lock-screen') => void;
+}>) {
   const { t } = useFrontendTranslation();
   const auth = useAuth();
   const user = auth.session?.user;
@@ -113,6 +117,11 @@ export function AccountMenu({
               icon: <UserRound className="size-4" />,
             },
             { id: 'settings', label: t('nav.settings'), icon: <Settings className="size-4" /> },
+            {
+              id: 'lock-screen',
+              label: t('shell.lock.action'),
+              icon: <LockKeyhole className="size-4" />,
+            },
             { id: 'logout', label: t('auth.logout'), icon: <LogOut className="size-4" /> },
           ],
         },
@@ -124,7 +133,7 @@ export function AccountMenu({
           updateCategory('appearance', {
             themeMode: id === 'theme:system' ? 'system' : id === 'theme:dark' ? 'dark' : 'light',
           });
-        else if (id === 'settings' || id === 'account') onNavigate(id);
+        else if (id === 'settings' || id === 'account' || id === 'lock-screen') onNavigate(id);
         else if (id === 'logout')
           void auth.logout().then((success) => {
             if (success) window.location.replace('/login');

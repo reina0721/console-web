@@ -6,7 +6,6 @@ import {
   type AppearancePreferences,
 } from '@community-go/surface/preferences-model';
 
-const evidence = 'docs/changes/114-api-workbench-refinement/evidence';
 const profiles: readonly Readonly<{
   name: string;
   width: number;
@@ -61,7 +60,8 @@ const profiles: readonly Readonly<{
 ];
 
 for (const profile of profiles) {
-  test(`workbench appearance and navigation: ${profile.name}`, async ({ page }) => {
+  test(`workbench appearance and navigation: ${profile.name}`, async ({ page }, testInfo) => {
+    const evidence = testInfo.outputDir;
     await page.setViewportSize({ width: profile.width, height: profile.height });
     await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
     await page.addInitScript(
@@ -131,7 +131,8 @@ for (const profile of profiles) {
   });
 }
 
-test('project tree can collapse without losing a draft', async ({ page }) => {
+test('project tree can collapse without losing a draft', async ({ page }, testInfo) => {
+  const evidence = testInfo.outputDir;
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/api-workbench');
   const url = page.getByRole('textbox', { name: '请求 URL', exact: true });
@@ -149,7 +150,8 @@ test('project tree can collapse without losing a draft', async ({ page }) => {
 
 test('long configuration, pending, response scrolling and failures remain usable', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/api-workbench');
   const url = page.getByRole('textbox', { name: '请求 URL', exact: true });
@@ -211,7 +213,8 @@ test('long configuration, pending, response scrolling and failures remain usable
 
 test('global appearance edits propagate to the workbench and persist after refresh', async ({
   page,
-}) => {
+}, testInfo) => {
+  const evidence = testInfo.outputDir;
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/settings');
   await page.getByRole('radio', { name: '深色主题', exact: true }).focus();

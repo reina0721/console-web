@@ -11,6 +11,11 @@ import { useFrontendTranslation } from '@community-go/i18n';
 import { useAuth } from './context';
 import { AuthFrame } from './frame';
 import { safeReturnTo } from './contract';
+import { readAuthConfig } from './config';
+import { DemoAccessPanel } from './demo-access';
+import { demoAccountPassword, type DemoAccount } from './demo-accounts';
+import { rememberDemoAccount } from './demo-session';
+import { resetDemoData } from './demo-reset';
 import { readRegistrationAvailability } from './registration-policy';
 import type { AuthFormValues } from './form-schema';
 import { AlertTriangle, CheckCircle2, Clock, Eye, EyeOff } from 'lucide-react';
@@ -25,6 +30,20 @@ export function AuthForm({ kind }: Readonly<{ kind: 'login' | 'register' | 'expi
   const [availability, setAvailability] = useState<boolean | null>(null);
   const [policyFailure, setPolicyFailure] = useState(false);
   const [policyRetry, setPolicyRetry] = useState(0);
+  // 演示模式判定：显式 Mock 部署才提供快捷身份；后端模式绝不出现（也不因失败降级）。
+  const [demoMode] = useState(() => {
+    try {
+      return readAuthConfig().mode === 'mock';
+    } catch {
+      return false;
+    }
+  });
+  const signInAsDemo = async (account: DemoAccount) => {
+    const accepted = await auth.login({ email: account.email, password: demoAccountPassword });
+    if (!accepted) return;
+    rememberDemoAccount(account.id);
+    window.location.replace(target);
+  };
   useEffect(() => {
     if (!register) return;
     let cancelled = false;
@@ -172,6 +191,13 @@ export function AuthForm({ kind }: Readonly<{ kind: 'login' | 'register' | 'expi
             </Action>
           </FoundationForm>
         )}
+        {demoMode && !register && !registered ? (
+          <DemoAccessPanel
+            busy={auth.busy}
+            onReset={() => resetDemoData()}
+            onSignIn={signInAsDemo}
+          />
+        ) : null}
         <p className="text-sm text-ink-muted">
           {t(register ? 'auth.hasAccount' : 'auth.noAccount')}{' '}
           <Link

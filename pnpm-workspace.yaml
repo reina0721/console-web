@@ -3,6 +3,12 @@ packages:
   - packages/*
   - surfaces
 
+supportedArchitectures:
+  os:
+    - current
+    - linux
+    - win32
+
 onlyBuiltDependencies:
   - esbuild
   - msw

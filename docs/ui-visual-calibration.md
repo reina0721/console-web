@@ -95,3 +95,15 @@ HeroUI 当前 `Select`、`ComboBox` 和 `Popover` 继续承担 ARIA、Keyboard�
 - 业务页面提出内部 Design System 尚未覆盖的基础能力。
 
 复核步骤固定为：关闭态 → Hover/Focus/Active/Selected → Disabled/Loading/Error → 打开态与 Escape/焦点返回 → Light/Dark → 中文/英文长文本 → 窄屏/桌面/超宽屏。外部参考发生变化时，只更新本矩阵中的观察结论；是否改变内部规范必须通过 `/ui-elements` 对应 Family 页面和视觉回归验证。
+
+## 116 新增元素与图表的视觉校准说明
+
+- `charts` 属新增 Universal Element。TailAdmin React Demo 没有等价图表页，因此不以它作为
+  形状基准；校准依据为：Design System 语义色（`chart-1..5` 与 `ink/border/surface`）、
+  Typography 层级、间距与圆角 Token、以及与产品内表格/卡片一致的边界和留白。
+  图表禁止引入第三方色板或默认主题。
+- `collection-tools`（列设置/密度/导出）与 DataTable 的固定列/树形行按 TailAdmin
+  `UI Elements → Tables` 的表格规律复核：列头层级、行高与分隔、工具栏密度、图标按钮尺寸；
+  不复制其 DOM/CSS/数值。
+- 这两类新增均已进入 `/ui-elements` 对应 Family 页面（`#data-productivity` 与
+  `#data` 的图表示例），后续修改必须同步 Showcase，不允许业务页成为隐式权威。

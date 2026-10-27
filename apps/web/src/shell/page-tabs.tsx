@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { MoreHorizontal, Pin, X } from 'lucide-react';
 import { Action } from '@community-go/ui-adapter/action';
 import { MenuButton } from '@community-go/ui-adapter/menu-button';
 import { useEffect, useRef } from 'react';
@@ -70,7 +70,41 @@ export function PageTabs() {
   // 关闭标签（SET-005-002 关闭策略）：若关闭的是当前激活标签，按偏好
   // tabCloseBehavior（最近/右邻/左邻）导航到目标；无目标 → 回默认首页（'/'）。
   const tabCloseBehavior = useShellStore((state) => state.preferences.navigation.tabCloseBehavior);
+  // 单个标签的显式操作（固定/关闭/关闭两侧/刷新）。固定标签不会被关闭类操作移除。
+  const runTabAction = async (action: string, tabPathname: string) => {
+    const store = usePageTabsStore.getState();
+    if (action === 'pin' || action === 'unpin') {
+      store.setPinned(tabPathname, action === 'pin');
+      return;
+    }
+    if (action === 'refresh') {
+      if (tabPathname === pathname) router.refresh();
+      return;
+    }
+    if (action === 'close-others') {
+      store.closeOtherTabs(tabPathname);
+      return;
+    }
+    if (action === 'close-left') {
+      store.closeTabsBeside(tabPathname, 'left');
+      return;
+    }
+    if (action === 'close-right') {
+      store.closeTabsBeside(tabPathname, 'right');
+      return;
+    }
+    if (action === 'close-all') {
+      store.closeAllTabs();
+      if (tabPathname === pathname && !tabs.find((tab) => tab.pathname === pathname)?.pinned) {
+        markForwardRouteIntent();
+        router.push('/', resolveScrollOption());
+      }
+      return;
+    }
+    await closeTabAt(tabPathname);
+  };
   const closeTabAt = async (closedPathname: string) => {
+    if (tabs.find((tab) => tab.pathname === closedPathname)?.pinned) return;
     const closingActive = closedPathname === pathname;
     const closingIndex = tabs.findIndex((tab) => tab.pathname === closedPathname);
     const target = (() => {
@@ -161,6 +195,12 @@ export function PageTabs() {
                 >
                   {pageTitle(tab.href ?? tab.pathname, tab.title)}
                 </button>
+                {tab.pinned ? (
+                  <span className="text-brand" title={t('shell.tabActions.pinned')}>
+                    <Pin aria-hidden="true" className="size-3.5" />
+                    <span className="sr-only">{t('shell.tabActions.pinned')}</span>
+                  </span>
+                ) : null}
                 <span
                   className={
                     active
@@ -168,20 +208,47 @@ export function PageTabs() {
                       : 'opacity-60 group-hover:opacity-100 group-focus-within:opacity-100'
                   }
                 >
-                  <Action
-                    variant="quiet"
-                    size="md"
-                    onPress={() => {
-                      void closeTabAt(tab.pathname);
+                  {tab.pinned ? null : (
+                    <Action
+                      variant="quiet"
+                      size="md"
+                      onPress={() => {
+                        void closeTabAt(tab.pathname);
+                      }}
+                    >
+                      <span className="sr-only">
+                        {t('shell.closeTab', {
+                          title: pageTitle(tab.href ?? tab.pathname, tab.title),
+                        })}
+                      </span>
+                      <X aria-hidden="true" className="size-4" />
+                    </Action>
+                  )}
+                  <MenuButton
+                    ariaLabel={t('shell.tabActions.label', {
+                      title: pageTitle(tab.href ?? tab.pathname, tab.title),
+                    })}
+                    items={[
+                      {
+                        id: tab.pinned ? 'unpin' : 'pin',
+                        label: t(tab.pinned ? 'shell.tabActions.unpin' : 'shell.tabActions.pin'),
+                      },
+                      {
+                        id: 'close',
+                        label: t('shell.tabActions.close'),
+                        disabled: Boolean(tab.pinned),
+                      },
+                      { id: 'close-others', label: t('shell.tabActions.closeOthers') },
+                      { id: 'close-left', label: t('shell.tabActions.closeLeft') },
+                      { id: 'close-right', label: t('shell.tabActions.closeRight') },
+                      { id: 'close-all', label: t('shell.tabActions.closeAll') },
+                      { id: 'refresh', label: t('shell.tabActions.refresh') },
+                    ]}
+                    label={<MoreHorizontal aria-hidden="true" className="size-4" />}
+                    onAction={(action) => {
+                      void runTabAction(action, tab.pathname);
                     }}
-                  >
-                    <span className="sr-only">
-                      {t('shell.closeTab', {
-                        title: pageTitle(tab.href ?? tab.pathname, tab.title),
-                      })}
-                    </span>
-                    <X aria-hidden="true" className="size-4" />
-                  </Action>
+                  />
                 </span>
               </div>
             );
@@ -203,9 +270,7 @@ export function PageTabs() {
             ]}
             onAction={(id) => {
               if (id === 'close-others') {
-                for (const tab of tabs) {
-                  if (tab.pathname !== pathname) usePageTabsStore.getState().closeTab(tab.pathname);
-                }
+                usePageTabsStore.getState().closeOtherTabs(pathname);
                 return;
               }
               const tab = tabs.find((tab) => tab.pathname === id);

@@ -3,13 +3,23 @@
 import { useFrontendTranslation } from '@community-go/i18n';
 import type { PreferencesPort } from '@community-go/plugin-framework/preferences';
 import type { Preferences } from '@community-go/surface/preferences-model';
-import { validatePreferences, TIME_ZONE_OPTIONS } from '@community-go/surface/preferences-model';
-import { RadioGroupField, SelectField, SwitchField } from '@community-go/ui-adapter/form-field';
+import {
+  validatePreferences,
+  IDLE_LOCK_MINUTES,
+  TIME_ZONE_OPTIONS,
+} from '@community-go/surface/preferences-model';
+import {
+  RadioGroupField,
+  SelectField,
+  SwitchField,
+  TextField,
+} from '@community-go/ui-adapter/form-field';
+import { Action } from '@community-go/ui-adapter/action';
 import { route, RouteLink } from '@community-go/plugin-framework/plugin';
 import { Children, isValidElement, type ReactNode } from 'react';
 import { Section } from '@community-go/surface-foundation/layout';
 import { SETTINGS_INDEX } from './settings-index';
-import { Sun, Moon, MonitorCog, SunMoon } from 'lucide-react';
+import { LockKeyhole, Sun, Moon, MonitorCog, SunMoon } from 'lucide-react';
 import {
   AppearanceFeedback,
   DensityPreview,
@@ -262,6 +272,22 @@ export function AppearanceSection({ ctx }: Readonly<{ ctx: Ctx }>) {
           value={appearance.contrast}
           onValueChange={(value) => updateSetting(ctx, 'appearance', { contrast: value })}
         />
+        {switchRow(
+          ctx,
+          'appearance',
+          'colorWeak',
+          appearance.colorWeak,
+          t('settings.appearance.colorWeak'),
+          t('settings.appearance.colorWeakDescription'),
+        )}
+        {switchRow(
+          ctx,
+          'appearance',
+          'grayscale',
+          appearance.grayscale,
+          t('settings.appearance.grayscale'),
+          t('settings.appearance.grayscaleDescription'),
+        )}
         <AppearanceFeedback />
       </SectionShell>
     </>
@@ -297,6 +323,30 @@ export function NavigationSection({ ctx }: Readonly<{ ctx: Ctx }>) {
   return (
     <>
       <SectionShell title={t('settings.groups.wayfinding')}>
+        <RadioGroupField
+          presentation="inline"
+          hint={t('settings.navigation.layoutModeHint')}
+          label={t('settings.navigation.layoutMode')}
+          options={[
+            {
+              label: t('settings.navigation.layoutVertical'),
+              value: 'vertical',
+              description: t('settings.navigation.layoutVerticalDescription'),
+            },
+            {
+              label: t('settings.navigation.layoutHorizontal'),
+              value: 'horizontal',
+              description: t('settings.navigation.layoutHorizontalDescription'),
+            },
+            {
+              label: t('settings.navigation.layoutMixed'),
+              value: 'mixed',
+              description: t('settings.navigation.layoutMixedDescription'),
+            },
+          ]}
+          value={nav.layoutMode}
+          onValueChange={(value) => updateSetting(ctx, 'navigation', { layoutMode: value })}
+        />
         {switchRow(
           ctx,
           'navigation',
@@ -779,6 +829,87 @@ export function AccessibilitySection({ ctx }: Readonly<{ ctx: Ctx }>) {
         '',
       )}
     </SectionShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 安全与隐私 Security（水印 / 空闲锁屏 / 立即锁定）                       */
+/* ------------------------------------------------------------------ */
+
+export function SecuritySection({ ctx }: Readonly<{ ctx: Ctx }>) {
+  const { t } = useFrontendTranslation();
+  const s = ctx.prefs.security;
+  return (
+    <>
+      <SectionShell title={t('settings.groups.watermark')}>
+        {switchRow(
+          ctx,
+          'security',
+          'watermark',
+          s.watermark,
+          t('settings.security.watermark'),
+          t('settings.security.watermarkDescription'),
+        )}
+        <TextField
+          disabled={!s.watermark}
+          hint={t(
+            s.watermark
+              ? 'settings.security.watermarkTextHint'
+              : 'settings.security.watermarkTextDisabled',
+          )}
+          label={t('settings.security.watermarkText')}
+          placeholder={t('settings.security.watermarkTextPlaceholder')}
+          value={s.watermarkText}
+          onChange={(event) =>
+            updateSetting(ctx, 'security', { watermarkText: event.target.value.slice(0, 40) })
+          }
+        />
+        <p className="text-xs text-ink-muted">
+          {t('settings.security.watermarkCharacters', { count: s.watermarkText.length })}
+        </p>
+      </SectionShell>
+      <SectionShell title={t('settings.groups.lock')}>
+        <SelectField
+          hint={t('settings.security.idleLockMinutesHint')}
+          label={t('settings.security.idleLockMinutes')}
+          options={IDLE_LOCK_MINUTES.map((minutes) => ({
+            label:
+              minutes === 0
+                ? t('settings.security.idleLockOff')
+                : t('settings.security.idleLockOption', { count: minutes }),
+            value: String(minutes),
+          }))}
+          value={String(s.idleLockMinutes)}
+          onValueChange={(value) =>
+            updateSetting(ctx, 'security', { idleLockMinutes: Number(value) })
+          }
+        />
+        {switchRow(
+          ctx,
+          'security',
+          'lockOnHidden',
+          s.lockOnHidden,
+          t('settings.security.lockOnHidden'),
+          t('settings.security.lockOnHiddenDescription'),
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Action
+            leadingIcon={<LockKeyhole className="size-3.5" />}
+            variant="secondary"
+            onPress={() => {
+              // Host 在 window 上监听 `community-go:lock` 并接管锁定/解锁流程；
+              // 事件从 document 冒泡到 window（bubbles:true），浏览器预览不会真的遮挡页面。
+              document.dispatchEvent(new CustomEvent('community-go:lock', { bubbles: true }));
+            }}
+          >
+            {t('settings.security.lockNow')}
+          </Action>
+          <p className="min-w-0 flex-1 text-xs leading-5 text-ink-muted">
+            {t('settings.security.lockNowHint')}
+          </p>
+        </div>
+      </SectionShell>
+    </>
   );
 }
 

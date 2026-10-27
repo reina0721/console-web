@@ -11,8 +11,8 @@ import {
 } from './preferences-model';
 
 describe('preferences-model 默认值（新用户无记录）', () => {
-  it('八分类齐全且各分类非空默认', () => {
-    expect(PREFERENCE_CATEGORIES).toHaveLength(8);
+  it('九分类齐全且各分类非空默认', () => {
+    expect(PREFERENCE_CATEGORIES).toHaveLength(9);
     const pref = defaultPreferences;
     expect(pref.appearance.themeMode).toBe('system');
     expect(pref.appearance.accent).toBe('purple');

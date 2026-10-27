@@ -268,8 +268,14 @@ Discovery → Framework Contract Validation → Static Framework Descriptors
     访问）；内容 `export { default } from '<源>'`。
   - (B) `apps/web/src/app/(app)/<mount>/<rel>/<kind>.tsx` —— Host Next adapter，只
     re-export (A)：`export { default } from '@community-go/surface/plugin-routes/…'`。
-  - 两层都不出现：`'use client'`（除非 Plugin 模块自身）、params 拦截、Context 包装、
-    children 包装、生命周期逻辑、第二套匹配器。
+  - 例外（116 起）：静态 `page` 的 (B) 生成 **Host 侧按需加载外壳**——
+    `'use client'` + `next/dynamic(() => import('(A)'), { loading })`，loading 为
+    无文案占位。原因：产物预算以单 Route HTML 引用的 JS 计算，若页面实现静态
+    re-export，任何页面的依赖都会被提升进所有 Route 的公共 chunk；外壳让每个 Route
+    首屏只保留 Shell，页面模块作为独立 chunk 拉取。带 `generateStaticParams` 的动态
+    `page` 仍保持 `re-export + generateStaticParams` 转发（构建期枚举需要 Server Module），
+    `layout`/`loading`/`error`/`not-found` 也保持 re-export。下一节性能证据记录该决策。
+  - 两层都不出现：params 拦截、Context 包装、children 包装、生命周期逻辑、第二套匹配器。
 - **Registry（`packages/plugin-framework`，运行时）只保留真实需要的结构**：
   `navigation-resolution.ts` 单一 authority 解析 Group Alias + Parent/Child →
   `registry.navigation`（Group → Parent → Child，含 href）；`registry.routes` 是
@@ -446,3 +452,22 @@ Breadcrumb UI（route.meta 与 breadcrumb/command/permission 展示模型已删�
 ### Route Target 定位信息
 
 RouteTarget 的 query 和 fragment 为可选结构化定位信息；Registry 负责编码解析，Host 委托 Next 执行导航及关闭浮层后的字段焦点交接。query 不参与页面标签 pathname 身份，实体 id 可作为已解析目标保留于通知、收藏、最近访问和标签恢复。Plugin 不读取 Host pathname/history，不自行接管 Router。
+
+## Navigation Administration Port（116）
+
+菜单管理需要"业务呈现覆盖真正作用于侧栏"，但 Host 不得 import Plugin 内部实现、Plugin 也不得
+自建导航真相。因此新增 Host Port：
+
+- 契约：`@community-go/plugin-framework/navigation-admin`，导出 `NavigationAdminPort`、
+  `NavigationAdminOverride/Patch/Result/Snapshot`、`NavigationAdminProvider` 与
+  `useNavigationAdminPort()`。
+- 能力：`getSnapshot/subscribe`（引用稳定，供 selector 订阅）、`update(navigationId, patch,
+expectedVersion)`、`resetPresentation`、`clear`、`clearAll`、`recover`（清除损坏记录后重新水合）。
+- 写入语义：标题 1–40 字符；排序 0–999 整数；权限码为小写点分；每次写入自增 `version`，
+  版本不匹配返回 `conflict` 且不覆盖；损坏记录拒绝静默覆盖。
+- Host 实现：`apps/web/src/state/use-navigation-admin-store.ts`（key
+  `community-go.navigation-admin` v1，localStorage）+ `apps/web/src/host/navigation-admin-port.tsx`。
+- 应用：`useProductNavigation` 在权限过滤前后应用 hidden/order/permission；标题覆盖经
+  `useNavigationLabelOverrides` 同时作用于侧栏、页签标题与命令面板。
+- 边界：覆盖只改变**入口呈现**，不放宽任何真实权限；路由与组件仍来自部署期 Registry；
+  直接 URL 访问仍由数据服务授权。

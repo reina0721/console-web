@@ -53,6 +53,39 @@ export const authenticationResources = {
         demoDescription: '这是本地模拟认证，可注册演示账户。请勿使用真实密码。',
         demoAccount: '演示邮箱：demo@community.test',
         demoPassword: '演示密码：CommunityDemo2026!',
+        demo: {
+          pickerTitle: '演示身份快捷登录',
+          pickerDescription:
+            '选择任一身份会直接以该角色登录本演示部署；权限差异来自既有角色授权，不是界面隐藏。',
+          lastUsed: '上次使用',
+          securityNote:
+            '演示模式：凭据与数据只保存在本浏览器，可由用户清空。它用于体验产品，不构成安全认证，也不代表已联调真实后端。',
+          skipHint: '以管理员身份进入',
+          resetAction: '重置演示数据',
+          resetTitle: '重置演示数据？',
+          resetDescription: '清除本浏览器中的演示账户、用户、角色、审计与业务数据后重新播种。',
+          resetImpact:
+            '界面偏好会保留；当前会话会退出并返回登录页。自定义角色、用户与审计记录将被清除且不可恢复。',
+          resetConfirm: '重置并退出',
+          resetFailure: '重置失败：本地存储不可用，请手动清理站点数据后重试。',
+          roles: {
+            administrator: {
+              badge: '管',
+              name: '管理员',
+              capability: '全部权限：用户、角色、审计、系统配置与偏好管理。',
+            },
+            operator: {
+              badge: '运',
+              name: '操作员',
+              capability: '可维护用户资料与状态，不能修改角色授权或系统配置。',
+            },
+            viewer: {
+              badge: '阅',
+              name: '受限成员',
+              capability: '只读体验：可浏览授权页面并维护自己的账户信息。',
+            },
+          },
+        },
         welcomeTitle: '欢迎使用 Community',
         notFoundTitle: '页面不存在',
         notFoundDescription: '当前地址没有对应页面，请返回工作台选择有效入口。',
@@ -129,6 +162,44 @@ export const authenticationResources = {
           'This is local simulated authentication. You can create a demo account. Do not use a real password.',
         demoAccount: 'Demo email: demo@community.test',
         demoPassword: 'Demo password: CommunityDemo2026!',
+        demo: {
+          pickerTitle: 'Demo identities',
+          pickerDescription:
+            'Each option signs in with that real role in this demo deployment. Permission differences come from the existing role grants, not from hidden UI.',
+          lastUsed: 'Last used',
+          securityNote:
+            'Demo mode: credentials and data live only in this browser and can be cleared by the user. It demonstrates the product and is not a security boundary, nor does it prove a real backend integration.',
+          skipHint: 'Continue as administrator',
+          resetAction: 'Reset demo data',
+          resetTitle: 'Reset demo data?',
+          resetDescription:
+            'Clears the demo accounts, users, roles, audit and business data in this browser, then reseeds.',
+          resetImpact:
+            'Interface preferences are kept. The current session signs out and returns to sign-in. Custom roles, users and audit records cannot be recovered.',
+          resetConfirm: 'Reset and sign out',
+          resetFailure:
+            'Reset failed: local storage is unavailable. Clear this site’s data manually and retry.',
+          roles: {
+            administrator: {
+              badge: 'AD',
+              name: 'Administrator',
+              capability:
+                'Full access to users, roles, audit, system configuration and preferences.',
+            },
+            operator: {
+              badge: 'OP',
+              name: 'Operator',
+              capability:
+                'Maintains user profiles and status; cannot change role grants or system configuration.',
+            },
+            viewer: {
+              badge: 'VI',
+              name: 'Restricted member',
+              capability:
+                'Read-only experience: browse authorized pages and maintain your own account.',
+            },
+          },
+        },
         welcomeTitle: 'Welcome to Community',
         notFoundTitle: 'Page not found',
         notFoundDescription:

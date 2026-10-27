@@ -11,6 +11,7 @@ export const pluginI18nResources = {
         navGroups: {
           display: '显示与数据',
           preferences: '偏好与反馈',
+          security: '安全与隐私',
           assistive: '辅助与输入',
         },
         searchLabel: '搜索设置项',
@@ -28,12 +29,12 @@ export const pluginI18nResources = {
         restoreCategory: '恢复默认',
         restoreAllTitle: '恢复全部默认设置？',
         restoreAllDescription:
-          '将八类设置恢复为默认值。不会清除账号与业务数据、收藏、最近访问、通知、草稿或已保存的筛选方案。',
+          '将九类设置恢复为默认值。不会清除账号与业务数据、收藏、最近访问、通知、草稿或已保存的筛选方案。',
         restoreCategoryTitle: '恢复“{{category}}”默认？',
         restoreCategoryDescription:
           '仅恢复该分类的设置项。不会清除账号与业务数据、收藏、最近访问、通知、草稿或已保存的筛选方案。',
         restoreImpact:
-          '将恢复：外观、导航、数据展示、操作偏好、语言与地区、通知、可访问性与快捷键的默认值。',
+          '将恢复：外观、导航、数据展示、操作偏好、语言与地区、通知、可访问性、安全与隐私及快捷键的默认值。',
         confirmRestore: '恢复',
         cancel: '取消',
         categories: {
@@ -44,6 +45,7 @@ export const pluginI18nResources = {
           localeRegion: '语言与地区',
           notifications: '通知',
           accessibility: '可访问性',
+          security: '安全与隐私',
           shortcuts: '快捷键',
         },
         groups: {
@@ -64,6 +66,9 @@ export const pluginI18nResources = {
           protection: '草稿与操作确认',
           guidance: '聚焦与详情展示',
           search: '刷新与搜索',
+          watermark: '水印',
+          lock: '锁屏与后台',
+          transfer: '配置输出与导入',
         },
         categoryIntro: {
           appearance: '主题、强调色、密度、字号、内容宽度、动效与对比度。',
@@ -73,6 +78,7 @@ export const pluginI18nResources = {
           locale: '界面语言、时区、日期时间与数字格式。',
           notifications: '应用内通知、未读、提示音与桌面通知。',
           accessibility: '焦点、交互区域、键盘提示与跟随系统。',
+          security: '水印、空闲锁屏与页面进入后台时的锁定。',
           shortcuts: '快捷键开关与提示。',
         },
         appearance: {
@@ -126,8 +132,21 @@ export const pluginI18nResources = {
           contrastSystem: '跟随系统',
           contrastStandard: '标准',
           contrastHigh: '高对比度',
+          colorWeak: '色弱辅助',
+          colorWeakDescription:
+            '降低色相区分、保留明度与结构，帮助分辨相近颜色；不改变数据与状态语义。',
+          grayscale: '灰阶显示',
+          grayscaleDescription: '整体去色，适合长时间阅读或低刺激场景；可与高对比度同时使用。',
         },
         navigation: {
+          layoutMode: '布局模式',
+          layoutModeHint: '三种模式共用同一导航模型、页面栈与权限，只改变导航呈现位置。',
+          layoutVertical: '侧边导航',
+          layoutVerticalDescription: '左侧导航 + 顶部工具栏（默认）。',
+          layoutHorizontal: '顶部导航',
+          layoutHorizontalDescription: '一级导航移到顶部，不显示侧栏。',
+          layoutMixed: '混合导航',
+          layoutMixedDescription: '顶部显示一级分组，侧栏显示当前分组的下级菜单。',
           sidebarBehavior: '侧边栏状态',
           scrollToTopOnNavigate: '跳转后自动滚动到顶部',
           breadcrumbs: '显示面包屑',
@@ -251,6 +270,61 @@ export const pluginI18nResources = {
           sharedContrast: '高对比度（外观）',
           goToAppearance: '前往外观分类',
         },
+        security: {
+          watermark: '显示水印',
+          watermarkDescription:
+            '在内容区叠加当前账号标识，降低截图外传风险；属视觉提示，不是防篡改或访问控制。',
+          watermarkText: '水印附加文字',
+          watermarkTextPlaceholder: '例如：仅限内部使用',
+          watermarkTextHint:
+            '可选，最多 40 个字符；留空时只显示账号标识。该文字仅作视觉震慑，无法阻止截屏或复制。',
+          watermarkTextDisabled: '先启用“显示水印”，再填写附加文字。',
+          watermarkCharacters: '已输入 {{count}} / 40 个字符',
+          idleLockMinutes: '空闲锁屏',
+          idleLockMinutesHint:
+            '连续无操作达到所选时长后锁定界面，需要重新验证身份才能继续；与手动锁定共用同一解锁流程。',
+          idleLockOff: '关闭',
+          idleLockOption: '{{count}} 分钟',
+          lockOnHidden: '页面进入后台时锁定',
+          lockOnHiddenDescription: '切换到其它标签页或最小化窗口时立即锁定。',
+          lockNow: '立即锁定',
+          lockNowHint:
+            '发出一次锁定请求，由运行环境（Host）接管锁定与解锁流程；浏览器预览仅触发事件，不会遮挡页面。',
+        },
+        transfer: {
+          title: '配置输出与导入',
+          description: '导出或复制当前偏好配置，在其它浏览器或环境导入同一套设置。',
+          copy: '复制当前配置',
+          copySuccess: '已复制当前配置',
+          copyFailure: '无法写入剪贴板',
+          copyFailureDescription: '浏览器未授予剪贴板权限，可改用“下载 JSON”或手动复制。',
+          download: '下载 JSON',
+          downloadSuccess: '已开始下载配置文件',
+          import: '导入配置',
+          importTitle: '导入偏好配置',
+          importDescription:
+            '粘贴本产品导出的 JSON 配置。导入只覆盖配置中真正发生变化的分类，其余分类保持不变。',
+          importLabel: '配置 JSON',
+          importPlaceholder: '{"kind":"community-go.preferences","version":2,...}',
+          importHint: '仅接受本产品导出的配置文件；校验失败时不会修改任何设置。',
+          importConfirm: '导入',
+          importDone: '已导入 {{count}} 个分类的配置',
+          importNoChange: '配置与当前设置一致，无需导入',
+          importInvalid: '无法导入该配置',
+          importInvalidDescription: '请检查以下问题后重试；当前设置未被修改。',
+          importPartial: '有 {{count}} / {{total}} 个分类未能保存到此浏览器',
+          issues: {
+            empty: '配置内容为空',
+            invalidJson: '不是有效的 JSON',
+            notObject: '配置必须是一个对象',
+            wrongKind: '不是本产品导出的偏好配置',
+            unsupportedVersion: '不支持的配置版本',
+            futureVersion: '配置版本高于当前支持的版本',
+            missingPreferences: '缺少 preferences 字段',
+            invalidField: '字段无效：{{field}}',
+            unknown: '未知问题',
+          },
+        },
         shortcuts: {
           enabled: '启用快捷键',
           showHints: '显示快捷键提示',
@@ -270,6 +344,7 @@ export const pluginI18nResources = {
         navGroups: {
           display: 'Display & data',
           preferences: 'Preferences & feedback',
+          security: 'Security & privacy',
           assistive: 'Assistive & input',
         },
         searchLabel: 'Search settings',
@@ -287,12 +362,12 @@ export const pluginI18nResources = {
         restoreCategory: 'Restore defaults',
         restoreAllTitle: 'Restore all default settings?',
         restoreAllDescription:
-          'Restores all eight categories to defaults. Account and business data, favorites, recents, notifications, drafts, and saved filter schemes are kept.',
+          'Restores all nine categories to defaults. Account and business data, favorites, recents, notifications, drafts, and saved filter schemes are kept.',
         restoreCategoryTitle: 'Restore "{{category}}" defaults?',
         restoreCategoryDescription:
           'Restores this category only. Account and business data, favorites, recents, notifications, drafts, and saved filter schemes are kept.',
         restoreImpact:
-          'Will restore defaults for appearance, navigation, data display, actions, language & region, notifications, accessibility, and shortcuts.',
+          'Will restore defaults for appearance, navigation, data display, actions, language & region, notifications, accessibility, security & privacy, and shortcuts.',
         confirmRestore: 'Restore',
         cancel: 'Cancel',
         categories: {
@@ -303,6 +378,7 @@ export const pluginI18nResources = {
           localeRegion: 'Language & region',
           notifications: 'Notifications',
           accessibility: 'Accessibility',
+          security: 'Security & privacy',
           shortcuts: 'Shortcuts',
         },
         groups: {
@@ -323,6 +399,9 @@ export const pluginI18nResources = {
           protection: 'Drafts and confirmations',
           guidance: 'Focus and detail display',
           search: 'Refresh and search',
+          watermark: 'Watermark',
+          lock: 'Screen lock and background',
+          transfer: 'Export and import',
         },
         categoryIntro: {
           appearance: 'Theme, accent, density, font scale, content width, motion and contrast.',
@@ -332,6 +411,7 @@ export const pluginI18nResources = {
           locale: 'Language, time zone, date-time and number formats.',
           notifications: 'In-app notifications, unread, sound and desktop alerts.',
           accessibility: 'Focus, target size, keyboard hints and system assistive.',
+          security: 'Watermark, idle lock and locking when the page goes to background.',
           shortcuts: 'Shortcut toggle and hints.',
         },
         appearance: {
@@ -389,8 +469,24 @@ export const pluginI18nResources = {
           contrastSystem: 'Follow system',
           contrastStandard: 'Standard',
           contrastHigh: 'High contrast',
+          colorWeak: 'Color-weak assistance',
+          colorWeakDescription:
+            'Reduces hue separation while keeping lightness and structure, so similar colors stay distinguishable; data and state semantics are unchanged.',
+          grayscale: 'Grayscale display',
+          grayscaleDescription:
+            'Removes color overall for long reading sessions or low-stimulation contexts; can be combined with high contrast.',
         },
         navigation: {
+          layoutMode: 'Layout mode',
+          layoutModeHint:
+            'All three modes share the same navigation model, page stack and permissions; only the placement of navigation changes.',
+          layoutVertical: 'Sidebar navigation',
+          layoutVerticalDescription: 'Left navigation with a top toolbar (default).',
+          layoutHorizontal: 'Top navigation',
+          layoutHorizontalDescription: 'First-level navigation moves to the top; no sidebar.',
+          layoutMixed: 'Mixed navigation',
+          layoutMixedDescription:
+            'First-level groups sit in the top bar; the sidebar shows the current group’s submenu.',
           sidebarBehavior: 'Sidebar state',
           scrollToTopOnNavigate: 'Scroll to top on navigation',
           breadcrumbs: 'Show breadcrumbs',
@@ -519,6 +615,66 @@ export const pluginI18nResources = {
           sharedMotion: 'Motion preference (Appearance)',
           sharedContrast: 'Contrast (Appearance)',
           goToAppearance: 'Go to Appearance',
+        },
+        security: {
+          watermark: 'Show watermark',
+          watermarkDescription:
+            'Overlays the current account identifier on the content area to reduce the risk of leaked screenshots; it is a visual deterrent, not tamper protection or access control.',
+          watermarkText: 'Watermark extra text',
+          watermarkTextPlaceholder: 'e.g. Internal use only',
+          watermarkTextHint:
+            'Optional, up to 40 characters; leave empty to show only the account identifier. The text is a visual deterrent and cannot prevent screenshots or copying.',
+          watermarkTextDisabled: 'Enable “Show watermark” first, then add extra text.',
+          watermarkCharacters: '{{count}} / 40 characters',
+          idleLockMinutes: 'Idle screen lock',
+          idleLockMinutesHint:
+            'Locks the interface after the selected period without input and requires re-authentication to continue; it shares the same unlock flow as manual locking.',
+          idleLockOff: 'Off',
+          idleLockOption: '{{count}} minutes',
+          lockOnHidden: 'Lock when the page goes to background',
+          lockOnHiddenDescription:
+            'Locks immediately when switching to another tab or minimizing the window.',
+          lockNow: 'Lock now',
+          lockNowHint:
+            'Sends one lock request; the runtime host owns the lock and unlock flow. In a browser preview only the event fires and the page is not covered.',
+        },
+        transfer: {
+          title: 'Export and import',
+          description:
+            'Export or copy the current preferences to apply the same setup in another browser or environment.',
+          copy: 'Copy current preferences',
+          copySuccess: 'Current preferences copied',
+          copyFailure: 'Could not write to the clipboard',
+          copyFailureDescription:
+            'The browser did not grant clipboard access; use “Download JSON” or copy manually instead.',
+          download: 'Download JSON',
+          downloadSuccess: 'Configuration download started',
+          import: 'Import preferences',
+          importTitle: 'Import preference configuration',
+          importDescription:
+            'Paste a JSON configuration exported by this product. Only categories that actually change are written; other categories stay as they are.',
+          importLabel: 'Configuration JSON',
+          importPlaceholder: '{"kind":"community-go.preferences","version":2,...}',
+          importHint:
+            'Only configurations exported by this product are accepted; nothing is changed when validation fails.',
+          importConfirm: 'Import',
+          importDone: 'Imported {{count}} categories',
+          importNoChange: 'Configuration matches current settings; nothing to import',
+          importInvalid: 'This configuration cannot be imported',
+          importInvalidDescription:
+            'Resolve the issues below and try again; current settings were not changed.',
+          importPartial: '{{count}} of {{total}} categories could not be saved to this browser',
+          issues: {
+            empty: 'Configuration is empty',
+            invalidJson: 'Not valid JSON',
+            notObject: 'Configuration must be an object',
+            wrongKind: 'Not a preference configuration exported by this product',
+            unsupportedVersion: 'Unsupported configuration version',
+            futureVersion: 'Configuration version is newer than this build supports',
+            missingPreferences: 'Missing the preferences field',
+            invalidField: 'Invalid field: {{field}}',
+            unknown: 'Unknown issue',
+          },
         },
         shortcuts: {
           enabled: 'Enable shortcuts',

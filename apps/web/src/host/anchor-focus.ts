@@ -16,6 +16,7 @@ export function focusRouteAnchor(href: string, resetScroll = false): void {
   let frame = 0;
   const dispose = () => {
     observer.disconnect();
+    clearInterval(interval);
     clearTimeout(timeout);
     cancelAnimationFrame(frame);
     if (cancelPending === dispose) cancelPending = undefined;
@@ -42,6 +43,9 @@ export function focusRouteAnchor(href: string, resetScroll = false): void {
   };
   const observer = new MutationObserver(locate);
   observer.observe(document.body, { childList: true, subtree: true });
+  // 页面实现按需加载时，路由提交可能只替换 Suspense 子树而错过 childList 观察；
+  // 轮询兜底保证滚顶/锚点定位在内容就绪后仍然执行（dispose 时统一清理）。
+  const interval = setInterval(locate, 50);
   const timeout = setTimeout(dispose, 5000);
   cancelPending = dispose;
   locate();

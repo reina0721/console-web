@@ -134,6 +134,11 @@
       "allowed": ["apps/web", "surfaces"],
       "category": "client-state"
     },
+    "tw-animate-css": {
+      "owner": "HeroUI component enter/exit animation utilities consumed by UI Adapter styles",
+      "allowed": ["apps/web"],
+      "category": "ui"
+    },
     "@internationalized/date": {
       "owner": "UI Adapter calendar value parsing for HeroUI date controls",
       "allowed": ["packages/ui-adapter"]

@@ -50,11 +50,10 @@ for (const width of [1440, 390]) {
         return false;
       }),
     ).toBe(false);
-    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-    await expect(page.locator('#settings-appearance-contrast')).toHaveAttribute(
-      'data-reveal',
-      'revealed',
-    );
+    // 末尾字段（灰阶）在窄屏会落在设置页脚之上：直接滚到该行，仍验证"最后一行进入视口才揭示"。
+    const lastRow = page.locator('#settings-appearance-grayscale');
+    await lastRow.scrollIntoViewIfNeeded();
+    await expect(lastRow).toHaveAttribute('data-reveal', 'revealed');
     await page.waitForTimeout(350);
     await page.evaluate(() => scrollTo(0, 0));
     await density.scrollIntoViewIfNeeded();

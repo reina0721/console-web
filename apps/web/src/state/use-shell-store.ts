@@ -96,6 +96,7 @@ function parsePersistedPreferences(persisted: unknown): Preferences | null {
     localeRegion: { ...defaultPreferences.localeRegion, ...patch.localeRegion },
     notifications: { ...defaultPreferences.notifications, ...patch.notifications },
     accessibility: { ...defaultPreferences.accessibility, ...patch.accessibility },
+    security: { ...defaultPreferences.security, ...patch.security },
     shortcuts: { ...defaultPreferences.shortcuts, ...patch.shortcuts },
   };
 }
@@ -187,7 +188,13 @@ export const useShellStore = createPersistStore<ShellState, ShellPersisted>(
           'community-go.shell 持久化记录损坏或版本未知：拒绝静默覆盖，请检查本地数据或恢复默认。',
         );
       }
-      return { preferences: parsed };
+      // 版本升级必须保留 remember 策略下的侧栏状态（否则 v1 记录的折叠状态丢失）。
+      const remembered = (persisted as { rememberedSidebarCollapsed?: unknown } | null)
+        ?.rememberedSidebarCollapsed;
+      return {
+        preferences: parsed,
+        ...(typeof remembered === 'boolean' ? { rememberedSidebarCollapsed: remembered } : {}),
+      };
     },
     // 合并后同步兼容投影（zustand 默认 merge 不跑 partialize 投影，需显式保持）。
     merge: (persistedState, currentState) => {

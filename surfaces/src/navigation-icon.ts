@@ -54,6 +54,12 @@ export const navigationIconVocabulary = [
   'account',
   'notifications',
   'api',
+  // 分析 / 工作台 / 系统管理（菜单、部门、字典）语义
+  'analytics',
+  'workspace',
+  'menu',
+  'department',
+  'dictionary',
 ] as const;
 
 /** 合法 semantic icon id。 */

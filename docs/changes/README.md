@@ -1,5 +1,8 @@
 # Frontend 变更记录
 
+- [116 Vben 对标产品实施](116-vben-parity-implementation/README.md)：六类能力全部落地（演示身份、多布局/页签、偏好/水印/锁屏、表格生产力、菜单/部门/字典、Analytics 与 Workspace），含 Vben 线上实测对照、决策与验证证据。
+- [115 Vben 对标需求校准](115-vben-parity-calibration/README.md)：六项源码核对、重复与冲突纠正、独立 VP 编号、候选实施清单和验证；仅文档，未实施产品功能（结论已由 116 逐项实施并修订）。
+
 - [114 API 工作台第二轮优化](114-api-workbench-refinement/README.md)：导航边界、响应式布局、中文术语、独立历史草稿及真实浏览器验证。
 
 - [113 API Workbench 多端 UI/UX 优化](113-api-workbench-ui-ux/README.md)：容器布局、项目抽屉、请求表单、真实执行、草稿持久化与多端交互验收。

@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@community-go/core": "workspace:*",
     "@community-go/state-foundation": "workspace:*",
     "@community-go/plugin-framework": "workspace:*",
     "@community-go/surface-foundation": "workspace:*",

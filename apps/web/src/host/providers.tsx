@@ -24,6 +24,7 @@ import { ApiWorkbenchRuntime } from '../api-workbench/runtime';
 import { AppLoadingSurface } from './app-loading-surface';
 import { createHostCommandsPort } from './commands-port';
 import { GlobalProgressProvider } from './global-progress-provider';
+import { NavigationAdminPortProvider } from './navigation-admin-port';
 import { LeaveConfirmationGuard } from './leave-confirm-dialog';
 import { createHostLeaveConfirmPort } from './leave-confirm-port';
 import { MotionPolicyProvider } from './motion-policy';
@@ -112,6 +113,9 @@ function RuntimeProviders({ children }: Readonly<{ children: ReactNode }>) {
     html.dataset.fontScale = preferences.appearance.fontScale;
     html.dataset.contentWidth = preferences.appearance.contentWidth;
     html.dataset.contrast = preferences.appearance.contrast;
+    // 色弱 / 灰阶辅助：纯视觉滤镜（tokens.css 保留外层 data-* 覆盖），默认 off。
+    html.dataset.colorWeak = preferences.appearance.colorWeak ? 'on' : 'off';
+    html.dataset.grayscale = preferences.appearance.grayscale ? 'on' : 'off';
     // 可访问性增强（默认关；只增强）：焦点轮廓 / 交互区域尺寸 data-* → tokens.css
     // 保留外层覆盖；跟随系统辅助设置 → 监听 prefers-contrast 写 data-system-contrast。
     html.dataset.enhanceFocus = preferences.accessibility.enhanceFocus ? 'on' : 'off';
@@ -157,6 +161,8 @@ function RuntimeProviders({ children }: Readonly<{ children: ReactNode }>) {
     preferences.appearance.fontScale,
     preferences.appearance.contentWidth,
     preferences.appearance.contrast,
+    preferences.appearance.colorWeak,
+    preferences.appearance.grayscale,
     preferences.accessibility.enhanceFocus,
     preferences.accessibility.enhanceTargetSize,
     preferences.accessibility.followSystemAssistive,
@@ -168,45 +174,47 @@ function RuntimeProviders({ children }: Readonly<{ children: ReactNode }>) {
 
   return (
     <PreferencesProvider port={preferencesPort}>
-      <WorkspaceProvider port={workspacePort}>
-        <WorkbenchProvider port={workbenchPort}>
-          <CommandsProvider port={commandsPort}>
-            <NotificationsProvider port={notificationsPort}>
-              <LeaveConfirmProvider port={leaveConfirmPort}>
-                <LeaveConfirmationGuard>
-                  <FeedbackProvider
-                    closeLabel={t('common.close')}
-                    loadingLabel={t('common.feedbackLoading')}
-                    toastDurationMs={toastDurationMs}
-                  >
-                    <ApiWorkbenchRuntime>
-                      {hydrationIssue ? (
-                        <div className="mx-auto max-w-screen-2xl p-4 sm:p-6 xl:p-8">
-                          <AlertBanner
-                            actionLabel={t('shell.recoverDefaults')}
-                            announcement="urgent"
-                            description={hydrationIssue.reason}
-                            icon={<AlertTriangle className="size-4" aria-hidden="true" />}
-                            onAction={() => {
-                              // 恢复默认：清除损坏记录并重载（不触碰收藏/通知/草稿等
-                              // 独立 Store）。
-                              window.localStorage.removeItem('community-go.shell');
-                              window.location.reload();
-                            }}
-                            title={t('shell.hydrationIssueTitle')}
-                            tone="warning"
-                          />
-                        </div>
-                      ) : null}
-                      {children}
-                    </ApiWorkbenchRuntime>
-                  </FeedbackProvider>
-                </LeaveConfirmationGuard>
-              </LeaveConfirmProvider>
-            </NotificationsProvider>
-          </CommandsProvider>
-        </WorkbenchProvider>
-      </WorkspaceProvider>
+      <NavigationAdminPortProvider>
+        <WorkspaceProvider port={workspacePort}>
+          <WorkbenchProvider port={workbenchPort}>
+            <CommandsProvider port={commandsPort}>
+              <NotificationsProvider port={notificationsPort}>
+                <LeaveConfirmProvider port={leaveConfirmPort}>
+                  <LeaveConfirmationGuard>
+                    <FeedbackProvider
+                      closeLabel={t('common.close')}
+                      loadingLabel={t('common.feedbackLoading')}
+                      toastDurationMs={toastDurationMs}
+                    >
+                      <ApiWorkbenchRuntime>
+                        {hydrationIssue ? (
+                          <div className="mx-auto max-w-screen-2xl p-4 sm:p-6 xl:p-8">
+                            <AlertBanner
+                              actionLabel={t('shell.recoverDefaults')}
+                              announcement="urgent"
+                              description={hydrationIssue.reason}
+                              icon={<AlertTriangle className="size-4" aria-hidden="true" />}
+                              onAction={() => {
+                                // 恢复默认：清除损坏记录并重载（不触碰收藏/通知/草稿等
+                                // 独立 Store）。
+                                window.localStorage.removeItem('community-go.shell');
+                                window.location.reload();
+                              }}
+                              title={t('shell.hydrationIssueTitle')}
+                              tone="warning"
+                            />
+                          </div>
+                        ) : null}
+                        {children}
+                      </ApiWorkbenchRuntime>
+                    </FeedbackProvider>
+                  </LeaveConfirmationGuard>
+                </LeaveConfirmProvider>
+              </NotificationsProvider>
+            </CommandsProvider>
+          </WorkbenchProvider>
+        </WorkspaceProvider>
+      </NavigationAdminPortProvider>
     </PreferencesProvider>
   );
 }

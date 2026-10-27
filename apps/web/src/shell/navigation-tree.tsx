@@ -21,10 +21,12 @@ export function NavigationTree({
   groups,
   compact = false,
   onNavigate,
+  labelOverrides,
 }: Readonly<{
   groups: readonly NavigationGroup[];
   compact?: boolean;
   onNavigate?: (() => void) | undefined;
+  labelOverrides?: Readonly<Record<string, string>>;
 }>) {
   const { t } = useFrontendTranslation();
   const currentPath = usePathname();
@@ -82,7 +84,7 @@ export function NavigationTree({
     ),
   };
   const presenter: NavigationPresenter = {
-    translate: (key, values) => (values ? t(key, values) : t(key)),
+    translate: (key, values) => labelOverrides?.[key] ?? (values ? t(key, values) : t(key)),
     icon: (iconId, active) =>
       createElement(resolveNavigationIcon(iconId), {
         className: 'size-full shrink-0',

@@ -55,4 +55,39 @@ describe('页面标签 store（page-tabs，SET-005-002）', () => {
     usePageTabsStore.getState().pruneTabs(new Set(['/valid-a']));
     expect(usePageTabsStore.getState().tabs.map((t) => t.pathname)).toEqual(['/valid-a']);
   });
+
+  it('固定标签：置于最前、不可关闭、批量关闭保留固定项', () => {
+    usePageTabsStore.setState({ tabs: [] });
+    const store = usePageTabsStore.getState();
+    store.openTab({ pathname: '/a', title: 'A' });
+    store.openTab({ pathname: '/b', title: 'B' });
+    store.openTab({ pathname: '/c', title: 'C' });
+    usePageTabsStore.getState().setPinned('/b', true);
+    expect(usePageTabsStore.getState().tabs.map((t) => t.pathname)).toEqual(['/b', '/a', '/c']);
+    // 固定标签不可关闭。
+    expect(usePageTabsStore.getState().closeTab('/b')).toBeNull();
+    expect(usePageTabsStore.getState().tabs).toHaveLength(3);
+    // "关闭其他"与"关闭全部"都保留固定项。
+    usePageTabsStore.getState().closeOtherTabs('/a');
+    expect(usePageTabsStore.getState().tabs.map((t) => t.pathname)).toEqual(['/b', '/a']);
+    usePageTabsStore.getState().closeAllTabs();
+    expect(usePageTabsStore.getState().tabs.map((t) => t.pathname)).toEqual(['/b']);
+    // 取消固定后可关闭；重新打开同一 pathname 不丢失固定状态。
+    usePageTabsStore.getState().openTab({ pathname: '/b', title: 'B2' });
+    expect(usePageTabsStore.getState().tabs[0]?.pinned).toBe(true);
+    usePageTabsStore.getState().setPinned('/b', false);
+    expect(usePageTabsStore.getState().closeTab('/b')).toBe('/b');
+    expect(usePageTabsStore.getState().tabs).toHaveLength(0);
+  });
+
+  it('关闭左侧/右侧：以目标标签为界，固定标签不受影响', () => {
+    usePageTabsStore.setState({ tabs: [] });
+    const store = usePageTabsStore.getState();
+    for (const path of ['/a', '/b', '/c', '/d']) store.openTab({ pathname: path, title: path });
+    usePageTabsStore.getState().setPinned('/a', true);
+    usePageTabsStore.getState().closeTabsBeside('/c', 'left');
+    expect(usePageTabsStore.getState().tabs.map((t) => t.pathname)).toEqual(['/a', '/c', '/d']);
+    usePageTabsStore.getState().closeTabsBeside('/c', 'right');
+    expect(usePageTabsStore.getState().tabs.map((t) => t.pathname)).toEqual(['/a', '/c']);
+  });
 });

@@ -11,6 +11,7 @@
     "./busy-indicator": "./src/busy-indicator.tsx",
     "./content-swap-transition": "./src/content-swap-transition.tsx",
     "./card": "./src/card.tsx",
+    "./charts": "./src/charts/index.ts",
     "./command-menu": "./src/command-menu.tsx",
     "./data-display": "./src/data-display.tsx",
     "./date-picker-field": "./src/date-picker-field.tsx",

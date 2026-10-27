@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { e2eBaseUrl } from './base-url';
 import AxeBuilder from '@axe-core/playwright';
 
 for (const width of [1440, 320]) {
@@ -6,7 +7,7 @@ for (const width of [1440, 320]) {
     browser,
   }) => {
     const context = await browser.newContext({
-      baseURL: 'http://127.0.0.1:4173',
+      baseURL: e2eBaseUrl,
       viewport: { width, height: 900 },
     });
     try {
@@ -49,7 +50,7 @@ for (const width of [1440, 320]) {
 test('System contrast responds independently of the assistive-settings toggle', async ({
   browser,
 }) => {
-  const context = await browser.newContext({ baseURL: 'http://127.0.0.1:4173', contrast: 'more' });
+  const context = await browser.newContext({ baseURL: e2eBaseUrl, contrast: 'more' });
   try {
     const page = await context.newPage();
     await page.goto('/settings/accessibility');
@@ -86,7 +87,7 @@ test('Mobile category navigation honors scroll preference after drawer focus res
   browser,
 }) => {
   const context = await browser.newContext({
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: e2eBaseUrl,
     viewport: { width: 390, height: 844 },
     hasTouch: true,
   });
@@ -128,7 +129,7 @@ for (const width of [1440, 390, 320]) {
     browser,
   }) => {
     const context = await browser.newContext({
-      baseURL: 'http://127.0.0.1:4173',
+      baseURL: e2eBaseUrl,
       locale: 'zh-CN',
       viewport: { width, height: 900 },
       hasTouch: width < 500,

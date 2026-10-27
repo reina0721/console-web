@@ -25,7 +25,9 @@ test('跳转后自动滚顶默认开：长页滚下后导航到设置 → 回到
   expect(before).toBeGreaterThan(100);
   await spaToSettings(page);
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
-  await page.waitForTimeout(500);
+  // 页面实现按需加载：等真实内容出现再断言滚动位置（固定等待在 dev 冷编译下不稳定）。
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+  await page.waitForTimeout(300);
   const after = await page.evaluate(() => window.scrollY);
   expect(after).toBeLessThan(50);
 });
@@ -48,7 +50,8 @@ test('关闭 跳转后自动滚顶：长页滚下后导航保持滚动位置', a
   await page.waitForTimeout(300);
   await spaToSettings(page);
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
-  await page.waitForTimeout(500);
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+  await page.waitForTimeout(300);
   const after = await page.evaluate(() => window.scrollY);
   expect(after).toBeGreaterThan(100);
 });

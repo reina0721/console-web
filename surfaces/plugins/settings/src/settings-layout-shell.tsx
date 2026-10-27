@@ -30,6 +30,7 @@ import {
   type SettingsCategoryMeta,
 } from './settings-categories';
 import { RestoreAllButton, RestoreCategoryButton } from './restore-defaults';
+import { PreferencesTransferPanel } from './preferences-transfer-panel';
 import { normalizeSearchTerm, searchSettings } from './settings-index';
 
 /* ------------------------------------------------------------------ */
@@ -268,13 +269,17 @@ export function SettingsRestoreActions({
 }: Readonly<{ meta: SettingsCategoryMeta; onResult: (result: PersistResult) => void }>) {
   const { t } = useFrontendTranslation();
   return (
-    <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-      <RestoreCategoryButton
-        category={meta.categoryKey}
-        categoryLabel={t(meta.labelKey)}
-        onResult={onResult}
-      />
-      <RestoreAllButton onResult={onResult} />
+    <div className="grid gap-4 border-t border-border pt-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <RestoreCategoryButton
+          category={meta.categoryKey}
+          categoryLabel={t(meta.labelKey)}
+          onResult={onResult}
+        />
+        <RestoreAllButton onResult={onResult} />
+      </div>
+      {/* 配置输出/导入：分类页脚常驻，保存与恢复之外提供可携带的配置。 */}
+      <PreferencesTransferPanel onResult={onResult} />
     </div>
   );
 }

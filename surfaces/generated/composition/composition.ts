@@ -11,9 +11,13 @@ import {
 } from '../../src/composition';
 import { surfaceShellI18nResources } from '../../src/i18n';
 import { pluginI18nResources as pluginI18nResources_account } from '../../plugins/account/i18n';
+import { pluginI18nResources as pluginI18nResources_analytics } from '../../plugins/analytics/i18n';
 import { pluginI18nResources as pluginI18nResources_api_workbench } from '../../plugins/api-workbench/i18n';
 import { pluginI18nResources as pluginI18nResources_audit } from '../../plugins/audit/i18n';
+import { pluginI18nResources as pluginI18nResources_departments } from '../../plugins/departments/i18n';
+import { pluginI18nResources as pluginI18nResources_dictionaries } from '../../plugins/dictionaries/i18n';
 import { pluginI18nResources as pluginI18nResources_foundations } from '../../plugins/foundations/i18n';
+import { pluginI18nResources as pluginI18nResources_menus } from '../../plugins/menus/i18n';
 import { pluginI18nResources as pluginI18nResources_motion } from '../../plugins/motion/i18n';
 import { pluginI18nResources as pluginI18nResources_notifications } from '../../plugins/notifications/i18n';
 import { pluginI18nResources as pluginI18nResources_page_archetypes } from '../../plugins/page-archetypes/i18n';
@@ -26,6 +30,7 @@ import { pluginI18nResources as pluginI18nResources_system_settings } from '../.
 import { pluginI18nResources as pluginI18nResources_system_tools } from '../../plugins/system-tools/i18n';
 import { pluginI18nResources as pluginI18nResources_ui_elements } from '../../plugins/ui-elements/i18n';
 import { pluginI18nResources as pluginI18nResources_users } from '../../plugins/users/i18n';
+import { pluginI18nResources as pluginI18nResources_workspace } from '../../plugins/workspace/i18n';
 
 export const generatedSurfaceRegistry: RegistryModel = createRegistry(generatedRouteCatalog);
 
@@ -35,9 +40,13 @@ assertValidSurfaceRegistry(generatedSurfaceRegistry);
 export const generatedSurfaceI18nResources: TranslationResources = mergeTranslationResources(
   surfaceShellI18nResources,
   pluginI18nResources_account,
+  pluginI18nResources_analytics,
   pluginI18nResources_api_workbench,
   pluginI18nResources_audit,
+  pluginI18nResources_departments,
+  pluginI18nResources_dictionaries,
   pluginI18nResources_foundations,
+  pluginI18nResources_menus,
   pluginI18nResources_motion,
   pluginI18nResources_notifications,
   pluginI18nResources_page_archetypes,
@@ -50,6 +59,7 @@ export const generatedSurfaceI18nResources: TranslationResources = mergeTranslat
   pluginI18nResources_system_tools,
   pluginI18nResources_ui_elements,
   pluginI18nResources_users,
+  pluginI18nResources_workspace,
 );
 
 export const generatedSurfaceComposition: SurfaceComposition = {

@@ -255,3 +255,38 @@ Flyout 有标题和完整子树，键盘内部焦点不会因指针离开关闭�
 ## 容器编排 Browser Adapter
 
 `@community-go/ui-adapter/container-layout` 的 `useContainerBreakpoint` 只在内容需要改变编排时提供容器阈值与 ref（4xl/7xl，读取 Design System 保留的 Tailwind 原有命名尺度）。ResizeObserver、所属文档字号换算与卸载清理留在 Browser Adapter；普通视觉响应式继续使用 Tailwind 容器 utility。它不提供第二套路由、浮层、选择或 Motion 状态机，也不更改已有 Element 默认值。当前消费为 API Workbench 单套编辑器的窄屏/主从编排，证据见 [容器测试](../apps/web/src/test/container-layout.test.tsx) 和 [113 多端验收](changes/113-api-workbench-ui-ux/README.md)。
+
+## 图表 Charts（116）
+
+`packages/ui-adapter/src/charts` 是产品级图表 primitive 的唯一实现，Analytics 与未来业务图表
+必须复用它，不得在页面自绘 SVG 或引入第二套图表依赖。
+
+- 组件：`AreaChart`（多序列 + 轴刻度 + 数据点）、`DonutChart`（段 + 图例/占比）、
+  `BarChart`（横向条形）、`Sparkline`（KPI 迷你趋势）。
+- 纯几何：`charts/scale.ts`（`scaleLinear`、`createTicks`、`normalizeDomain`、
+  `buildAreaChartGeometry` / `buildDonutGeometry` / `buildBarGeometry` / `buildSparklineGeometry`），
+  与 DOM 无关，可单测。
+- Token：颜色只能用语义 `--color-chart-1..5`（light/dark 均由 Design System schema 生成），
+  禁止 hex 或图表自带色板。
+- 可访问性：SVG `role="img"` + `aria-label`；每个图表附带视觉隐藏的数据表（caption = 标题）；
+  Area/Donut/Bar 的数据点使用 **roving tabindex**（每图一个 Tab 停靠点，←/→ 移动并读出数值），
+  Sparkline 不逐点聚焦（避免每卡几十个 Tab 停靠）。
+- 响应式：`viewBox` + `preserveAspectRatio` + `w-full`，无固定像素宽度；不使用动画，
+  因此天然满足 reduced motion。
+- Showcase/业务同源：Analytics 页面与 `/ui-elements` 消费同一组件。
+
+## 表格生产力组合 Collection Tools（116）
+
+`packages/surface-foundation/src/collection-tools.tsx` 是"列设置 / 密度 / 导出 / 工具栏"的共享组合，
+业务页与 Showcase 必须使用同一实现（此前仅存在于 page-archetypes 的私有实现已收敛）。
+
+- `ColumnSettingsDialog`：可见性 + 顺序（↑/↓，非拖拽）+ 强制列 + 重置；受控 `isOpen`。
+- `DensityToggle`：三档（compact/standard/comfortable）映射 DataTable 的 `density`。
+- `ExportMenu`：导出动作菜单（CSV/JSON 由业务提供数据；菜单只管选择与可访问触发）。
+- `CollectionToolbar`：把上述能力组合为 Toolbar；文案全部由宿主传入（无内置中文）。
+- 纯函数在 `@community-go/core`：`normalizeColumnLayout`（去重/丢弃退役列/强制列前置）
+  与 `toCsv`（RFC 4180 引号/换行转义、确定列顺序）。
+- DataTable 扩展（不接管请求/搜索/分页/导出）：`density` 三档、`pinnedColumnIds`（sticky 首列，
+  偏移来自显式宽度或测量）、`tree`（`childrenOf`/`expandedIds`/`onExpandedChange`/`depthOf`，
+  `aria-expanded` + `aria-level` + 缩进）。
+- 持久化仍属业务：users/audit 各自持有列布局 store（按用户或页面），Showcase 仅本地状态。

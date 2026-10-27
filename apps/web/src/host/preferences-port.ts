@@ -43,7 +43,7 @@ function parseStoredSnapshot(raw: string | null): Preferences | null {
     if (preferences === undefined || typeof preferences !== 'object' || preferences === null) {
       return null;
     }
-    // 完整快照必须含全部八分类（partialize 写全量）；缺分类视为损坏，不静默覆盖。
+    // 完整快照必须含全部九分类（partialize 写全量）；缺分类视为损坏，不静默覆盖。
     const required = [
       'appearance',
       'navigation',
@@ -52,6 +52,7 @@ function parseStoredSnapshot(raw: string | null): Preferences | null {
       'localeRegion',
       'notifications',
       'accessibility',
+      'security',
       'shortcuts',
     ] as const;
     const record = preferences as Record<string, unknown>;

@@ -66,3 +66,16 @@ Nav 控制使用 data-navigation-control 标记：Flyout Trigger/侧栏模式切
 Host 的 remember 在原 v1 key 中追加可选上次模式字段，缺字段旧记录保持默认行为；
 主题/语言等无关偏好更新不复位侧栏。设计与验证见
 [Sidebar 专项](changes/109-ui-ux-optimization/design/sidebar-review.md)。
+
+## 布局模式与菜单呈现覆盖（116）
+
+- `ShellRoot` 接受 `layout?: 'vertical' | 'horizontal'`，并以 `data-layout` 切换网格：
+  `horizontal` 时只有单列（侧栏由 Host 省略），`vertical` 保持 sidebar + content 两列。
+  混合布局由 Host 在 `vertical` 网格内只渲染当前分组，不新增第三套网格。
+- 三种布局（侧边 / 顶部 / 混合）共用同一 Navigation 模型、权限过滤和路由；导航正文仍由
+  `ShellNavigation` 拥有，顶部导航只做分组入口重组。
+- **菜单标题/可见性/排序/权限码覆盖属于 Host 运行期业务数据**（`community-go.navigation-admin`
+  - `@community-go/plugin-framework/navigation-admin` Port），不是 Surface Foundation 契约；
+    Surface 只消费已经决定好的 groups。部署期 Plugin Registry 仍是路由与组件唯一真相。
+- 水印与锁屏属于 Host Shell 表现（需要当前身份与全局遮挡），不下沉到 Foundation；
+  Foundation 不反向依赖身份或会话。

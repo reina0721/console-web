@@ -425,10 +425,12 @@ export function ShellNavigation({
 export function ShellRoot({
   children,
   collapsed = false,
-}: Readonly<{ children: ReactNode; collapsed?: boolean }>) {
+  layout = 'vertical',
+}: Readonly<{ children: ReactNode; collapsed?: boolean; layout?: 'vertical' | 'horizontal' }>) {
   return (
     <div
       className="surface-shell-grid min-h-screen bg-canvas text-ink"
+      data-layout={layout}
       data-sidebar={collapsed ? 'collapsed' : 'expanded'}
     >
       {children}

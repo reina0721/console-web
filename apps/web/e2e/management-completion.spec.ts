@@ -197,8 +197,10 @@ for (const width of [320, 390])
     await expect(calendarTrigger).toBeFocused();
     await page.getByRole('button', { name: '清除筛选', exact: true }).click();
     await expect(page).toHaveURL(/\/audit-logs$/);
-    await expect(page.locator('main details')).not.toHaveAttribute('open');
-    await page.getByText('筛选条件', { exact: true }).click();
+    // 高级筛选区由 CollectionQuery 折叠披露承载（不再是 <details>）。
+    const filtersToggle = page.getByRole('button', { name: /筛选条件/ });
+    await expect(filtersToggle).toHaveAttribute('aria-expanded', 'false');
+    await filtersToggle.click();
     await expect(field.getByRole('spinbutton', { name: /年|year/i })).not.toHaveAttribute(
       'aria-valuenow',
     );
@@ -207,6 +209,8 @@ for (const width of [320, 390])
     await page.getByRole('button', { name: '批量停用', exact: true }).click();
     const confirmation = page.getByRole('alertdialog');
     await expect(confirmation).toBeVisible();
+    // Overlay enter 动画结束再做 Axe 扫描：半透明过渡态会得到被混合后的低对比度读数。
+    await expect(page.locator('[data-entering]')).toHaveCount(0);
     expect(
       (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
         .violations,

@@ -43,6 +43,10 @@ test('七类 Page Archetype 在四级视口可直接验收', async ({ page }) =>
       await page.goto(route);
       await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      // 页面实现按需加载：等内容入场/揭示动画结束后再扫描，避免把过渡中的混合色判为对比度问题。
+      await page.waitForFunction(() =>
+        document.getAnimations().every((animation) => animation.playState !== 'running'),
+      );
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - window.innerWidth,
       );
@@ -60,16 +64,32 @@ test('七类 Page Archetype 在四级视口可直接验收', async ({ page }) =>
 
 test('Universal 与 Surface authority 视觉面保持分层', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  // 页面实现按需加载：截图前等入场/揭示动画结束，否则稳定产物也会出现混合帧差异。
+  const settle = async () => {
+    await page.waitForFunction(() =>
+      document.getAnimations().every((animation) => animation.playState !== 'running'),
+    );
+    await page.waitForFunction(
+      () => document.querySelectorAll('[data-reveal="pending"]').length === 0,
+    );
+  };
   await page.goto('/motion');
-  await expect.soft(page).toHaveScreenshot('universal-motion-desktop.png', { fullPage: true });
+  await settle();
+  await expect
+    .soft(page)
+    .toHaveScreenshot('universal-motion-desktop.png', { fullPage: true, animations: 'disabled' });
 
   await page.goto('/page-patterns/collections-data');
+  await settle();
   await expect.soft(page).toHaveScreenshot('page-patterns-collections-desktop.png', {
     fullPage: true,
+    animations: 'disabled',
   });
 
   await page.goto('/page-archetypes/overview');
+  await settle();
   await expect.soft(page).toHaveScreenshot('page-archetypes-overview-desktop.png', {
     fullPage: true,
+    animations: 'disabled',
   });
 });

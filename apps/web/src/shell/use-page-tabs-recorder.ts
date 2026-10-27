@@ -21,7 +21,7 @@ export function usePageTabsRecorder(entries: ReadonlyArray<{ href: string; label
     if (!valid.has(pathname)) return;
     if (!startedRef.current) {
       startedRef.current = true;
-      if (!restoreLastTabs) usePageTabsStore.getState().closeAllTabs();
+      if (!restoreLastTabs) usePageTabsStore.getState().resetTabs();
       else usePageTabsStore.getState().pruneTabs(valid);
     }
     let frame = 0;

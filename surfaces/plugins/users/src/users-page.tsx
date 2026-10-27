@@ -1,25 +1,33 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { formatDate, formatNumber, useFrontendTranslation } from '@community-go/i18n';
 import { Page, PageHeader } from '@community-go/surface-foundation/layout';
 import {
   Collection,
   CollectionPagination,
   CollectionQuery,
+  type CollectionActiveFilter,
 } from '@community-go/surface-foundation/collection';
+import {
+  CollectionToolbar,
+  type ColumnSettingsText,
+  type DensityLevel,
+} from '@community-go/surface-foundation/collection-tools';
+import { normalizeColumnLayout, toCsv, type CsvColumn } from '@community-go/core';
 import { Action } from '@community-go/ui-adapter/action';
 import { IconAction } from '@community-go/ui-adapter/icon-action';
 import { PaginationControl } from '@community-go/ui-adapter/navigation';
 import { DataTable, type DataColumn } from '@community-go/ui-adapter/data-display';
 import { SelectField, CheckboxField } from '@community-go/ui-adapter/form-field';
 import { ConfirmDialog } from '@community-go/ui-adapter/overlays';
+import { useFeedback } from '@community-go/ui-adapter/feedback-context';
 import { useRef } from 'react';
 import type { BatchStatusResult } from '@community-go/surface/identity/runtime';
 import { SearchBox } from '@community-go/ui-adapter/search-box';
 import { StateSurface } from '@community-go/ui-adapter/state-surface';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { NavigationIcon } from '@community-go/surface/icon-presentation';
-import { ArrowUpDown, Plus, RefreshCw, UserCheck, UserX, X } from '../../../src/action-icons';
+import { Plus, RefreshCw, UserCheck, UserX } from '../../../src/action-icons';
 import {
   useIdentityPort,
   IdentityError,
@@ -29,6 +37,7 @@ import {
 } from '@community-go/surface/identity/runtime';
 import { route, RouteLink, usePluginNavigation } from '@community-go/plugin-framework/plugin';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
+import { rehydrateStore } from '@community-go/state-foundation';
 import type { Preferences } from '@community-go/surface/preferences-model';
 import { useIdentityQuery } from '../../../src/identity/use-query';
 import {
@@ -36,12 +45,27 @@ import {
   IdentityModeNotice,
   IdentityMutationError,
 } from '../../../src/identity/query-state';
+import { useUsersColumnLayoutStore } from '../stores/column-layout';
+import { browserCsvExport } from './csv-export';
 
 export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
   const port = useIdentityPort();
   const { t, locale } = useFrontendTranslation();
+  const { notify } = useFeedback();
   const navigation = usePluginNavigation();
-  const preferences = usePreferencesPort<Preferences>().getSnapshot();
+  const preferencesPort = usePreferencesPort<Preferences>();
+  const preferences = preferencesPort.getSnapshot();
+  // 表格密度 / 列布局记忆：订阅偏好（Host port 可读写，写入即持久化到偏好 store）。
+  const tableDensity = useSyncExternalStore(
+    (onChange) => preferencesPort.subscribe(onChange),
+    () => preferencesPort.getSnapshot().dataDisplay.tableDensity,
+    () => preferencesPort.getSnapshot().dataDisplay.tableDensity,
+  );
+  const rememberColumnLayout = useSyncExternalStore(
+    (onChange) => preferencesPort.subscribe(onChange),
+    () => preferencesPort.getSnapshot().dataDisplay.rememberColumnLayout,
+    () => preferencesPort.getSnapshot().dataDisplay.rememberColumnLayout,
+  );
   const [filterError, setFilterError] = useState<IdentityError | null>(null);
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [batchNames, setBatchNames] = useState<ReadonlyMap<string, string>>(new Map());
@@ -158,6 +182,109 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
         ),
     },
   ];
+  // 列设置：用户目录列显隐/顺序按登录用户持久化（users 插件私有 store），
+  // 恢复时 normalizeColumnLayout 过滤退役列并把姓名标识列固定在首位。
+  const [columnOverride, setColumnOverride] = useState<readonly string[] | null>(null);
+  const userId = data?.access.user.id;
+  const savedColumnLayout = useUsersColumnLayoutStore((state) =>
+    userId ? state.layouts[userId] : undefined,
+  );
+  useEffect(() => {
+    rehydrateStore(useUsersColumnLayoutStore);
+  }, []);
+  const mandatoryColumns = new Set(['name']);
+  const canonicalColumnIds = columns.map((column) => column.id);
+  const visibleColumnIds =
+    columnOverride ??
+    normalizeColumnLayout(
+      canonicalColumnIds,
+      rememberColumnLayout ? savedColumnLayout?.visibleOrder : undefined,
+      mandatoryColumns,
+    );
+  const visibleColumns = visibleColumnIds.flatMap((id) => {
+    const column = columns.find((item) => item.id === id);
+    return column ? [column] : [];
+  });
+  const persistColumnOrder = (order: readonly string[]) => {
+    setColumnOverride(order);
+    if (!userId || !rememberColumnLayout) return;
+    useUsersColumnLayoutStore.getState().saveLayout(userId, { visibleOrder: order });
+  };
+  const resetColumnOrder = () => {
+    setColumnOverride(null);
+    if (userId) useUsersColumnLayoutStore.getState().resetLayout(userId);
+  };
+  const columnSettingsText: ColumnSettingsText = {
+    title: t('users.columnSettingsTitle'),
+    description: t('users.columnSettingsDescription'),
+    mandatory: t('users.columnMandatory'),
+    reset: t('users.columnReset'),
+    close: t('users.columnClose'),
+    moveUp: (columnLabel) => t('users.columnMoveUp', { column: columnLabel }),
+    moveDown: (columnLabel) => t('users.columnMoveDown', { column: columnLabel }),
+  };
+  // 密度走正式 Preferences Port（Host 提供读写实现）：写入即持久化到偏好 store。
+  const changeDensity = (value: DensityLevel) => {
+    const outcome = preferencesPort.updateCategory('dataDisplay', { tableDensity: value });
+    if (!outcome.ok) notify({ title: t('users.densityFailure'), tone: 'danger' });
+  };
+  const timeZone = preferences.localeRegion.timeZone;
+  const csvColumns: readonly CsvColumn[] = [
+    { id: 'name', label: t('identityProduct.name') },
+    { id: 'email', label: t('identityProduct.email') },
+    { id: 'status', label: t('identityProduct.status') },
+    { id: 'roles', label: t('identityProduct.roles') },
+    { id: 'createdAt', label: t('users.createdAt') },
+  ];
+  const exportCsv = async (users: readonly DirectoryUser[], fileName: string) => {
+    try {
+      const rows = users.map((user) => ({
+        name: user.name,
+        email: user.email,
+        status: t(`identityProduct.${user.status}`),
+        roles: user.roleIds.map(roleLabel).join(' / '),
+        createdAt: formatDate(locale, user.createdAt, timeZone === 'auto' ? {} : { timeZone }),
+      }));
+      await browserCsvExport.downloadCsv(fileName, toCsv(rows, csvColumns));
+      notify({ title: t('users.exportSuccess', { count: users.length }), tone: 'success' });
+    } catch {
+      notify({ title: t('users.exportFailure'), tone: 'danger' });
+    }
+  };
+  const activeFilters: readonly CollectionActiveFilter[] = query
+    ? [
+        ...(query.q
+          ? [
+              {
+                id: 'q',
+                label: `${t('users.search')}: ${query.q}`,
+                onRemove: () => {
+                  setSearch('');
+                  apply({ q: '', page: 1 });
+                },
+              },
+            ]
+          : []),
+        ...(query.status !== 'all'
+          ? [
+              {
+                id: 'status',
+                label: `${t('identityProduct.status')}: ${t(`identityProduct.${query.status}`)}`,
+                onRemove: () => apply({ status: 'all', page: 1 }),
+              },
+            ]
+          : []),
+        ...(query.roleId !== 'all'
+          ? [
+              {
+                id: 'roleId',
+                label: `${t('identityProduct.roles')}: ${roleLabel(query.roleId)}`,
+                onRemove: () => apply({ roleId: 'all', page: 1 }),
+              },
+            ]
+          : []),
+      ]
+    : [];
   const pages = Math.max(1, Math.ceil((data?.page.total ?? 0) / (query?.pageSize ?? 20)));
   const empty = (
     <StateSurface
@@ -264,10 +391,9 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
                   />
                 </>
               }
-              view={
-                <div className="flex items-center gap-1.5 md:hidden">
+              advanced={
+                <div className="grid gap-3 rounded-panel border border-border bg-surface p-4 text-sm sm:grid-cols-3">
                   <SelectField
-                    presentation="toolbar"
                     label={t('users.sort')}
                     value={query.sort}
                     options={[
@@ -280,30 +406,97 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
                         apply({ sort: value, page: 1 });
                     }}
                   />
-                  <IconAction
-                    label={query.direction === 'asc' ? t('users.ascending') : t('users.descending')}
-                    tooltip
-                    size="sm"
-                    onPress={() =>
-                      apply({ direction: query.direction === 'asc' ? 'desc' : 'asc', page: 1 })
-                    }
-                  >
-                    <ArrowUpDown className="size-3.5" />
-                  </IconAction>
+                  <SelectField
+                    label={t('users.direction')}
+                    value={query.direction}
+                    options={[
+                      { value: 'asc', label: t('users.ascending') },
+                      { value: 'desc', label: t('users.descending') },
+                    ]}
+                    onValueChange={(value) => {
+                      if (value === 'asc' || value === 'desc') apply({ direction: value, page: 1 });
+                    }}
+                  />
+                  <SelectField
+                    label={t('users.pageSize')}
+                    value={String(query.pageSize)}
+                    options={[10, 20, 50].map((value) => ({
+                      value: String(value),
+                      label: formatNumber(locale, value),
+                    }))}
+                    onValueChange={(value) => {
+                      if (value === '10' || value === '20' || value === '50')
+                        apply({
+                          pageSize: value === '10' ? 10 : value === '20' ? 20 : 50,
+                          page: 1,
+                        });
+                    }}
+                  />
                 </div>
               }
-              reset={
-                query.q || query.status !== 'all' || query.roleId !== 'all' ? (
-                  <Action
-                    variant="quiet"
-                    size="sm"
-                    leadingIcon={<X className="size-3.5" />}
-                    onPress={clear}
-                  >
-                    {t('identityProduct.clear')}
-                  </Action>
-                ) : null
-              }
+              advancedLabel={t('users.advancedFilters')}
+              advancedOpenLabel={t('users.advancedFiltersOpen')}
+              activeFilters={activeFilters}
+              activeFiltersLabel={t('users.activeFilters')}
+              onResetFilters={() => {
+                setSearch('');
+                clear();
+              }}
+              resetFiltersLabel={t('users.resetFilters')}
+            />
+          }
+          toolbar={
+            <CollectionToolbar
+              label={t('users.toolbar')}
+              columnSettings={{
+                triggerLabel: t('users.columnSettings'),
+                columns: columns.map((column) => ({
+                  id: column.id,
+                  label: column.label,
+                  mandatory: column.id === 'name',
+                })),
+                visibleOrder: visibleColumnIds,
+                onChange: persistColumnOrder,
+                onReset: resetColumnOrder,
+                text: columnSettingsText,
+              }}
+              density={{
+                label: t('users.density'),
+                value: tableDensity,
+                labels: {
+                  compact: t('users.densityCompact'),
+                  standard: t('users.densityStandard'),
+                  comfortable: t('users.densityComfortable'),
+                },
+                onChange: changeDensity,
+              }}
+              {...(data.access.permissions.includes('users.read')
+                ? {
+                    exportMenu: {
+                      label: t('users.export'),
+                      menuLabel: t('users.exportMenu'),
+                      items: [
+                        {
+                          id: 'page',
+                          label: t('users.exportPage', { count: data.page.items.length }),
+                          onSelect: () => void exportCsv(data.page.items, 'users-page.csv'),
+                        },
+                        ...(selectedUsers.length > 0
+                          ? [
+                              {
+                                id: 'selection',
+                                label: t('users.exportSelection', {
+                                  count: selectedUsers.length,
+                                }),
+                                onSelect: () =>
+                                  void exportCsv(selectedUsers, 'users-selection.csv'),
+                              },
+                            ]
+                          : []),
+                      ],
+                    },
+                  }
+                : {})}
             />
           }
           bulk={
@@ -322,7 +515,7 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
                     }
                   />
                   {selectedUsers.length ? (
-                    <span className="text-xs font-medium text-ink-muted">
+                    <span aria-live="polite" className="text-xs font-medium text-ink-muted">
                       {t('users.selected', { count: selectedUsers.length })}
                     </span>
                   ) : null}
@@ -379,13 +572,14 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
               ) : null}
               <DataTable
                 label={t('users.collection')}
-                columns={columns}
+                columns={visibleColumns}
                 rows={data.page.items}
                 {...(data.access.permissions.includes('users.status')
                   ? {
                       selection: {
                         mode: 'multiple' as const,
-                        selectedIds: selected,
+                        // 只把当前页仍存在的选中项交给表格：刷新/翻页后自动剪除失效选择。
+                        selectedIds: selectedUsers.map((user) => user.id),
                         onSelectionChange: (ids: readonly string[]) => {
                           if (!batchPending) setSelected(ids);
                         },
@@ -393,9 +587,8 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
                     }
                   : {})}
                 emptyContent={empty}
-                density={
-                  preferences.dataDisplay.tableDensity === 'compact' ? 'compact' : 'comfortable'
-                }
+                density={tableDensity}
+                pinnedColumnIds={['name']}
                 rowSeparators={preferences.dataDisplay.rowSeparators}
                 stickyHeader={preferences.dataDisplay.stickyHeader}
                 sort={{
@@ -459,21 +652,6 @@ export function UsersPage({ query }: Readonly<{ query: UserQuery | null }>) {
                 page: formatNumber(locale, query.page),
                 pages: formatNumber(locale, pages),
               })}
-              pageSize={
-                <SelectField
-                  presentation="toolbar"
-                  label={t('users.pageSize')}
-                  value={String(query.pageSize)}
-                  options={[10, 20, 50].map((value) => ({
-                    value: String(value),
-                    label: formatNumber(locale, value),
-                  }))}
-                  onValueChange={(value) => {
-                    if (value === '10' || value === '20' || value === '50')
-                      apply({ pageSize: value === '10' ? 10 : value === '20' ? 20 : 50, page: 1 });
-                  }}
-                />
-              }
               pager={
                 <PaginationControl
                   label={t('users.collection')}

@@ -94,3 +94,25 @@ Mock 持久化变更由 Storage Event 同步；两种模式完成登录/注册/�
 Surface 的 `AccountSecurityPort` 由 Web Host 注入，Plugin 不访问 Host 私有实现。密码修改要求当前密码与 12～128 字符的新密码，成功后撤销全部会话并重新登录；有效会话只暴露撤销用的 ID 与设备、活动、到期摘要，不暴露凭据。Mock v5 保留已有数据，并记录真实模拟登录产生的会话；客户端模拟不代表服务端安全保证。Backend 的 Cookie/CSRF 与严格响应校验沿用统一 transport。
 
 新接口为 `POST /auth/password`、`GET /auth/sessions`、`DELETE /auth/sessions/:id` 和 `POST /auth/sessions/revoke-others`；完整业务接口、Mock 与待联调责任见 [本轮实施](../../../../docs/changes/110-management-completion/README.md)。
+
+## 演示身份、重置与锁屏边界（116）
+
+显式 `NEXT_PUBLIC_AUTH_MODE=mock` 部署下，登录页与会话过期页提供三个**真实可登录**的演示身份
+（单一事实源 `demo-accounts.ts`，邮箱与目录种子一致，密码复用 fixture 常量）：
+
+| 角色          | 用户       | 邮箱                    | 可体验范围                    |
+| ------------- | ---------- | ----------------------- | ----------------------------- |
+| administrator | Rin        | demo@community.test     | 全部权限                      |
+| operator      | Alex Chen  | operator@community.test | 用户维护，无角色授权/系统配置 |
+| viewer        | Morgan Lee | viewer@community.test   | 只读体验与自助账户            |
+
+- 快捷身份按钮执行真实 `AuthService.login`，不是填充表单；失败仍走统一错误码。
+- “上次使用”仅记录演示身份 id（`community-go.auth-demo`），不保存密码或会话。
+- “重置演示数据”清除 `community-go.*` 中除 `community-go.shell` 以外的记录（目录、会话、
+  菜单覆盖、部门、字典、待办等），随后整页重载重新播种；界面偏好保留。
+- Backend 模式不渲染任何演示入口；Backend 失败永不返回 Mock 身份。
+
+**锁屏不是安全边界**：Host 的锁屏（`shell/lock-screen.tsx`）只是客户端遮挡 + 当前账号密码
+复核（复用同一 `AuthService`），会话有效期不变；清除本地存储或新开标签页即可绕过。
+产品文案明确说明这一点，不把它当作授权或防篡改能力。空闲/后台锁定只读取偏好，
+账号切换时丢弃上一账号的锁定状态。

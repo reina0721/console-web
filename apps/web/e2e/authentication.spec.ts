@@ -1,5 +1,6 @@
 import { saveEvidenceScreenshot } from './evidence-screenshot';
 import { test, expect, type Page } from '@playwright/test';
+import { e2eBaseUrl } from './base-url';
 import AxeBuilder from '@axe-core/playwright';
 import { defaultPreferences, PREFERENCES_VERSION } from '@community-go/surface/preferences-model';
 
@@ -100,7 +101,7 @@ test('Invalid credentials keep the form usable and reject external return target
   await expect(page.getByText('邮箱或密码不正确，请重试。', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '登录', exact: true })).toBeEnabled();
   await login(page);
-  await expect(page).toHaveURL('http://127.0.0.1:4173/');
+  await expect(page).toHaveURL(`${e2eBaseUrl}/`);
 });
 
 test('Existing sessions redirect guest routes and corrupt demo records can be repaired explicitly', async ({
@@ -110,7 +111,7 @@ test('Existing sessions redirect guest routes and corrupt demo records can be re
   await login(page);
   await expect(page.getByRole('button', { name: '当前用户', exact: true })).toBeVisible();
   await page.goto('/login?returnTo=%2Fsettings%2Fnotifications');
-  await expect(page).toHaveURL('http://127.0.0.1:4173/settings/notifications');
+  await expect(page).toHaveURL(`${e2eBaseUrl}/settings/notifications`);
   await page.evaluate(() => localStorage.setItem('community-go.auth-mock', 'damaged-record'));
   await page.goto('/login');
   await expect(

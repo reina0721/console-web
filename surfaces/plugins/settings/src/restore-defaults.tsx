@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@community-go/ui-adapter/overlays';
 
 /**
  * 恢复默认（双层）：
- * - `RestoreAllButton`：恢复全部八分类（ConfirmDialog 二次确认，列影响范围）；
+ * - `RestoreAllButton`：恢复全部九分类（ConfirmDialog 二次确认，列影响范围）；
  * - `RestoreCategoryButton`：恢复单分类（ConfirmDialog，只影响该分类）。
  * 只恢复偏好；不触碰账号/业务数据、收藏、最近、通知、草稿与已保存筛选方案
  * （resetCategory/resetAll 由 Host Port 保证只写偏好 store）。

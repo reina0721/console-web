@@ -1,5 +1,6 @@
 import { saveEvidenceScreenshot } from './evidence-screenshot';
 import { test, expect, type Page } from '@playwright/test';
+import { e2eBaseUrl } from './base-url';
 import AxeBuilder from '@axe-core/playwright';
 import {
   defaultPreferences,
@@ -61,6 +62,7 @@ for (const category of [
   'locale',
   'notifications',
   'accessibility',
+  'security',
   'shortcuts',
 ]) {
   test(`All settings fields remain readable and accessible: ${category || 'appearance'}`, async ({
@@ -68,7 +70,7 @@ for (const category of [
   }) => {
     for (const expanded of [false, true]) {
       const context = await browser.newContext({
-        baseURL: 'http://127.0.0.1:4173',
+        baseURL: e2eBaseUrl,
         viewport: { width: expanded ? 320 : 1440, height: 900 },
         hasTouch: expanded,
       });
@@ -117,13 +119,14 @@ for (const category of [
             })),
           );
         const fieldCounts: Readonly<Record<string, number>> = {
-          '': 7,
-          navigation: 11,
+          '': 9,
+          navigation: 12,
           'data-display': 10,
           actions: 18,
           locale: 7,
           notifications: 7,
           accessibility: 4,
+          security: 4,
           shortcuts: 2,
         };
         expect(fields.length).toBe(fieldCounts[category]);
@@ -147,7 +150,7 @@ for (const family of ['forms', 'actions-selection', 'data', 'overlays']) {
       browser,
     }) => {
       const context = await browser.newContext({
-        baseURL: 'http://127.0.0.1:4173',
+        baseURL: e2eBaseUrl,
         viewport: { width: expanded ? 390 : 1440, height: 900 },
       });
       try {

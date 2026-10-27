@@ -1,0 +1,154 @@
+
+> community-go-frontend@0.1.0 check /mnt/c/rin/coder/rin721/console-web
+> pnpm foundation:check && pnpm architecture:check && pnpm dependency:check && pnpm codegen:plugins:check && pnpm codegen:design:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm performance:check && pnpm test:browser && pnpm format:check && pnpm docs:check
+
+
+> community-go-frontend@0.1.0 foundation:check /mnt/c/rin/coder/rin721/console-web
+> node tooling/check-foundation-fixtures.mjs && node tooling/check-foundation-governance.mjs && node tooling/check-tailwind-sources.mjs
+
+Foundation fixtures passed: 14 cases.
+Tailwind source coverage fixtures passed: 8 cases.
+Foundation governance passed for 13 workspaces and 12 contract owners.
+Tailwind source coverage passed: entry + 2 @source roots cover all TSX-bearing workspaces.
+
+> community-go-frontend@0.1.0 architecture:check /mnt/c/rin/coder/rin721/console-web
+> node tooling/check-boundaries-fixtures.mjs && node tooling/check-boundaries.mjs
+
+Boundary fixtures passed: 20 cases.
+Architecture checks passed for 733 source files.
+
+> community-go-frontend@0.1.0 dependency:check /mnt/c/rin/coder/rin721/console-web
+> node tooling/check-dependencies.mjs
+
+Dependency governance passed for 27 governed dependencies.
+
+> community-go-frontend@0.1.0 codegen:plugins:check /mnt/c/rin/coder/rin721/console-web
+> node tooling/plugin-codegen/codegen.mjs --check
+
+Plugin codegen is fresh.
+
+> community-go-frontend@0.1.0 codegen:design:check /mnt/c/rin/coder/rin721/console-web
+> node tooling/runtime-codegen/codegen.mjs --check
+
+[runtime-codegen] fresh packages/design-system/src/tokens.css
+[runtime-codegen] fresh packages/design-system/src/motion.css
+[runtime-codegen] 全部 Artifact fresh。
+
+> community-go-frontend@0.1.0 lint /mnt/c/rin/coder/rin721/console-web
+> eslint . --max-warnings 0
+
+
+> community-go-frontend@0.1.0 typecheck /mnt/c/rin/coder/rin721/console-web
+> pnpm -r --if-present typecheck
+
+Scope: 13 of 14 workspace projects
+packages/config typecheck$ tsc --noEmit
+packages/state-foundation typecheck$ tsc --noEmit
+packages/i18n typecheck$ tsc --noEmit
+packages/schemas typecheck$ tsc --noEmit
+packages/i18n typecheck: Done
+packages/types typecheck$ tsc --noEmit
+packages/state-foundation typecheck: Done
+packages/types typecheck: Done
+packages/config typecheck: Done
+packages/schemas typecheck: Done
+packages/core typecheck$ tsc --noEmit
+packages/ui-adapter typecheck$ tsc --noEmit
+packages/form-foundation typecheck$ tsc --noEmit
+packages/core typecheck: Done
+packages/form-foundation typecheck: Done
+packages/ui-adapter typecheck: Done
+packages/surface-foundation typecheck$ tsc --noEmit
+packages/plugin-framework typecheck$ tsc --noEmit
+packages/plugin-framework typecheck: Done
+packages/surface-foundation typecheck: Done
+surfaces typecheck$ tsc --noEmit
+surfaces typecheck: Done
+apps/web typecheck$ next typegen && tsc --noEmit
+apps/web typecheck:   Using cached swc package @next/swc-linux-x64-gnu...
+apps/web typecheck:   Using cached swc package @next/swc-linux-x64-musl...
+apps/web typecheck: Generating route types...
+apps/web typecheck: ✓ Types generated successfully
+apps/web typecheck: Done
+
+> community-go-frontend@0.1.0 test /mnt/c/rin/coder/rin721/console-web
+> pnpm -r --if-present test
+
+Scope: 13 of 14 workspace projects
+packages/state-foundation test$ vitest run
+packages/schemas test$ vitest run
+packages/config test$ vitest run
+packages/i18n test$ vitest run
+packages/i18n test: [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Startup Error [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯⎯[39m
+packages/i18n test: Error: Cannot find native binding. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+packages/i18n test:     at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:597:34
+packages/i18n test:     at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:9:49
+packages/i18n test:     ... 4 lines matching cause stack trace ...
+packages/i18n test:     at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/i18n test:   cause: Error: Cannot find module '@rolldown/binding-wasm32-wasi'
+packages/i18n test:   Require stack:
+packages/i18n test:   - /mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs
+packages/i18n test:       at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:494:18
+packages/i18n test:       ... 8 lines matching cause stack trace ...
+packages/i18n test:       at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/i18n test:     cause: Error: Cannot find module './rolldown-binding.wasi.cjs'
+packages/i18n test:     Require stack:
+packages/i18n test:     - /mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs
+packages/i18n test:         at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:494:18
+packages/i18n test:         ... 8 lines matching cause stack trace ...
+packages/i18n test:         at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/i18n test:       cause: [Error]
+packages/i18n test:     }
+packages/i18n test:   }
+packages/i18n test: }
+packages/config test: [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Startup Error [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯⎯[39m
+packages/config test: Error: Cannot find native binding. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+packages/config test:     at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:597:34
+packages/config test:     at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:9:49
+packages/config test:     ... 4 lines matching cause stack trace ...
+packages/config test:     at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/config test:   cause: Error: Cannot find module '@rolldown/binding-wasm32-wasi'
+packages/config test:   Require stack:
+packages/config test:   - /mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs
+packages/config test:       at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:494:18
+packages/config test:       ... 8 lines matching cause stack trace ...
+packages/config test:       at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/config test:     cause: Error: Cannot find module './rolldown-binding.wasi.cjs'
+packages/config test:     Require stack:
+packages/config test:     - /mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs
+packages/config test:         at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:494:18
+packages/config test:         ... 8 lines matching cause stack trace ...
+packages/config test:         at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/config test:       cause: [Error]
+packages/config test:     }
+packages/config test:   }
+packages/config test: }
+packages/i18n test: Failed
+/mnt/c/rin/coder/rin721/console-web/packages/i18n:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @community-go/i18n@0.1.0 test: `vitest run`
+Exit status 1
+packages/config test: Failed
+packages/state-foundation test: [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Startup Error [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯⎯[39m
+packages/state-foundation test: Error: Cannot find native binding. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+packages/state-foundation test:     at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:597:34
+packages/state-foundation test:     at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:9:49
+packages/state-foundation test:     ... 4 lines matching cause stack trace ...
+packages/state-foundation test:     at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/state-foundation test:   cause: Error: Cannot find module '@rolldown/binding-wasm32-wasi'
+packages/state-foundation test:   Require stack:
+packages/state-foundation test:   - /mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs
+packages/state-foundation test:       at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:494:18
+packages/state-foundation test:       ... 8 lines matching cause stack trace ...
+packages/state-foundation test:       at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/state-foundation test:     cause: Error: Cannot find module './rolldown-binding.wasi.cjs'
+packages/state-foundation test:     Require stack:
+packages/state-foundation test:     - /mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs
+packages/state-foundation test:         at file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:494:18
+packages/state-foundation test:         ... 8 lines matching cause stack trace ...
+packages/state-foundation test:         at async CAC.run (file:///mnt/c/rin/coder/rin721/console-web/node_modules/.pnpm/vitest@4.1.11_@types+node@2_190412d4fbc41b2c44cd8df00b31606a/node_modules/vitest/dist/chunks/cac.uFydS1Z4.js:2318:2) {
+packages/state-foundation test:       cause: [Error]
+packages/state-foundation test:     }
+packages/state-foundation test:   }
+packages/state-foundation test: }
+ ELIFECYCLE  Test failed. See above for more details.
+ ELIFECYCLE  Command failed with exit code 1.

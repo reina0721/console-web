@@ -1,0 +1,5 @@
+
+> community-go-frontend@0.1.0 docs:check /mnt/c/rin/coder/rin721/console-web
+> node tooling/check-docs.mjs
+
+Docs structure check passed: entry + 8 authorities, 21 change records indexed.

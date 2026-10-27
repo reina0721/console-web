@@ -19,6 +19,7 @@ export const surfaceShellI18nResources = {
       ...identityI18n['zh-CN'],
       ...managementI18n['zh-CN'],
       shellNavigationGroups: {
+        overview: '概览',
         management: '身份与访问',
         administration: '系统管理',
         system: '个人',
@@ -71,6 +72,7 @@ export const surfaceShellI18nResources = {
       ...identityI18n.en,
       ...managementI18n.en,
       shellNavigationGroups: {
+        overview: 'Overview',
         management: 'Identity and access',
         administration: 'System administration',
         system: 'Personal',

@@ -3,16 +3,24 @@
 import { Action } from '@community-go/ui-adapter/action';
 import { DataTable } from '@community-go/ui-adapter/data-display';
 import { Badge } from '@community-go/ui-adapter/feedback';
+import { useFeedback } from '@community-go/ui-adapter/feedback-context';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
 import { ToggleGroup } from '@community-go/ui-adapter/toggle-group';
 import type { DataColumn } from '@community-go/ui-adapter/data-display';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useFrontendTranslation } from '@community-go/i18n';
 import { Section } from '@community-go/surface-foundation/layout';
+import {
+  CollectionToolbar,
+  type ColumnSettingsText,
+  type DensityLevel,
+} from '@community-go/surface-foundation/collection-tools';
+import { toCsv, type CsvColumn } from '@community-go/core';
 import { usePluginLocale } from '@community-go/plugin-framework/plugin';
 import { ComponentPreview } from './component-preview';
 import { UiElementsFamilyPage } from './family-page';
+import { browserCsvExport } from './browser-csv-export';
 
 type UiElementsDataRow = Readonly<{
   id: string;
@@ -21,8 +29,14 @@ type UiElementsDataRow = Readonly<{
   status: string;
   tone: 'success' | 'warning' | 'info';
 }>;
+
+type UiElementsTreeRow = UiElementsDataRow & Readonly<{ children?: readonly UiElementsTreeRow[] }>;
+
+type CsvDemoRow = Readonly<{ id: string; element: string; owner: string; note: string }>;
+
 export function DataElementsPage() {
   const { t } = useFrontendTranslation();
+  const { notify } = useFeedback();
   const searchParams = useSearchParams();
   const { locale } = usePluginLocale();
   const [columnWidths, setColumnWidths] = useState<Readonly<Record<string, number>>>({});
@@ -90,6 +104,174 @@ export function DataElementsPage() {
     const result = leftValue.localeCompare(rightValue, locale);
     return tableSort.direction === 'ascending' ? result : -result;
   });
+
+  // 生产力示例使用独立演示数据（不与治理表行标题重名，页面级可访问定位保持唯一）。
+  const productivityRows: readonly UiElementsDataRow[] = [
+    {
+      id: 'PT-001',
+      element: t('uiElements.dataDemoRows.tokens'),
+      owner: t('uiElements.dataTableOwners.foundation'),
+      status: t('uiElements.dataTableStatus.ready'),
+      tone: 'success',
+    },
+    {
+      id: 'PT-002',
+      element: t('uiElements.dataDemoRows.primitives'),
+      owner: t('uiElements.dataTableOwners.interaction'),
+      status: t('uiElements.dataTableStatus.review'),
+      tone: 'warning',
+    },
+    {
+      id: 'PT-003',
+      element: t('uiElements.dataDemoRows.overlays'),
+      owner: t('uiElements.dataTableOwners.composition'),
+      status: t('uiElements.dataTableStatus.verified'),
+      tone: 'info',
+    },
+  ];
+  const csvDemoRows: readonly CsvDemoRow[] = [
+    {
+      id: productivityRows[0]!.id,
+      element: productivityRows[0]!.element,
+      owner: productivityRows[0]!.owner,
+      note: t('uiElements.dataCsvNotes.first'),
+    },
+    {
+      id: productivityRows[1]!.id,
+      element: productivityRows[1]!.element,
+      owner: productivityRows[1]!.owner,
+      note: t('uiElements.dataCsvNotes.second'),
+    },
+    {
+      id: productivityRows[2]!.id,
+      element: productivityRows[2]!.element,
+      owner: productivityRows[2]!.owner,
+      note: t('uiElements.dataCsvNotes.third'),
+    },
+  ];
+
+  // 固定列示例：列数超过容器宽度时，首列 sticky 并保持行标题可见。
+  const pinnedColumns: readonly DataColumn<UiElementsDataRow>[] = [
+    tableColumns[0]!,
+    {
+      id: 'note',
+      label: t('uiElements.dataTableColumns.note'),
+      render: (row) => <span className="whitespace-nowrap">{row.id}</span>,
+    },
+    tableColumns[1]!,
+    {
+      id: 'updated',
+      label: t('uiElements.dataTableColumns.updated'),
+      render: () => <span className="whitespace-nowrap">{t('uiElements.dataDemoUpdated')}</span>,
+    },
+    tableColumns[2]!,
+  ];
+
+  // 树形行示例：rows 保持扁平（顶层），childrenOf 派生层级；aria-expanded 由 DataTable 维护。
+  const treeRows: readonly UiElementsTreeRow[] = [
+    {
+      ...productivityRows[0]!,
+      children: [
+        {
+          id: 'PT-001-A',
+          element: t('uiElements.dataTreeChildren.color'),
+          owner: t('uiElements.dataTableOwners.foundation'),
+          status: t('uiElements.dataTableStatus.ready'),
+          tone: 'success',
+        },
+        {
+          id: 'PT-001-B',
+          element: t('uiElements.dataTreeChildren.spacing'),
+          owner: t('uiElements.dataTableOwners.foundation'),
+          status: t('uiElements.dataTableStatus.verified'),
+          tone: 'info',
+        },
+      ],
+    },
+    {
+      ...productivityRows[1]!,
+      children: [
+        {
+          id: 'PT-002-A',
+          element: t('uiElements.dataTreeChildren.input'),
+          owner: t('uiElements.dataTableOwners.interaction'),
+          status: t('uiElements.dataTableStatus.review'),
+          tone: 'warning',
+        },
+      ],
+    },
+    productivityRows[2]!,
+  ];
+  const [expandedTreeIds, setExpandedTreeIds] = useState<ReadonlySet<string>>(new Set());
+
+  // 列设置 / 密度 / CSV 导出示例：与业务页使用同一套 CollectionToolbar 组合。
+  const toolbarColumns: readonly {
+    id: string;
+    label: string;
+    mandatory?: boolean;
+    render: (row: CsvDemoRow) => ReactNode;
+  }[] = [
+    {
+      id: 'element',
+      label: t('uiElements.dataTableColumns.element'),
+      mandatory: true,
+      render: (row) => row.element,
+    },
+    {
+      id: 'owner',
+      label: t('uiElements.dataTableColumns.owner'),
+      render: (row) => row.owner,
+    },
+    {
+      id: 'note',
+      label: t('uiElements.dataTableColumns.note'),
+      render: (row) => <span className="whitespace-nowrap">{row.note}</span>,
+    },
+  ];
+  const [visibleOrder, setVisibleOrder] = useState<readonly string[]>(['element', 'owner', 'note']);
+  const [toolbarDensity, setToolbarDensity] = useState<DensityLevel>('standard');
+  const columnSettingsText: ColumnSettingsText = {
+    title: t('uiElements.dataColumnSettingsTitle'),
+    description: t('uiElements.dataColumnSettingsDescription'),
+    mandatory: t('uiElements.dataColumnMandatory'),
+    reset: t('uiElements.dataColumnReset'),
+    close: t('uiElements.dataColumnClose'),
+    moveUp: (columnLabel) => t('uiElements.dataColumnMoveUp', { column: columnLabel }),
+    moveDown: (columnLabel) => t('uiElements.dataColumnMoveDown', { column: columnLabel }),
+  };
+  const visibleToolbarColumns = visibleOrder.flatMap((id) => {
+    const column = toolbarColumns.find((item) => item.id === id);
+    return column
+      ? [
+          {
+            id: column.id,
+            label: column.label,
+            ...(column.id === 'element' ? { rowHeader: true } : {}),
+            render: (row: CsvDemoRow) => column.render(row),
+          } satisfies DataColumn<CsvDemoRow>,
+        ]
+      : [];
+  });
+  const exportDemoCsv = async () => {
+    try {
+      const csvColumns: readonly CsvColumn[] = visibleToolbarColumns.map((column) => ({
+        id: column.id,
+        label: column.label,
+      }));
+      const rows = csvDemoRows.map((row) => ({
+        element: row.element,
+        owner: row.owner,
+        note: row.note,
+      }));
+      await browserCsvExport.downloadCsv('ui-elements-table.csv', toCsv(rows, csvColumns));
+      notify({
+        title: t('uiElements.dataExportSuccess', { count: csvDemoRows.length }),
+        tone: 'success',
+      });
+    } catch {
+      notify({ title: t('uiElements.dataExportFailure'), tone: 'danger' });
+    }
+  };
 
   return (
     <UiElementsFamilyPage
@@ -176,6 +358,102 @@ export function DataElementsPage() {
                       ...tableSort,
                       onSortChange: (columnId, direction) => setTableSort({ columnId, direction }),
                     }}
+                  />
+                </div>
+              </ComponentPreview>
+            </div>
+          </Section>
+          <Section
+            id="data-productivity"
+            title={t('uiElements.dataProductivityTitle')}
+            description={t('uiElements.dataProductivityDescription')}
+          >
+            <div className="grid gap-4 p-5 lg:grid-cols-2">
+              <ComponentPreview
+                name="DataTable · Pinned columns"
+                description={t('uiElements.dataPinnedDescription')}
+                states={['Display', 'Overflow', 'Boundary', 'Density']}
+              >
+                <DataTable
+                  density="compact"
+                  label={t('uiElements.dataPinnedTableLabel')}
+                  columns={pinnedColumns}
+                  emptyContent={t('uiElements.dataTableEmpty')}
+                  pinnedColumnIds={['element']}
+                  rows={productivityRows}
+                />
+              </ComponentPreview>
+              <ComponentPreview
+                name="DataTable · Tree rows"
+                description={t('uiElements.dataTreeDescription')}
+                states={['Tree rows', 'Expanded', 'Collapsed', 'Keyboard']}
+              >
+                <DataTable
+                  label={t('uiElements.dataTreeTableLabel')}
+                  columns={tableColumns}
+                  emptyContent={t('uiElements.dataTableEmpty')}
+                  rows={treeRows}
+                  tree={{
+                    expandedIds: expandedTreeIds,
+                    onExpandedChange: setExpandedTreeIds,
+                    childrenOf: (row) => row.children ?? [],
+                    expandLabel: (row) => t('uiElements.dataTreeExpand', { name: row.element }),
+                    collapseLabel: (row) => t('uiElements.dataTreeCollapse', { name: row.element }),
+                  }}
+                />
+              </ComponentPreview>
+              <ComponentPreview
+                embedded
+                fullWidth
+                name="CollectionToolbar · Column settings / Density / CSV"
+                description={t('uiElements.dataToolbarDescription')}
+                states={['Column settings', 'Density', 'CSV export', 'Keyboard']}
+              >
+                <div className="flex flex-col gap-4">
+                  <CollectionToolbar
+                    label={t('uiElements.dataToolbarLabel')}
+                    columnSettings={{
+                      triggerLabel: t('uiElements.dataColumnSettings'),
+                      columns: toolbarColumns.map((column) => ({
+                        id: column.id,
+                        label: column.label,
+                        mandatory: Boolean(column.mandatory),
+                      })),
+                      visibleOrder,
+                      onChange: setVisibleOrder,
+                      onReset: () => setVisibleOrder(['element', 'owner', 'note']),
+                      text: columnSettingsText,
+                    }}
+                    density={{
+                      label: t('uiElements.dataDensity'),
+                      value: toolbarDensity,
+                      labels: {
+                        compact: t('uiElements.dataDensityCompact'),
+                        standard: t('uiElements.dataDensityStandard'),
+                        comfortable: t('uiElements.dataDensityComfortable'),
+                      },
+                      onChange: setToolbarDensity,
+                    }}
+                    exportMenu={{
+                      label: t('uiElements.dataExport'),
+                      menuLabel: t('uiElements.dataExportMenu'),
+                      items: [
+                        {
+                          id: 'csv',
+                          label: t('uiElements.dataExportCsv', { count: csvDemoRows.length }),
+                          onSelect: () => void exportDemoCsv(),
+                        },
+                      ],
+                    }}
+                  >
+                    <p className="text-sm text-ink-muted">{t('uiElements.dataToolbarHint')}</p>
+                  </CollectionToolbar>
+                  <DataTable
+                    density={toolbarDensity}
+                    label={t('uiElements.dataToolbarTableLabel')}
+                    columns={visibleToolbarColumns}
+                    emptyContent={t('uiElements.dataTableEmpty')}
+                    rows={csvDemoRows}
                   />
                 </div>
               </ComponentPreview>

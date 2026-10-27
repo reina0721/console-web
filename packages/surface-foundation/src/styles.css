@@ -23,6 +23,17 @@
     grid-template-columns: var(--surface-shell-compact-width) minmax(0, 1fr);
   }
 
+  /* 顶部导航布局：不含侧栏列，内容区独占宽度（导航由 Host 注入 Header）。 */
+  .surface-shell-grid[data-layout='horizontal'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 紧凑 Rail 固定 80px 内宽：宽度过渡期间内容贴住 Rail，不在加宽轨道里漂移。 */
+  .surface-shell-compact-rail {
+    width: var(--surface-shell-compact-width);
+    align-items: center;
+  }
+
   .surface-shell-compact-group + .surface-shell-compact-group {
     margin-block-start: calc(var(--spacing) * 3);
     padding-block-start: calc(var(--spacing) * 3);

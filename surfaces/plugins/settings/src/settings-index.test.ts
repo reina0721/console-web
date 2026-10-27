@@ -57,12 +57,62 @@ describe('settings-index 搜索目录', () => {
     expect(normalizeSearchTerm('  Animation ')).toBe('animation');
   });
 
-  it('目录覆盖八分类且每条含 category/fieldId', () => {
+  it('目录覆盖九分类且每条含 category/fieldId', () => {
+    const expectedCategories = [
+      'appearance',
+      'navigation',
+      'dataDisplay',
+      'actionPreferences',
+      'localeRegion',
+      'notifications',
+      'accessibility',
+      'security',
+      'shortcuts',
+    ];
     const categories = new Set(SETTINGS_INDEX.map((e) => e.category));
-    expect(categories.size).toBe(8);
+    expect(categories.size).toBe(expectedCategories.length);
+    expect([...categories].sort()).toEqual([...expectedCategories].sort());
     for (const entry of SETTINGS_INDEX) {
       expect(entry.category.length).toBeGreaterThan(0);
       expect(entry.fieldId.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('新增安全/外观/导航字段在目录中且中英文名称与说明都有真实文案', () => {
+    const newFieldIds = [
+      ['security', 'watermark'],
+      ['security', 'watermarkText'],
+      ['security', 'idleLockMinutes'],
+      ['security', 'lockOnHidden'],
+      ['appearance', 'colorWeak'],
+      ['appearance', 'grayscale'],
+      ['navigation', 'layoutMode'],
+    ] as const;
+
+    const resolve = (locale: 'zh-CN' | 'en', key: string): unknown =>
+      key.split('.').reduce<unknown>((value, part) => {
+        if (value !== null && typeof value === 'object' && part in value) {
+          return Reflect.get(value, part);
+        }
+        return undefined;
+      }, pluginI18nResources[locale].translation);
+
+    for (const [category, fieldId] of newFieldIds) {
+      const entry = SETTINGS_INDEX.find(
+        (candidate) => candidate.category === category && candidate.fieldId === fieldId,
+      );
+      expect(entry, `${category}.${fieldId}`).toBeDefined();
+      if (!entry) continue;
+      for (const locale of ['zh-CN', 'en'] as const) {
+        const name = resolve(locale, entry.nameKey);
+        expect(name, `${locale}: ${entry.nameKey}`).toBeTypeOf('string');
+        expect(name).not.toBe(entry.nameKey);
+        if (entry.descriptionKey) {
+          const description = resolve(locale, entry.descriptionKey);
+          expect(description, `${locale}: ${entry.descriptionKey}`).toBeTypeOf('string');
+          expect(description).not.toBe(entry.descriptionKey);
+        }
+      }
     }
   });
 
@@ -84,6 +134,31 @@ describe('settings-index 搜索目录', () => {
             'string',
           );
         }
+      }
+    }
+  });
+
+  it('新增安全分类的分类标签、导航分组与导语文案中英文齐备', () => {
+    const resolve = (locale: 'zh-CN' | 'en', key: string): unknown =>
+      key.split('.').reduce<unknown>((value, part) => {
+        if (value !== null && typeof value === 'object' && part in value) {
+          return Reflect.get(value, part);
+        }
+        return undefined;
+      }, pluginI18nResources[locale].translation);
+    const keys = [
+      'settings.categories.security',
+      'settings.navGroups.security',
+      'settings.categoryIntro.security',
+      'settings.groups.watermark',
+      'settings.groups.lock',
+      'settings.transfer.title',
+    ];
+    for (const locale of ['zh-CN', 'en'] as const) {
+      for (const key of keys) {
+        const value = resolve(locale, key);
+        expect(value, `${locale}: ${key}`).toBeTypeOf('string');
+        expect(value).not.toBe(key);
       }
     }
   });

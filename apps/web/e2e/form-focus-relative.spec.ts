@@ -42,7 +42,9 @@ test('自动聚焦首个字段：开启后创建页聚焦名称输入', async ({
   await page.waitForTimeout(300);
   await page.goto('/reference-resources/create');
   await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true');
-  await page.waitForTimeout(500);
+  // 页面实现按需加载：等表单真正挂载后再断言焦点（固定等待在 dev 冷编译下不稳定）。
+  await expect(page.locator('#create-form input').first()).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.tagName ?? '')).toBe('INPUT');
   const activeTag = await page.evaluate(() => document.activeElement?.tagName ?? '');
   const inForm = await page.evaluate(() =>
     Boolean(document.activeElement?.closest('#create-form')),

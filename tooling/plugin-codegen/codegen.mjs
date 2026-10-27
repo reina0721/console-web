@@ -684,16 +684,33 @@ function buildHostAdapterText(
   kind,
   forwardGenerateStaticParams = false,
 ) {
-  const lines = [
-    `export { default } from ${JSON.stringify(surfaceShimSubpath(pluginDirName, routeRelDir, kind))};`,
-  ];
-  if (forwardGenerateStaticParams) {
-    lines.push(
-      `export { generateStaticParams } from ${JSON.stringify(surfaceShimSubpath(pluginDirName, routeRelDir, kind))};`,
-    );
+  const subpath = surfaceShimSubpath(pluginDirName, routeRelDir, kind);
+  if (kind !== 'page' || forwardGenerateStaticParams) {
+    return [
+      `export { default } from ${JSON.stringify(subpath)};`,
+      ...(forwardGenerateStaticParams
+        ? [`export { generateStaticParams } from ${JSON.stringify(subpath)};`]
+        : []),
+      '',
+    ].join('\n');
   }
-  lines.push('');
-  return lines.join('\n');
+  // 静态 Route 的 Host 边界按需加载页面实现：Route 首屏只保留 Shell + 本包装，
+  // 页面模块（表格/表单/图表等）在 hydration 后按需拉取，避免把全部页面依赖
+  // 提升进每个 Route 的公共 chunk（产物预算门禁）。
+  return [
+    `'use client';`,
+    '',
+    `import dynamic from 'next/dynamic';`,
+    '',
+    `const PluginPage = dynamic(() => import(${JSON.stringify(subpath)}), {`,
+    `  loading: () => <div aria-hidden="true" className="h-64" />,`,
+    `});`,
+    '',
+    `export default function PluginRoutePage() {`,
+    `  return <PluginPage />;`,
+    `}`,
+    '',
+  ].join('\n');
 }
 
 async function ensureDir(path) {

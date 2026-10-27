@@ -8,6 +8,7 @@
     "./layout": "./src/layout.tsx",
     "./shell-navigation": "./src/shell-navigation.tsx",
     "./collection": "./src/collection.tsx",
+    "./collection-tools": "./src/collection-tools.tsx",
     "./detail-settings": "./src/detail-settings.tsx",
     "./form-actions": "./src/form-actions.tsx",
     "./states-operations": "./src/states-operations.tsx",

@@ -1,7 +1,7 @@
 import type { NavigationIconId } from '@community-go/surface/shell';
 import type { Preferences } from '@community-go/surface/preferences-model';
-/** 侧边栏分组（显示与数据 / 偏好与反馈 / 辅助与输入）。 */
-export type SettingsNavGroup = 'display' | 'preferences' | 'assistive';
+/** 侧边栏分组（显示与数据 / 偏好与反馈 / 安全与隐私 / 辅助与输入）。 */
+export type SettingsNavGroup = 'display' | 'preferences' | 'security' | 'assistive';
 
 interface SettingsCategoryMetaInner {
   shortId: string;
@@ -73,6 +73,15 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategoryMeta[] = [
     group: 'assistive',
   },
   {
+    shortId: 'security',
+    targetRouteId: 'settings.security',
+    categoryKey: 'security',
+    labelKey: 'settings.categories.security',
+    // 既有 icon vocabulary 无 `shield` 语义 id；安全与隐私沿用系统/设置语义。
+    iconId: 'settings',
+    group: 'security',
+  },
+  {
     shortId: 'shortcuts',
     targetRouteId: 'settings.shortcuts',
     categoryKey: 'shortcuts',
@@ -92,5 +101,6 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
 }> = [
   { group: 'display', labelKey: 'settings.navGroups.display' },
   { group: 'preferences', labelKey: 'settings.navGroups.preferences' },
+  { group: 'security', labelKey: 'settings.navGroups.security' },
   { group: 'assistive', labelKey: 'settings.navGroups.assistive' },
 ];

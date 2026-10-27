@@ -9,11 +9,21 @@ export type DialogSurfaceProps = Readonly<{
   description: string;
   children: ReactNode;
   cancelLabel: string;
-  confirmLabel: string;
+  /**
+   * 可选确认动作：缺省时 Dialog 只保留关闭动作（设置面板等不需要二次确认的
+   * 普通决策场景），不再强行渲染"确认"语义。
+   */
+  confirmLabel?: string;
   defaultOpen?: boolean;
   confirmDisabled?: boolean;
   failureMessage?: string;
-  onConfirm: () => void | Promise<void>;
+  onConfirm?: () => void | Promise<void>;
+  /**
+   * 受控模式：提供 isOpen 时隐藏 trigger，由父级控制开关
+   * （工具栏驱动的列设置等命令式面板）。triggerLabel 仍须提供（无障碍命名）。
+   */
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }>;
 
 export function DialogSurface({
@@ -27,14 +37,23 @@ export function DialogSurface({
   confirmDisabled = false,
   failureMessage,
   onConfirm,
+  isOpen,
+  onOpenChange,
 }: DialogSurfaceProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const controlled = isOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = controlled ? isOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (controlled) onOpenChange?.(next);
+    else setInternalOpen(next);
+  };
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
   const [failed, setFailed] = useState(false);
+  const showConfirm = Boolean(onConfirm) && Boolean(confirmLabel);
 
   const confirm = async () => {
-    if (pendingRef.current) return;
+    if (!onConfirm || pendingRef.current) return;
     pendingRef.current = true;
     setPending(true);
     setFailed(false);
@@ -56,7 +75,9 @@ export function DialogSurface({
         if (!pendingRef.current) setOpen(next);
       }}
     >
-      <OverlayTriggerAction onPress={() => setOpen(true)}>{triggerLabel}</OverlayTriggerAction>
+      {controlled ? null : (
+        <OverlayTriggerAction onPress={() => setOpen(true)}>{triggerLabel}</OverlayTriggerAction>
+      )}
       <Modal.Backdrop
         isDismissable={!pending}
         isKeyboardDismissDisabled={pending}
@@ -82,14 +103,16 @@ export function DialogSurface({
               >
                 {cancelLabel}
               </Modal.CloseTrigger>
-              <HeroButton
-                className="inline-flex min-h-control items-center justify-center rounded-control bg-brand px-4 text-sm font-semibold text-on-brand hover:bg-brand-strong"
-                isDisabled={confirmDisabled || pending}
-                isPending={pending}
-                onPress={() => void confirm()}
-              >
-                {confirmLabel}
-              </HeroButton>
+              {showConfirm ? (
+                <HeroButton
+                  className="inline-flex min-h-control items-center justify-center rounded-control bg-brand px-4 text-sm font-semibold text-on-brand hover:bg-brand-strong"
+                  isDisabled={confirmDisabled || pending}
+                  isPending={pending}
+                  onPress={() => void confirm()}
+                >
+                  {confirmLabel}
+                </HeroButton>
+              ) : null}
             </Modal.Footer>
           </Modal.Dialog>
         </Modal.Container>

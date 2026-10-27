@@ -1,5 +1,5 @@
 'use client';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
 import {
   useFrontendTranslation,
   formatDate,
@@ -11,7 +11,14 @@ import {
   Collection,
   CollectionPagination,
   CollectionQuery,
+  type CollectionActiveFilter,
 } from '@community-go/surface-foundation/collection';
+import {
+  CollectionToolbar,
+  type ColumnSettingsText,
+  type DensityLevel,
+} from '@community-go/surface-foundation/collection-tools';
+import { normalizeColumnLayout, toCsv, type CsvColumn } from '@community-go/core';
 import type { DataColumn } from '@community-go/ui-adapter/data-display';
 import { SearchBox } from '@community-go/ui-adapter/search-box';
 import { SelectField, TextField } from '@community-go/ui-adapter/form-field';
@@ -20,10 +27,12 @@ import { Action } from '@community-go/ui-adapter/action';
 import { IconAction } from '@community-go/ui-adapter/icon-action';
 import { PaginationControl } from '@community-go/ui-adapter/navigation';
 import { StatusPill } from '@community-go/ui-adapter/status-pill';
+import { useFeedback } from '@community-go/ui-adapter/feedback-context';
 import { route, RouteLink, usePluginNavigation } from '@community-go/plugin-framework/plugin';
 import { usePreferencesPort } from '@community-go/plugin-framework/preferences';
+import { rehydrateStore } from '@community-go/state-foundation';
 import type { Preferences } from '@community-go/surface/preferences-model';
-import { Filter, RefreshCw } from '../../../src/action-icons';
+import { RefreshCw } from '../../../src/action-icons';
 import {
   IdentityError,
   auditOperations,
@@ -39,6 +48,8 @@ import {
   IdentityMutationError,
   IdentityEmptyState,
 } from '../../../src/identity/query-state';
+import { useAuditColumnLayoutStore } from '../stores/column-layout';
+import { browserCsvExport } from './csv-export';
 const DatePickerField = lazy(() =>
   import('@community-go/ui-adapter/date-picker-field').then((module) => ({
     default: module.DatePickerField,
@@ -51,9 +62,22 @@ const AuditTable = lazy(() =>
 );
 export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
   const { t, locale } = useFrontendTranslation();
+  const { notify } = useFeedback();
   const port = useIdentityPort();
   const navigation = usePluginNavigation();
-  const region = usePreferencesPort<Preferences>().getSnapshot().localeRegion;
+  const preferencesPort = usePreferencesPort<Preferences>();
+  const region = preferencesPort.getSnapshot().localeRegion;
+  // 表格密度走正式 Preferences Port（与 users 同一偏好，写入即持久化）。
+  const tableDensity = useSyncExternalStore(
+    (onChange) => preferencesPort.subscribe(onChange),
+    () => preferencesPort.getSnapshot().dataDisplay.tableDensity,
+    () => preferencesPort.getSnapshot().dataDisplay.tableDensity,
+  );
+  const rememberColumnLayout = useSyncExternalStore(
+    (onChange) => preferencesPort.subscribe(onChange),
+    () => preferencesPort.getSnapshot().dataDisplay.rememberColumnLayout,
+    () => preferencesPort.getSnapshot().dataDisplay.rememberColumnLayout,
+  );
   const filters = query ?? defaultAuditQuery;
   const [search, setSearch] = useState(filters.q);
   const [actor, setActor] = useState(filters.actor ?? '');
@@ -61,7 +85,9 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
   const [from, setFrom] = useState(filters.from ?? '');
   const [to, setTo] = useState(filters.to ?? '');
   const [failure, setFailure] = useState<IdentityError | null>(null);
+  // 高级筛选（actor/object/日期）默认折叠：与既有行为一致，深链筛选也先展示 chips 再展开。
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selected, setSelected] = useState<readonly string[]>([]);
   const result = useIdentityQuery(`audit:${JSON.stringify(query)}`, async (service) => {
     if (!query) throw new IdentityError('validation');
     const access = await service.access();
@@ -114,6 +140,159 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
     { id: 'actor', label: t('audit.actor'), render: (record) => record.actorName },
     { id: 'object', label: t('audit.object'), render: (record) => record.objectName },
     { id: 'result', label: t('audit.result'), render: status },
+  ];
+  // 列设置（audit 插件私有 store，独立 ownership；受 dataDisplay.rememberColumnLayout 控制）。
+  const [columnOverride, setColumnOverride] = useState<readonly string[] | null>(null);
+  const savedColumnOrder = useAuditColumnLayoutStore((state) => state.visibleOrder);
+  useEffect(() => {
+    rehydrateStore(useAuditColumnLayoutStore);
+  }, []);
+  const mandatoryColumns = new Set(['operation']);
+  const canonicalColumnIds = columns.map((column) => column.id);
+  const visibleColumnIds =
+    columnOverride ??
+    normalizeColumnLayout(
+      canonicalColumnIds,
+      rememberColumnLayout ? (savedColumnOrder ?? undefined) : undefined,
+      mandatoryColumns,
+    );
+  const visibleColumns = visibleColumnIds.flatMap((id) => {
+    const column = columns.find((item) => item.id === id);
+    return column ? [column] : [];
+  });
+  const persistColumnOrder = (order: readonly string[]) => {
+    setColumnOverride(order);
+    if (!rememberColumnLayout) return;
+    useAuditColumnLayoutStore.getState().saveVisibleOrder(order);
+  };
+  const resetColumnOrder = () => {
+    setColumnOverride(null);
+    useAuditColumnLayoutStore.getState().resetVisibleOrder();
+  };
+  const columnSettingsText: ColumnSettingsText = {
+    title: t('audit.columnSettingsTitle'),
+    description: t('audit.columnSettingsDescription'),
+    mandatory: t('audit.columnMandatory'),
+    reset: t('audit.columnReset'),
+    close: t('audit.columnClose'),
+    moveUp: (columnLabel) => t('audit.columnMoveUp', { column: columnLabel }),
+    moveDown: (columnLabel) => t('audit.columnMoveDown', { column: columnLabel }),
+  };
+  const changeDensity = (value: DensityLevel) => {
+    const outcome = preferencesPort.updateCategory('dataDisplay', { tableDensity: value });
+    if (!outcome.ok) notify({ title: t('audit.densityFailure'), tone: 'danger' });
+  };
+  const selectedRecords = result.data?.items.filter((record) => selected.includes(record.id)) ?? [];
+  const csvColumns: readonly CsvColumn[] = [
+    { id: 'time', label: t('audit.time') },
+    { id: 'operation', label: t('audit.operation') },
+    { id: 'actor', label: t('audit.actor') },
+    { id: 'object', label: t('audit.object') },
+    { id: 'result', label: t('audit.result') },
+  ];
+  const exportCsv = async (records: readonly AuditRecord[], fileName: string) => {
+    try {
+      const rows = records.map((record) => ({
+        time: timestamp(record.createdAt),
+        operation: t(`management.operations.${record.operation}`),
+        actor: record.actorName,
+        object: record.objectName,
+        result: t(`audit.${record.result}`),
+      }));
+      await browserCsvExport.downloadCsv(fileName, toCsv(rows, csvColumns));
+      notify({ title: t('audit.exportSuccess', { count: records.length }), tone: 'success' });
+    } catch {
+      notify({ title: t('audit.exportFailure'), tone: 'danger' });
+    }
+  };
+  const resetFilters = () => {
+    setSearch('');
+    setActor('');
+    setObject('');
+    setFrom('');
+    setTo('');
+    setFiltersOpen(false);
+    navigation.navigate(route('audit'));
+  };
+  const activeFilters: readonly CollectionActiveFilter[] = [
+    ...(filters.q
+      ? [
+          {
+            id: 'q',
+            label: t('audit.withQuery', { value: filters.q }),
+            onRemove: () => {
+              setSearch('');
+              apply({ q: '', page: 1 });
+            },
+          },
+        ]
+      : []),
+    ...(filters.operation !== 'all'
+      ? [
+          {
+            id: 'operation',
+            label: `${t('audit.operation')}: ${t(`management.operations.${filters.operation}`)}`,
+            onRemove: () => apply({ operation: 'all', page: 1 }),
+          },
+        ]
+      : []),
+    ...(filters.result !== 'all'
+      ? [
+          {
+            id: 'result',
+            label: `${t('audit.result')}: ${t(`audit.${filters.result}`)}`,
+            onRemove: () => apply({ result: 'all', page: 1 }),
+          },
+        ]
+      : []),
+    ...(filters.actor
+      ? [
+          {
+            id: 'actor',
+            label: t('audit.withActor', { value: filters.actor }),
+            onRemove: () => {
+              setActor('');
+              apply({ actor: '', page: 1 });
+            },
+          },
+        ]
+      : []),
+    ...(filters.object
+      ? [
+          {
+            id: 'object',
+            label: t('audit.withObject', { value: filters.object }),
+            onRemove: () => {
+              setObject('');
+              apply({ object: '', page: 1 });
+            },
+          },
+        ]
+      : []),
+    ...(filters.from
+      ? [
+          {
+            id: 'from',
+            label: t('audit.fromFilter', { value: filters.from.slice(0, 10) }),
+            onRemove: () => {
+              setFrom('');
+              apply({ from: '', page: 1 });
+            },
+          },
+        ]
+      : []),
+    ...(filters.to
+      ? [
+          {
+            id: 'to',
+            label: t('audit.toFilter', { value: filters.to.slice(0, 10) }),
+            onRemove: () => {
+              setTo('');
+              apply({ to: '', page: 1 });
+            },
+          },
+        ]
+      : []),
   ];
   const pages = Math.max(1, Math.ceil((result.data?.total ?? 0) / filters.pageSize));
 
@@ -196,79 +375,132 @@ export function AuditPage({ query }: Readonly<{ query: AuditQuery | null }>) {
                 </>
               }
               advanced={
-                <details
-                  className="min-w-0"
-                  open={filtersOpen}
-                  onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
+                <form
+                  className="grid gap-3 rounded-panel border border-border bg-surface p-4 text-sm"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    apply({ q: search, actor, object, from, to, page: 1 });
+                  }}
                 >
-                  <summary className="cursor-pointer text-sm font-semibold text-ink inline-flex items-center gap-1.5 py-1">
-                    <Filter className="size-3.5 text-ink-muted" />
-                    <span>{t('audit.filters')}</span>
-                  </summary>
-                  <form
-                    className="mt-3 grid gap-3 rounded-panel border border-border bg-surface p-4 text-sm"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      apply({ q: search, actor, object, from, to, page: 1 });
-                    }}
-                  >
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      <TextField
-                        label={t('audit.actor')}
-                        value={actor}
-                        onChange={(event) => setActor(event.target.value)}
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <TextField
+                      label={t('audit.actor')}
+                      value={actor}
+                      onChange={(event) => setActor(event.target.value)}
+                    />
+                    <TextField
+                      label={t('audit.object')}
+                      value={object}
+                      onChange={(event) => setObject(event.target.value)}
+                    />
+                    <Suspense fallback={<BusyIndicator label={t('identityProduct.loading')} />}>
+                      <DatePickerField
+                        label={t('audit.from')}
+                        value={from ? from.slice(0, 10) : null}
+                        calendarLabel={t('audit.calendar')}
+                        hint={from ? timestamp(from) : t('audit.utcHint')}
+                        onValueChange={(value) => setFrom(value ? value + 'T00:00:00.000Z' : '')}
                       />
-                      <TextField
-                        label={t('audit.object')}
-                        value={object}
-                        onChange={(event) => setObject(event.target.value)}
+                      <DatePickerField
+                        label={t('audit.to')}
+                        value={to ? to.slice(0, 10) : null}
+                        calendarLabel={t('audit.calendar')}
+                        hint={to ? timestamp(to) : t('audit.utcHint')}
+                        onValueChange={(value) => setTo(value ? value + 'T23:59:59.999Z' : '')}
                       />
-                      <Suspense fallback={<BusyIndicator label={t('identityProduct.loading')} />}>
-                        <DatePickerField
-                          label={t('audit.from')}
-                          value={from ? from.slice(0, 10) : null}
-                          calendarLabel={t('audit.calendar')}
-                          hint={from ? timestamp(from) : t('audit.utcHint')}
-                          onValueChange={(value) => setFrom(value ? value + 'T00:00:00.000Z' : '')}
-                        />
-                        <DatePickerField
-                          label={t('audit.to')}
-                          value={to ? to.slice(0, 10) : null}
-                          calendarLabel={t('audit.calendar')}
-                          hint={to ? timestamp(to) : t('audit.utcHint')}
-                          onValueChange={(value) => setTo(value ? value + 'T23:59:59.999Z' : '')}
-                        />
-                      </Suspense>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-                      <Action
-                        variant="quiet"
-                        size="sm"
-                        onPress={() => {
-                          setSearch('');
-                          setActor('');
-                          setObject('');
-                          setFrom('');
-                          setTo('');
-                          setFiltersOpen(false);
-                          navigation.navigate(route('audit'));
-                        }}
-                      >
-                        {t('identityProduct.clear')}
-                      </Action>
-                      <Action type="submit" size="sm">
-                        {t('identityProduct.search')}
-                      </Action>
-                    </div>
-                  </form>
-                </details>
+                    </Suspense>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                    <Action type="submit" size="sm">
+                      {t('identityProduct.search')}
+                    </Action>
+                  </div>
+                </form>
               }
+              advancedLabel={t('audit.filters')}
+              advancedOpenLabel={t('audit.advancedFiltersOpen')}
+              advancedOpen={filtersOpen}
+              activeFilters={activeFilters}
+              activeFiltersLabel={t('audit.activeFilters')}
+              onAdvancedOpenChange={setFiltersOpen}
+              onResetFilters={resetFilters}
+              resetFiltersLabel={t('audit.resetFilters')}
+            />
+          }
+          toolbar={
+            <CollectionToolbar
+              label={t('audit.toolbar')}
+              columnSettings={{
+                triggerLabel: t('audit.columnSettings'),
+                columns: columns.map((column) => ({
+                  id: column.id,
+                  label: column.label,
+                  mandatory: column.id === 'operation',
+                })),
+                visibleOrder: visibleColumnIds,
+                onChange: persistColumnOrder,
+                onReset: resetColumnOrder,
+                text: columnSettingsText,
+              }}
+              density={{
+                label: t('audit.density'),
+                value: tableDensity,
+                labels: {
+                  compact: t('audit.densityCompact'),
+                  standard: t('audit.densityStandard'),
+                  comfortable: t('audit.densityComfortable'),
+                },
+                onChange: changeDensity,
+              }}
+              exportMenu={{
+                label: t('audit.export'),
+                menuLabel: t('audit.exportMenu'),
+                items: [
+                  {
+                    id: 'page',
+                    label: t('audit.exportPage', { count: result.data?.items.length ?? 0 }),
+                    onSelect: () => void exportCsv(result.data?.items ?? [], 'audit-page.csv'),
+                  },
+                  ...(selectedRecords.length > 0
+                    ? [
+                        {
+                          id: 'selection',
+                          label: t('audit.exportSelection', {
+                            count: selectedRecords.length,
+                          }),
+                          onSelect: () => void exportCsv(selectedRecords, 'audit-selection.csv'),
+                        },
+                      ]
+                    : []),
+                ],
+              }}
             />
           }
           content={
-            <Suspense fallback={<BusyIndicator label={t('identityProduct.loading')} />}>
-              <AuditTable columns={columns} rows={result.data.items} />
-            </Suspense>
+            <div aria-busy={result.loading || undefined}>
+              {selectedRecords.length > 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-muted/30 px-4 py-2">
+                  <span aria-live="polite" className="text-xs font-medium text-ink-muted">
+                    {t('audit.selected', { count: selectedRecords.length })}
+                  </span>
+                  <Action size="sm" variant="quiet" onPress={() => setSelected([])}>
+                    {t('identityProduct.clear')}
+                  </Action>
+                </div>
+              ) : null}
+              <Suspense fallback={<BusyIndicator label={t('identityProduct.loading')} />}>
+                <AuditTable
+                  columns={visibleColumns}
+                  density={tableDensity}
+                  rows={result.data.items}
+                  selection={{
+                    mode: 'multiple',
+                    selectedIds: selectedRecords.map((record) => record.id),
+                    onSelectionChange: setSelected,
+                  }}
+                />
+              </Suspense>
+            </div>
           }
           narrowContent={
             <ul data-reveal-items className="divide-y divide-border">

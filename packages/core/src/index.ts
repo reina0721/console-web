@@ -10,3 +10,4 @@ export {
   type NavigationLeafPath,
   type ResolvedLocation,
 } from './navigation';
+export { normalizeColumnLayout, toCsv, type CsvCell, type CsvColumn, type CsvRow } from './table';

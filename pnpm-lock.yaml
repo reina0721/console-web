@@ -101,6 +101,9 @@ importers:
       react-dom:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
+      tw-animate-css:
+        specifier: 1.4.0
+        version: 1.4.0
       zod:
         specifier: ^4.5.2
         version: 4.5.2
@@ -322,6 +325,9 @@ importers:
 
   surfaces:
     dependencies:
+      '@community-go/core':
+        specifier: workspace:*
+        version: link:../packages/core
       '@community-go/form-foundation':
         specifier: workspace:*
         version: link:../packages/form-foundation

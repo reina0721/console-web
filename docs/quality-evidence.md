@@ -39,3 +39,34 @@
 ## 历史证据
 
 各变更的完整最终证据是历史快照，见 [变更记录索引](changes/README.md)；数字只在对应变更当时有效，不作为当前事实。
+
+## 116 当前验收（Vben 对标实施）
+
+- 静态门禁：Foundation / Architecture / Dependency / 两类 Codegen freshness / Lint /
+  全部 TypeScript / Vitest（core 26、surface-foundation 54、plugin-framework、web 192、
+  surface 全量）通过；完整 `pnpm check` 含 Next build、性能预算、Playwright 与 docs/format。
+- 代码生成：21 plugins / 60 routes；新增 `analytics`、`workspace`、`menus`、`departments`、
+  `dictionaries` 与 `settings.security`。图标词汇新增 analytics/workspace/menu/department/dictionary。
+- 公共能力：`ui-adapter/charts`（Area/Donut/Bar/Sparkline + 纯几何）、
+  `surface-foundation/collection-tools`、DataTable 三档密度/固定列/树形行、
+  `plugin-framework/navigation-admin` Port、`core/table`（normalizeColumnLayout/toCsv）。
+  均已登记 foundation-contracts，并有 Showcase 与业务同源使用。
+- 浏览器：新增 4 个 spec（demo-access、shell-security、table-productivity、system-management）；
+  修复 5 个 spec 的硬编码旧端口；产品缺陷修复 6 项（锁屏会话、Rail 过渡几何、偏好迁移、
+  菜单覆盖键、重复导航入口、缺失 i18n）。
+- 视觉基线：仅复核后更新 5 张（导航项、顶栏入口、设置新分类/配置面板、Forms 状态行），
+  未调整阈值或批量接受。
+- 外部限制：Vben 后端 503 导致其 CRUD 数据态不可观察；本项目新模块为演示数据。
+  详细证据与失败/限制见 [116 验证记录](changes/116-vben-parity-implementation/evidence/verification.md)。
+
+### 116 最终门禁（2026-10-27）
+
+- `pnpm check` **退出码 0**：Foundation、Architecture（843 files）、Dependency（28）、两项
+  Codegen freshness、ESLint、全部 TypeScript、Vitest（web 192 / surfaces 175 /
+  core+plugin-framework+surface-foundation 等）、Next build、产物预算、Playwright
+  **409 项**（chromium 402 + backend-contract 7）、Prettier、Docs（22 条变更）。
+- 产物预算（未调整阈值）：initial **406,744 B / 409,600**、maxRoute **431,132 B / 445,440**
+  （`/login`）、CSS **48,567 B / 49,152**、最大 chunk 84,658 B。
+- 浏览器测试新增：demo-access、shell-security、table-productivity、system-management；
+  视觉基线按逐项复核更新 12 张（导航项/顶栏入口/设置分类/登录演示面板）。
+- 原始日志：[116 完整门禁](changes/116-vben-parity-implementation/evidence/pnpm-check.log)。

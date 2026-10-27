@@ -1,5 +1,6 @@
 import { saveEvidenceScreenshot } from './evidence-screenshot';
 import { test, expect, type Page } from '@playwright/test';
+import { e2eBaseUrl } from './base-url';
 import AxeBuilder from '@axe-core/playwright';
 import { defaultPreferences, PREFERENCES_VERSION } from '@community-go/surface/preferences-model';
 async function expectHydrated(page: Page) {
@@ -215,7 +216,7 @@ test('Touch selection and short viewport use the same nested overlay lifecycle',
     hasTouch: true,
   });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4173/');
+  await page.goto(`${e2eBaseUrl}/`);
   await expectHydrated(page);
   await page.getByRole('button', { name: '当前用户', exact: true }).tap();
   await page.getByRole('menuitem', { name: /^主题 / }).tap();

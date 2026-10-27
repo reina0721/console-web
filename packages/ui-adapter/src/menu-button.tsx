@@ -35,6 +35,8 @@ export type MenuButtonProps = Readonly<
     header?: ReactNode;
     submenuLayout?: 'adjacent' | 'stacked';
     defaultOpen?: boolean;
+    /** Trigger 控件高度：`sm` 用于工具条内与其它 sm 控件同排。 */
+    triggerSize?: 'sm' | 'md';
     onAction: (id: string) => void;
   } & (
     | { items: readonly MenuAction[]; groups?: never }
@@ -50,6 +52,7 @@ export function MenuButton({
   header,
   submenuLayout = 'adjacent',
   defaultOpen = false,
+  triggerSize = 'md',
   onAction,
 }: MenuButtonProps) {
   const renderAction = (item: MenuAction, selectable = false) => (
@@ -109,7 +112,10 @@ export function MenuButton({
     );
   return (
     <Dropdown defaultOpen={defaultOpen}>
-      <Dropdown.Trigger aria-label={ariaLabel} className="ui-overlay-trigger">
+      <Dropdown.Trigger
+        aria-label={ariaLabel}
+        className={`ui-overlay-trigger ${triggerSize === 'sm' ? 'min-h-control-sm px-3' : ''}`}
+      >
         {label}
       </Dropdown.Trigger>
       <Dropdown.Popover

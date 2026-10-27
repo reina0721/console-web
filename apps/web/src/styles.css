@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 @import '@community-go/ui-adapter/styles.css';
 @import '@community-go/design-system/tokens.css';
 @import '@community-go/design-system/motion.css';

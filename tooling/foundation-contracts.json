@@ -6,7 +6,7 @@
       "maturity": "stable",
       "exports": ["."],
       "authorityRoutes": ["/foundations"],
-      "evidence": ["packages/core/src/navigation.test.ts"]
+      "evidence": ["packages/core/src/navigation.test.ts", "packages/core/src/table.test.ts"]
     },
     "@community-go/config": {
       "layer": "universal",
@@ -88,6 +88,7 @@
         "./async-region",
         "./busy-indicator",
         "./card",
+        "./charts",
         "./command-menu",
         "./content-swap-transition",
         "./data-display",
@@ -161,6 +162,7 @@
         "./layout",
         "./shell-navigation",
         "./collection",
+        "./collection-tools",
         "./detail-settings",
         "./form-actions",
         "./states-operations",
@@ -169,9 +171,13 @@
         "./periodic-refresh",
         "./use-periodic-refresh"
       ],
-      "authorityRoutes": ["/page-patterns", "/page-archetypes", "/motion"],
+      "authorityRoutes": ["/page-patterns", "/page-archetypes", "/motion", "/ui-elements/data"],
       "evidence": [
         "packages/surface-foundation/src/contracts.test.tsx",
+        "packages/surface-foundation/src/collection-tools.test.tsx",
+        "packages/surface-foundation/src/data-table-productivity.test.tsx",
+        "packages/core/src/table.test.ts",
+        "apps/web/e2e/table-productivity.spec.ts",
         "apps/web/e2e/settings-ux-review.spec.ts",
         "apps/web/e2e/settings-product-review.spec.ts",
         "apps/web/e2e/design-contract.spec.ts",
@@ -198,6 +204,7 @@
         "./workbench",
         "./notifications",
         "./commands",
+        "./navigation-admin",
         "./leave-confirm",
         "./schemas",
         "./schemas/runtime",

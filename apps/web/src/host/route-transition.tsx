@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { completeRouteNavigation, commitResolvedHref } from './navigation-lifecycle';
+import { useShellStore } from '../state/use-shell-store';
 
 /**
  * RouteTransition —— Host 单点协调 Router commit 观测与内容 reveal。
@@ -60,6 +61,14 @@ export function RouteTransition({ children }: Readonly<{ children: ReactNode }>)
     // 设置内页壳等 layout 状态因此不随分类切换丢失）。
     element.dataset.routeEnter = 'false';
     requestAnimationFrame(() => {
+      // 滚动策略属于 Host 的 Route 层：不依赖具体 Link 实现（普通 Link、命令面板、
+      // router.push 都要遵循同一偏好）；带 hash 的定位交给 anchor-focus。
+      if (
+        !window.location.hash &&
+        useShellStore.getState().preferences.navigation.scrollToTopOnNavigate
+      ) {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
       if (element.isConnected) {
         element.dataset.routeEnter = 'true';
         element.dataset.routeKind =

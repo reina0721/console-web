@@ -8,9 +8,19 @@ import { IconAction } from '@community-go/ui-adapter/icon-action';
 import { Skeleton } from '@community-go/ui-adapter/skeleton';
 import { NotificationAlerts } from '../host/notification-alerts';
 import { useDesktopNotificationGate } from '../host/use-desktop-notification';
-import { Languages, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, Search } from 'lucide-react';
+import {
+  Languages,
+  Lock,
+  Menu,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings2,
+  Sun,
+  Search,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useFrontendTranslation } from '@community-go/i18n';
 import type { ReactNode } from 'react';
@@ -24,10 +34,15 @@ import { useRecentVisitRecorder } from '../host/recent-visit-recorder';
 import { RouteTransition } from '../host/route-transition';
 import { DrawerSurface } from '@community-go/ui-adapter/overlays';
 import { TopProgress } from '../host/top-progress';
+import { useAuth } from '../auth/context';
+import { useLockStore } from '../state/use-lock-store';
 import { useShellStore } from '../state/use-shell-store';
 import { useCommandsPort } from '@community-go/plugin-framework/commands';
 import { BrandMark } from './brand-mark';
-import { useProductNavigation } from './use-product-navigation';
+import { HeaderNavigation } from './header-navigation';
+import { useIdleLock } from './use-idle-lock';
+import { WatermarkOverlay } from './watermark';
+import { useProductNavigation, useNavigationLabelOverrides } from './use-product-navigation';
 import { NotificationCenter } from './notification-center';
 import { usePageTabsRecorder } from './use-page-tabs-recorder';
 
@@ -55,14 +70,25 @@ const CommandMenu = dynamic(
   { ssr: false },
 );
 
+/** 快捷偏好抽屉与锁屏只在需要时加载：不把表单控件/Drawer 依赖打进每个页面的首屏 JS。 */
+const QuickPreferencesDrawer = dynamic(
+  () => import('./quick-preferences-drawer').then((module) => module.QuickPreferencesDrawer),
+  { ssr: false },
+);
+const LockScreen = dynamic(() => import('./lock-screen').then((module) => module.LockScreen), {
+  ssr: false,
+});
+
 function NavigationContent({
   groups: navigationGroups,
   onNavigate,
   compact = false,
+  labelOverrides,
 }: {
   groups: readonly NavigationGroup[];
   onNavigate?: () => void;
   compact?: boolean;
+  labelOverrides?: Readonly<Record<string, string>>;
 }) {
   const { t } = useFrontendTranslation();
 
@@ -82,7 +108,7 @@ function NavigationContent({
         )}
       </div>
       <nav
-        className={`surface-shell-navigation-viewport min-h-0 flex-1 py-6 ${compact ? 'flex flex-col items-center px-3' : 'space-y-7 px-3'}`}
+        className={`surface-shell-navigation-viewport min-h-0 flex-1 py-6 ${compact ? 'surface-shell-compact-rail flex flex-col items-center px-3' : 'space-y-7 px-3'}`}
         aria-label={t('shell.primaryNav')}
       >
         <Suspense
@@ -104,7 +130,12 @@ function NavigationContent({
             </div>
           ))}
         >
-          <NavigationTree compact={compact} groups={navigationGroups} onNavigate={onNavigate} />
+          <NavigationTree
+            compact={compact}
+            groups={navigationGroups}
+            {...(labelOverrides ? { labelOverrides } : {})}
+            {...(onNavigate ? { onNavigate } : {})}
+          />
         </Suspense>
       </nav>
     </>
@@ -117,6 +148,16 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const chromeRef = useRef<HTMLDivElement>(null);
   const pageTabsPinned = useShellStore((state) => state.preferences.navigation.pageTabsPinned);
   const pageTabsEnabled = useShellStore((state) => state.preferences.navigation.pageTabsEnabled);
+  const layoutMode = useShellStore((state) => state.preferences.navigation.layoutMode);
+  const watermarkEnabled = useShellStore((state) => state.preferences.security.watermark);
+  const watermarkText = useShellStore((state) => state.preferences.security.watermarkText);
+  const idleLockMinutes = useShellStore((state) => state.preferences.security.idleLockMinutes);
+  const lockOnHidden = useShellStore((state) => state.preferences.security.lockOnHidden);
+  const locked = useLockStore((state) => state.locked);
+  const auth = useAuth();
+  const pathname = usePathname();
+  const [quickPreferencesOpen, setQuickPreferencesOpen] = useState(false);
+  useIdleLock(auth.session?.user.id ?? null, { idleLockMinutes, lockOnHidden });
   useEffect(() => {
     const chrome = chromeRef.current;
     const shell = shellRef.current;
@@ -132,6 +173,28 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     return () => observer.disconnect();
   }, []);
   const navigationGroups = useProductNavigation();
+  // 菜单管理的标题覆盖与导航同源（页签/命令面板/侧栏共享同一份解析）。
+  const labelOverrides = useNavigationLabelOverrides();
+  // 当前路由所属分组（顶部/混合布局的分组切换与高亮依据）。
+  const activeGroupId = useMemo(() => {
+    const match = navigationGroups.find((group) =>
+      flattenNavigationLeaves(group.items as readonly NavigationNode[]).some(({ leaf }) =>
+        leaf.href === '/'
+          ? pathname === '/'
+          : pathname === leaf.href || pathname.startsWith(`${leaf.href}/`),
+      ),
+    );
+    return match?.id ?? navigationGroups[0]?.id ?? null;
+  }, [navigationGroups, pathname]);
+  const [groupChoice, setGroupChoice] = useState<{ pathname: string; groupId: string } | null>(
+    null,
+  );
+  // 真实路由变化后自动回到"跟随当前页面分组"，不保留手工探索状态（派生比较，无需 effect）。
+  const mixedGroupId = groupChoice?.pathname === pathname ? groupChoice.groupId : activeGroupId;
+  const sidebarGroups =
+    layoutMode === 'mixed'
+      ? navigationGroups.filter((group) => group.id === mixedGroupId)
+      : navigationGroups;
   const { t } = useFrontendTranslation();
   const router = useRouter();
   const desktopTools = useSyncExternalStore(subscribeDesktop, desktopSnapshot, () => false);
@@ -197,7 +260,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       flattenNavigationLeaves(group.items as readonly NavigationNode[]).map(
         ({ leaf, ancestors }) => ({
           id: leaf.href,
-          label: t(leaf.labelKey),
+          label: labelOverrides[leaf.labelKey] ?? t(leaf.labelKey),
           description: [
             t(group.labelKey),
             ...ancestors.map((ancestor) => t(ancestor.labelKey)),
@@ -212,15 +275,18 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       description: command.description,
     }));
     return [...navItems, ...commandItemsFromRegistry];
-  }, [t, registeredCommands, navigationGroups]);
+  }, [t, registeredCommands, navigationGroups, labelOverrides]);
 
   // 页面入口 href → 标题（供 recents 记录消费；i18n 解析后 memo，保持引用稳定）。
   const navEntries = useMemo(
     () =>
       flattenNavigationLeaves(
         navigationGroups.flatMap((group) => group.items as readonly NavigationNode[]),
-      ).map(({ leaf }) => ({ href: leaf.href, label: t(leaf.labelKey) })),
-    [t, navigationGroups],
+      ).map(({ leaf }) => ({
+        href: leaf.href,
+        label: labelOverrides[leaf.labelKey] ?? t(leaf.labelKey),
+      })),
+    [t, navigationGroups, labelOverrides],
   );
   // 最近访问记录：pathname 页面入口提交时写入 Workbench recents（SET-005-004 消费）。
   useRecentVisitRecorder(navEntries);
@@ -228,12 +294,34 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   usePageTabsRecorder(navEntries);
 
   return (
-    <ShellRoot collapsed={sidebarCollapsed}>
+    <ShellRoot
+      collapsed={sidebarCollapsed}
+      layout={layoutMode === 'horizontal' ? 'horizontal' : 'vertical'}
+    >
       <NotificationAlerts />
       <TopProgress />
-      <aside className="sticky top-0 hidden h-screen min-w-0 flex-col border-r border-border bg-surface lg:flex">
-        <NavigationContent groups={navigationGroups} compact={sidebarCollapsed} />
-      </aside>
+      {watermarkEnabled ? (
+        <WatermarkOverlay
+          detail={watermarkText.trim() || t('brand.edition')}
+          identity={
+            auth.session?.user
+              ? `${auth.session.user.name} · ${auth.session.user.email}`
+              : t('brand.name')
+          }
+        />
+      ) : null}
+      {layoutMode !== 'horizontal' ? (
+        <aside
+          className="sticky top-0 hidden h-screen min-w-0 flex-col border-r border-border bg-surface lg:flex"
+          inert={locked}
+        >
+          <NavigationContent
+            groups={sidebarGroups}
+            compact={sidebarCollapsed}
+            labelOverrides={labelOverrides}
+          />
+        </aside>
+      ) : null}
 
       <DrawerSurface
         triggerLabel={t('shell.menu')}
@@ -247,30 +335,43 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       >
         <NavigationContent
           groups={navigationGroups}
+          labelOverrides={labelOverrides}
           onNavigate={() => setMobileNavigationOpen(false)}
         />
       </DrawerSurface>
 
       <div className="min-w-0" ref={shellRef}>
-        <div className="sticky top-0 z-sticky" ref={chromeRef}>
+        <div className="sticky top-0 z-sticky" ref={chromeRef} inert={locked}>
           <header className="flex h-20 items-center gap-3 border-b border-border bg-canvas/90 px-4 backdrop-blur-xl sm:px-6 xl:px-8">
             <div className="lg:hidden">
               <IconAction label={t('shell.menu')} onPress={() => setMobileNavigationOpen(true)}>
                 <Menu className="size-5" />
               </IconAction>
             </div>
-            <div className="hidden lg:block" data-navigation-control>
-              <IconAction
-                label={sidebarCollapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
-                onPress={() => setSidebarCollapsed(!sidebarCollapsed)}
-              >
-                {sidebarCollapsed ? (
-                  <PanelLeftOpen className="size-4.5" />
-                ) : (
-                  <PanelLeftClose className="size-4.5" />
-                )}
-              </IconAction>
-            </div>
+            {layoutMode === 'vertical' ? (
+              <div className="hidden lg:block" data-navigation-control>
+                <IconAction
+                  label={sidebarCollapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
+                  onPress={() => setSidebarCollapsed(!sidebarCollapsed)}
+                >
+                  {sidebarCollapsed ? (
+                    <PanelLeftOpen className="size-4.5" />
+                  ) : (
+                    <PanelLeftClose className="size-4.5" />
+                  )}
+                </IconAction>
+              </div>
+            ) : null}
+            {layoutMode !== 'vertical' ? (
+              <div className="hidden min-w-0 lg:block">
+                <HeaderNavigation
+                  activeGroupId={mixedGroupId}
+                  groups={navigationGroups}
+                  mode={layoutMode}
+                  onGroupSelect={(groupId) => setGroupChoice({ pathname, groupId })}
+                />
+              </div>
+            ) : null}
             <div className="md:hidden">
               <IconAction label={t('shell.search')} onPress={() => setCommandOpen(true)}>
                 <Search className="size-5" />
@@ -309,6 +410,18 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             <div className="ml-auto flex items-center gap-2">
               <div className="hidden items-center gap-2 md:flex">
                 <IconAction
+                  label={t('shell.quickPreferences.open')}
+                  onPress={() => setQuickPreferencesOpen(true)}
+                >
+                  <Settings2 className="size-4.5" />
+                </IconAction>
+                <IconAction
+                  label={t('shell.lock.action')}
+                  onPress={() => window.dispatchEvent(new Event('community-go:lock'))}
+                >
+                  <Lock className="size-4.5" />
+                </IconAction>
+                <IconAction
                   label={t('shell.locale')}
                   onPress={() => setLocale(locale === 'zh-CN' ? 'en' : 'zh-CN')}
                 >
@@ -325,6 +438,10 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               <AccountMenu
                 compact={!desktopTools}
                 onNavigate={(destination) => {
+                  if (destination === 'lock-screen') {
+                    window.dispatchEvent(new Event('community-go:lock'));
+                    return;
+                  }
                   const href = routeTargetResolver.resolveHref({
                     routeId: destination,
                     params: {},
@@ -344,7 +461,11 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
           {pageTabsEnabled && pageTabsPinned ? <PageTabs /> : null}
         </div>
         {pageTabsEnabled && !pageTabsPinned ? <PageTabs /> : null}
-        <main className="mx-auto max-w-screen-2xl p-4 sm:p-6 xl:p-8" id="main-content">
+        <main
+          className="mx-auto max-w-screen-2xl p-4 sm:p-6 xl:p-8"
+          id="main-content"
+          inert={locked}
+        >
           <RouteTransition>
             <PluginLocaleProvider
               port={{
@@ -361,6 +482,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
           </RouteTransition>
         </main>
       </div>
+      <QuickPreferencesDrawer open={quickPreferencesOpen} onOpenChange={setQuickPreferencesOpen} />
+      <LockScreen />
     </ShellRoot>
   );
 }

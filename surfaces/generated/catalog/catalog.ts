@@ -5,9 +5,13 @@ import type { RouteCatalog } from '@community-go/plugin-framework';
 export const generatedRouteCatalog: RouteCatalog = {
   plugins: [
     { pluginId: 'account', mount: '/account' },
+    { pluginId: 'analytics', mount: '/analytics' },
     { pluginId: 'api-workbench', mount: '/api-workbench' },
     { pluginId: 'audit', mount: '/audit-logs' },
+    { pluginId: 'departments', mount: '/system/departments' },
+    { pluginId: 'dictionaries', mount: '/system/dictionaries' },
     { pluginId: 'foundations', mount: '/foundations' },
+    { pluginId: 'menus', mount: '/system/menus' },
     { pluginId: 'motion', mount: '/motion' },
     { pluginId: 'notifications', mount: '/notifications' },
     { pluginId: 'page-archetypes', mount: '/page-archetypes' },
@@ -20,6 +24,7 @@ export const generatedRouteCatalog: RouteCatalog = {
     { pluginId: 'system-tools', mount: '/system-tools' },
     { pluginId: 'ui-elements', mount: '/ui-elements' },
     { pluginId: 'users', mount: '/users' },
+    { pluginId: 'workspace', mount: '/workspace' },
   ],
   routes: [
     {
@@ -28,6 +33,14 @@ export const generatedRouteCatalog: RouteCatalog = {
       path: '',
       segments: [],
       pattern: '/account',
+      paramNames: [],
+    },
+    {
+      routeId: 'analytics',
+      pluginId: 'analytics',
+      path: '',
+      segments: [],
+      pattern: '/analytics',
       paramNames: [],
     },
     {
@@ -55,11 +68,35 @@ export const generatedRouteCatalog: RouteCatalog = {
       paramNames: [],
     },
     {
+      routeId: 'departments',
+      pluginId: 'departments',
+      path: '',
+      segments: [],
+      pattern: '/system/departments',
+      paramNames: [],
+    },
+    {
+      routeId: 'dictionaries',
+      pluginId: 'dictionaries',
+      path: '',
+      segments: [],
+      pattern: '/system/dictionaries',
+      paramNames: [],
+    },
+    {
       routeId: 'foundations',
       pluginId: 'foundations',
       path: '',
       segments: [],
       pattern: '/foundations',
+      paramNames: [],
+    },
+    {
+      routeId: 'menus',
+      pluginId: 'menus',
+      path: '',
+      segments: [],
+      pattern: '/system/menus',
       paramNames: [],
     },
     {
@@ -311,6 +348,14 @@ export const generatedRouteCatalog: RouteCatalog = {
       paramNames: [],
     },
     {
+      routeId: 'settings.security',
+      pluginId: 'settings',
+      path: 'security',
+      segments: ['security'],
+      pattern: '/settings/security',
+      paramNames: [],
+    },
+    {
       routeId: 'settings.shortcuts',
       pluginId: 'settings',
       path: 'shortcuts',
@@ -454,8 +499,17 @@ export const generatedRouteCatalog: RouteCatalog = {
       pattern: '/users/edit',
       paramNames: [],
     },
+    {
+      routeId: 'workspace',
+      pluginId: 'workspace',
+      path: '',
+      segments: [],
+      pattern: '/workspace',
+      paramNames: [],
+    },
   ],
   aliases: [
+    { groupId: 'overview', labelKey: 'shellNavigationGroups.overview', order: -1 },
     { groupId: 'management', labelKey: 'shellNavigationGroups.management', order: 0 },
     { groupId: 'administration', labelKey: 'shellNavigationGroups.administration', order: 1 },
     { groupId: 'system', labelKey: 'shellNavigationGroups.system', order: 2 },
@@ -473,6 +527,21 @@ export const generatedRouteCatalog: RouteCatalog = {
             order: -10,
             iconId: 'account',
             routeId: 'account',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'analytics',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'analytics.root',
+            labelKey: 'analytics.nav',
+            groupId: 'overview',
+            order: 10,
+            iconId: 'analytics',
+            routeId: 'analytics',
           },
         ],
       },
@@ -508,6 +577,36 @@ export const generatedRouteCatalog: RouteCatalog = {
       },
     },
     {
+      pluginId: 'departments',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'departments.root',
+            labelKey: 'departments.nav',
+            groupId: 'administration',
+            order: 41,
+            iconId: 'department',
+            routeId: 'departments',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'dictionaries',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'dictionaries.root',
+            labelKey: 'dictionaries.nav',
+            groupId: 'administration',
+            order: 42,
+            iconId: 'dictionary',
+            routeId: 'dictionaries',
+          },
+        ],
+      },
+    },
+    {
       pluginId: 'foundations',
       contribution: {
         parents: [
@@ -518,6 +617,21 @@ export const generatedRouteCatalog: RouteCatalog = {
             order: 50,
             iconId: 'foundations',
             routeId: 'foundations',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'menus',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'menus.root',
+            labelKey: 'menus.nav',
+            groupId: 'administration',
+            order: 40,
+            iconId: 'menu',
+            routeId: 'menus',
           },
         ],
       },
@@ -835,6 +949,21 @@ export const generatedRouteCatalog: RouteCatalog = {
             order: 0,
             iconId: 'users',
             routeId: 'users',
+          },
+        ],
+      },
+    },
+    {
+      pluginId: 'workspace',
+      contribution: {
+        parents: [
+          {
+            navigationId: 'workspace.root',
+            labelKey: 'workspace.nav',
+            groupId: 'overview',
+            order: 11,
+            iconId: 'workspace',
+            routeId: 'workspace',
           },
         ],
       },

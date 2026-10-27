@@ -692,7 +692,12 @@
             "on-danger",
             "on-info",
             "focus-ring",
-            "scrim"
+            "scrim",
+            "chart-1",
+            "chart-2",
+            "chart-3",
+            "chart-4",
+            "chart-5"
           ],
           "light": {
             "canvas": "#f6f7fb",
@@ -721,7 +726,12 @@
             "on-danger": "#ffffff",
             "on-info": "#ffffff",
             "focus-ring": "#5d49d6",
-            "scrim": "rgb(15 23 42 / 0.38)"
+            "scrim": "rgb(15 23 42 / 0.38)",
+            "chart-1": "#5d49d6",
+            "chart-2": "#2463eb",
+            "chart-3": "#0f7f74",
+            "chart-4": "#b45309",
+            "chart-5": "#be3b6b"
           },
           "dark": {
             "canvas": "#0d111c",
@@ -750,7 +760,12 @@
             "on-danger": "#2d1015",
             "on-info": "#0b1b3a",
             "focus-ring": "#b0a5ff",
-            "scrim": "rgb(0 0 0 / 0.58)"
+            "scrim": "rgb(0 0 0 / 0.58)",
+            "chart-1": "#9b8cff",
+            "chart-2": "#78a5ff",
+            "chart-3": "#4fd1b8",
+            "chart-4": "#f3b55a",
+            "chart-5": "#f78fb3"
           }
         },
         "accents": {

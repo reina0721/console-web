@@ -12,6 +12,7 @@
     "./workbench": "./src/workbench.tsx",
     "./notifications": "./src/notifications.tsx",
     "./commands": "./src/commands.tsx",
+    "./navigation-admin": "./src/navigation-admin.tsx",
     "./leave-confirm": "./src/leave-confirm.tsx",
     "./schemas": "./src/schemas.ts",
     "./schemas/runtime": "./src/schemas-runtime.ts",
