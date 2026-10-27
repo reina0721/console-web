@@ -125,3 +125,16 @@ primitive 时必须补充对应组件样式导入；遗漏通常表现为视觉�
 
 最终产物：initial **406,695 B**（≤409,600）、maxRoute **431,115 B** `/login`
 （≤445,440）、CSS **48,567 B**（≤49,152）；预算未调整。
+
+### 收口（2026-10-27，最终提交）
+
+上文的 405,759 / 430,094 与 406,695 / 431,115 都是迭代过程数字；最终以
+[`pnpm-check.log`](pnpm-check.log)（412 项浏览器、退出码 0）为准：
+
+- initial **406,744 B**（≤409,600）、maxRoute **431,132 B** `/login`（≤445,440）、
+  CSS **48,567 B**（≤49,152），预算未调整。
+- 新增 `analytics-workspace.spec.ts`（3 项）后浏览器总数 412；六类场景另有定向复测
+  **109 项**（[`parity-retest.log`](parity-retest.log)），逐项结论见
+  [最终逐项复测矩阵](../research/final-parity-matrix.md)。
+- 仓库内测试生成的意外证据文件已清理：设置安全页截图归入本目录
+  `evidence/screenshots/`，109 历史证据目录恢复。
